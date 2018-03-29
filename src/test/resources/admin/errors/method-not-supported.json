@@ -1,0 +1,9 @@
+{
+  "@context": "{error-context}",
+  "code": "MethodNotSupported",
+  "supported": [
+    "GET",
+    "PUT",
+    "DELETE"
+  ]
+}
