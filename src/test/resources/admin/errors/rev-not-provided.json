@@ -1,0 +1,5 @@
+{
+  "@context": "{error-context}",
+  "code": "MissingParameter",
+  "message": "'rev' parameter is required"
+}
