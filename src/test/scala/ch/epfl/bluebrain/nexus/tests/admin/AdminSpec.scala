@@ -234,9 +234,16 @@ class AdminSpec extends BaseSpec with OptionValues {
         }
       }
 
-      "return not found when revision is not provided" in {
-        cl(Req(DELETE, s"$adminBase/projects/${genId()}")).mapResp { result =>
-          result.status shouldEqual StatusCodes.NotFound
+      "fail when revision is not provided" in {
+        val id = genId()
+        cl(Req(PUT, s"$adminBase/projects/$id", entity = reqEntity())).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.Created
+          json shouldEqual createRespJson(id, 1L)
+        }
+
+        cl(Req(DELETE, s"$adminBase/projects/$id")).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.Conflict
+          json shouldEqual jsonContentOf("/admin/errors/rev-not-provided.json", errorCtx)
         }
       }
 
