@@ -242,7 +242,7 @@ class AdminSpec extends BaseSpec with OptionValues {
         }
 
         cl(Req(DELETE, s"$adminBase/projects/$id")).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.Conflict
+          result.status shouldEqual StatusCodes.BadRequest
           json shouldEqual jsonContentOf("/admin/errors/rev-not-provided.json", errorCtx)
         }
       }
