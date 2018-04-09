@@ -1,22 +1,27 @@
 def version = env.BRANCH_NAME
 
 pipeline {
-    agent none
-
+    agent { label 'slave-sbt' }
+    parameters {
+        booleanParam(defaultValue: false, description: 'Run integration tests', name: 'run')
+    }
     stages {
         stage("Review") {
             when {
                 expression { env.CHANGE_ID != null }
             }
-            parallel {
-                stage("StaticAnalysis") {
-                    steps {
-                        node("slave-sbt") {
-                            checkout scm
-                            sh 'sbt clean scalafmtCheck scalafmtSbtCheck test:scalafmtCheck scapegoat test:scapegoat test:compile'
-                        }
-                    }
-                }
+            steps {
+                checkout scm
+                sh 'sbt clean scalafmtCheck scalafmtSbtCheck test:scalafmtCheck scapegoat test:scapegoat test:compile'
+            }
+        }
+        stage("Run") {
+            when {
+                expression { params.run }
+            }
+            steps {
+                checkout scm
+                sh 'sbt test'
             }
         }
     }
