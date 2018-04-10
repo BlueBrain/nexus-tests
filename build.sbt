@@ -34,7 +34,7 @@ val pureconfigVersion = "0.9.1"
 val scalaTestVersion  = "3.0.5"
 
 // Nexus dependency versions
-val serviceVersion = "0.10.7"
+val serviceVersion = "0.10.8"
 val commonsVersion = "0.10.9"
 
 // Dependency modules

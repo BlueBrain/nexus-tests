@@ -1,0 +1,11 @@
+{
+  "@type": "Subtract",
+  "identity": {
+    "realm": "bbp-test",
+    "sub": "{sub}",
+    "@type": "UserRef"
+  },
+  "permissions": [
+    "{perms}"
+  ]
+}
