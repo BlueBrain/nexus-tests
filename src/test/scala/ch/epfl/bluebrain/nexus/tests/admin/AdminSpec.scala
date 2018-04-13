@@ -42,11 +42,11 @@ class AdminSpec extends BaseSpec with OptionValues with CancelAfterFailure with 
 
   private def entityMeta(id: String, rev: Long, deprecated: Boolean = false): Json =
     Json.obj(
-      "@context"       -> Json.fromString(config.prefixes.coreContext.toString()),
-      "@id"            -> Json.fromString(s"$adminBase/projects/$id"),
-      "@type"          -> Json.fromString("nxv:Project"),
-      "nxv:rev"        -> Json.fromLong(rev),
-      "nxv:deprecated" -> Json.fromBoolean(deprecated)
+      "@context"    -> Json.fromString(config.prefixes.coreContext.toString()),
+      "@id"         -> Json.fromString(s"$adminBase/projects/$id"),
+      "@type"       -> Json.fromString("nxv:Project"),
+      "_rev"        -> Json.fromLong(rev),
+      "_deprecated" -> Json.fromBoolean(deprecated)
     )
 
   "An Admin service" when {
@@ -537,9 +537,14 @@ class AdminSpec extends BaseSpec with OptionValues with CancelAfterFailure with 
         eventually {
           cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.OK
-            json shouldEqual jsonContentOf(
-              "/iam/project-perms-response.json",
-              resourceIamCtx ++ replSub + (quote("{perms}") -> s"""$permission","$permission2""", quote("{path}") -> id))
+            json should (equal(
+              jsonContentOf("/iam/project-perms-response.json",
+                            resourceIamCtx ++ replSub + (quote("{perms}") -> s"""$permission","$permission2""", quote(
+                              "{path}")                                   -> id)))
+              or equal(
+                jsonContentOf("/iam/project-perms-response.json",
+                              resourceIamCtx ++ replSub + (quote("{perms}") -> s"""$permission2","$permission""", quote(
+                                "{path}")                                   -> id))))
           }
         }
 
