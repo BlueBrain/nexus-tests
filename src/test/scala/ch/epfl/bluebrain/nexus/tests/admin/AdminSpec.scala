@@ -65,8 +65,8 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
             case (acc, j) =>
               j.hcursor.downField("identity").get[String]("sub") match {
                 case Right(s) if s == config.iam.userSub =>
-                  acc + Tuple2(j.hcursor.get[String]("path").toOption.value,
-                               j.hcursor.get[Set[String]]("permissions").toOption.value)
+                  acc + (j.hcursor.get[String]("path").toOption.value ->
+                    j.hcursor.get[Set[String]]("permissions").toOption.value)
                 case _ => acc
               }
           }
@@ -626,11 +626,11 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
 
       val projectIds: immutable.Seq[String] = 1 to 3 map { _ =>
         genId()
-      }
+      } sorted
 
       def projectListingResults(ids: Seq[String]): Json = {
         Json.arr(
-          ids.sorted.map { id =>
+          ids.map { id =>
             Json.obj(
               "_id" -> Json.fromString(s"$adminBase/projects/$id"),
               "_source" -> Json.obj(
@@ -643,30 +643,16 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
 
       def projectListingResultsWithAllFields(ids: Seq[String]): Json = {
         Json.arr(
-          ids.sorted.map { id =>
-            Json.obj(
-              "_id" -> Json.fromString(s"$adminBase/projects/$id"),
-              "_source" -> Json.obj(
-                "@context"    -> Json.fromString(config.prefixes.coreContext.toString),
-                "@id"         -> Json.fromString(s"$adminBase/projects/$id"),
-                "@type"       -> Json.fromString("nxv:Project"),
-                "_deprecated" -> Json.fromBoolean(false),
-                "_rev"        -> Json.fromInt(1),
-                "config" -> Json.obj(
-                  "maxAttachmentSize" -> Json.fromInt(10)
-                ),
-                "description" -> Json.fromString(s"$id description"),
-                "name"        -> Json.fromString(id),
-                "prefixMappings" -> Json.arr(
-                  Json.obj(
-                    "namespace" -> Json.fromString("https://bbp-nexus.epfl.ch/vocabs/nexus/core/terms/v0.1.0/"),
-                    "prefix"    -> Json.fromString(s"nxv-$id")
-                  ),
-                  Json.obj(
-                    "namespace" -> Json.fromString("https://shapes-registry.org/commons/person"),
-                    "prefix"    -> Json.fromString(s"person-$id")
-                  )
-                )
+          ids.map { id =>
+            jsonContentOf(
+              "/admin/search-results-all-fields.json",
+              Map(
+                quote("{id}")            -> s"$adminBase/projects/$id",
+                quote("{core}")          -> config.prefixes.coreContext.toString,
+                quote("{desc}")          -> s"$id description",
+                quote("{name}")          -> id,
+                quote("{person-prefix}") -> s"person-$id",
+                quote("{nxv-prefix}")    -> s"nxv-$id"
               )
             )
           }: _*
@@ -739,7 +725,6 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
           }
         }
       }
-
     }
   }
 }
