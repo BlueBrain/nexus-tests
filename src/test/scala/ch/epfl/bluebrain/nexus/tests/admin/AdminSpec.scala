@@ -698,13 +698,14 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
             cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
               result.status shouldEqual StatusCodes.OK
               json should (equal(
-                jsonContentOf("/iam/project-perms-response.json",
-                              resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/read","projects/write""", quote(
-                                "{path}")                                   -> id)))
+                jsonContentOf(
+                  "/iam/project-perms-response.json",
+                  resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/read", "projects/write""", quote(
+                    "{path}")                                   -> id)))
                 or equal(
                   jsonContentOf(
                     "/iam/project-perms-response.json",
-                    resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/write","projects/read""", quote(
+                    resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/write", "projects/read""", quote(
                       "{path}")                                   -> id))))
             }
           }
