@@ -23,6 +23,11 @@ pipeline {
                 checkout scm
                 sh 'sbt test'
             }
+            post {
+                always {
+                    junit 'target/test-reports'
+                }
+            }
         }
     }
 }

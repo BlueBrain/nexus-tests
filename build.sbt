@@ -70,7 +70,8 @@ lazy val root = project
       serviceHttp     % Test,
       scalaTest       % Test,
       slf4j           % Test
-    )
+    ),
+    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-u", "target/test-reports")
   )
 
 /* ********************************************************
