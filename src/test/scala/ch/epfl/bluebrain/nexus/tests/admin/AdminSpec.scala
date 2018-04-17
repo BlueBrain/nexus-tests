@@ -9,9 +9,11 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonOps._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, OptionValues}
+import org.scalatest.{CancelAfterFailure, Inspectors, OptionValues}
 
-class AdminSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually {
+import scala.collection.immutable
+
+class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAfterFailure with Eventually {
 
   private val startPool = Vector.range('a', 'z')
   private val pool      = Vector.range('a', 'z') ++ Vector.range('0', '9') :+ '_' :+ '-'
@@ -25,11 +27,13 @@ class AdminSpec extends BaseSpec with OptionValues with CancelAfterFailure with 
 
   private def reqEntity(path: String = "/admin/create.json",
                         nxv: String = randomProjectPrefix,
-                        person: String = randomProjectPrefix): RequestEntity = {
+                        person: String = randomProjectPrefix,
+                        description: String = genString(),
+                        name: String = genString()): RequestEntity = {
     val rep = Map(quote("{nxv-prefix}") -> nxv,
                   quote("{person-prefix}") -> person,
-                  quote("{name}")          -> genString(),
-                  quote("{desc}")          -> genString())
+                  quote("{name}")          -> name,
+                  quote("{desc}")          -> description)
     jsonContentOf(path, rep).toEntity
   }
 
@@ -42,42 +46,49 @@ class AdminSpec extends BaseSpec with OptionValues with CancelAfterFailure with 
 
   private def entityMeta(id: String, rev: Long, deprecated: Boolean = false): Json =
     Json.obj(
-      "@context"       -> Json.fromString(config.prefixes.coreContext.toString()),
-      "@id"            -> Json.fromString(s"$adminBase/projects/$id"),
-      "@type"          -> Json.fromString("nxv:Project"),
-      "nxv:rev"        -> Json.fromLong(rev),
-      "nxv:deprecated" -> Json.fromBoolean(deprecated)
+      "@context"    -> Json.fromString(config.prefixes.coreContext.toString()),
+      "@id"         -> Json.fromString(s"$adminBase/projects/$id"),
+      "@type"       -> Json.fromString("nxv:Project"),
+      "_rev"        -> Json.fromLong(rev),
+      "_deprecated" -> Json.fromBoolean(deprecated)
     )
 
   "An Admin service" when {
     val replSub = Map(quote("{sub}") -> config.iam.userSub)
 
-    "managing ACLs" should {
+    def cleanAcls = {
 
-      "delete all ACLs for user" in {
-
-        cl(Req(uri = s"$iamBase/acls/", headers = headersGroup)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          val permissions = json.hcursor.get[Vector[Json]]("acl").toOption.value.foldLeft(Set.empty[String]) {
+      cl(Req(uri = s"$iamBase/acls/*?parents=true", headers = headersGroup)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        val permissions =
+          json.hcursor.get[Vector[Json]]("acl").toOption.value.foldLeft(Set.empty[(String, Set[String])]) {
             case (acc, j) =>
               j.hcursor.downField("identity").get[String]("sub") match {
                 case Right(s) if s == config.iam.userSub =>
-                  j.hcursor.get[Set[String]]("permissions").toOption.value ++ acc
+                  acc + (j.hcursor.get[String]("path").toOption.value ->
+                    j.hcursor.get[Set[String]]("permissions").toOption.value)
                 case _ => acc
               }
           }
 
-          if (permissions.nonEmpty) {
+        permissions.foreach {
+          case (path, perms) =>
             val entity =
-              jsonContentOf("/iam/patch-single.json", replSub + (quote("{perms}") -> permissions.mkString("""",""""))).toEntity
-
-            cl(Req(PATCH, s"$iamBase/acls/", headersGroup, entity)).mapJson { (json, result) =>
+              jsonContentOf("/iam/patch-single.json", replSub + (quote("{perms}") -> perms.mkString("""",""""))).toEntity
+            cl(Req(PATCH, s"$iamBase/acls$path", headersGroup, entity)).mapJson { (json, result) =>
               result.status shouldEqual StatusCodes.OK
               json shouldEqual jsonContentOf("/iam/patch-response.json", replSub ++ resourceIamCtx)
             }
-          } else permissions shouldEqual Set.empty[String]
         }
+
+        result.status shouldEqual StatusCodes.OK
+
       }
+    }
+
+    "managing ACLs" should {
+
+      "delete all ACLs for user" in cleanAcls
     }
 
     "creating a project" should {
@@ -537,9 +548,14 @@ class AdminSpec extends BaseSpec with OptionValues with CancelAfterFailure with 
         eventually {
           cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.OK
-            json shouldEqual jsonContentOf(
-              "/iam/project-perms-response.json",
-              resourceIamCtx ++ replSub + (quote("{perms}") -> s"""$permission","$permission2""", quote("{path}") -> id))
+            json should (equal(
+              jsonContentOf("/iam/project-perms-response.json",
+                            resourceIamCtx ++ replSub + (quote("{perms}") -> s"""$permission","$permission2""", quote(
+                              "{path}")                                   -> id)))
+              or equal(
+                jsonContentOf("/iam/project-perms-response.json",
+                              resourceIamCtx ++ replSub + (quote("{perms}") -> s"""$permission2","$permission""", quote(
+                                "{path}")                                   -> id))))
           }
         }
 
@@ -572,6 +588,282 @@ class AdminSpec extends BaseSpec with OptionValues with CancelAfterFailure with 
           cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.OK
             json shouldEqual jsonContentOf("/iam/project-perms-response-empty.json", resourceIamCtx)
+          }
+        }
+      }
+    }
+
+    "listing projects" should {
+
+      "delete all ACLs for user" in cleanAcls
+
+      "return unauthorized access if user has no permissions on / or particular project" in {
+        eventually {
+          cl(Req(GET, s"$adminBase/projects?size=1", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.Unauthorized
+            json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
+          }
+        }
+      }
+
+      "add projects/create permissions for user" in {
+        val json = jsonContentOf("/iam/add.json", replSub + (quote("{perms}") -> "projects/create")).toEntity
+        cl(Req(PUT, s"$iamBase/acls/", headersGroup, json)).mapResp { result =>
+          result.status shouldEqual StatusCodes.OK
+          result.entity.isKnownEmpty() shouldEqual true
+        }
+
+        eventually {
+          cl(Req(uri = s"$iamBase/acls/", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual jsonContentOf(
+              "/iam/project-perms-response.json",
+              resourceIamCtx ++ replSub + (quote("{perms}") -> "projects/create", quote("{path}") -> "")
+            )
+          }
+        }
+      }
+
+      val projectIds: immutable.Seq[String] = 1 to 5 map { _ =>
+        genId()
+      } sorted
+
+      def projectListingResults(ids: Seq[String]): Json = {
+        Json.arr(
+          ids.map { id =>
+            Json.obj(
+              "_id" -> Json.fromString(s"$adminBase/projects/$id"),
+              "_source" -> Json.obj(
+                "@id" -> Json.fromString(s"$adminBase/projects/$id")
+              )
+            )
+          }: _*
+        )
+      }
+
+      def projectListingResultsWithScore(ids: Seq[String]): Json = {
+        Json.arr(
+          ids.map { id =>
+            Json.obj(
+              "_id"    -> Json.fromString(s"$adminBase/projects/$id"),
+              "_score" -> Json.fromDoubleOrString(1.0),
+              "_source" -> Json.obj(
+                "@id" -> Json.fromString(s"$adminBase/projects/$id")
+              )
+            )
+          }: _*
+        )
+      }
+
+      def projectListingResultsWithAllFields(ids: Seq[String]): Json = {
+        Json.arr(
+          ids.map { id =>
+            jsonContentOf(
+              "/admin/search-results-all-fields.json",
+              Map(
+                quote("{id}")            -> s"$adminBase/projects/$id",
+                quote("{core}")          -> config.prefixes.coreContext.toString,
+                quote("{desc}")          -> s"$id description",
+                quote("{name}")          -> id,
+                quote("{person-prefix}") -> s"person-$id",
+                quote("{nxv-prefix}")    -> s"nxv-$id"
+              )
+            )
+          }: _*
+        )
+      }
+
+      "create project and grant project permissions to user" in {
+        val permissionsJson =
+          jsonContentOf("/iam/add.json", replSub + (quote("{perms}") -> """projects/read","projects/write""")).toEntity
+
+        forAll(projectIds) { id =>
+          cl(
+            Req(PUT,
+                s"$adminBase/projects/$id",
+                headersUser,
+                reqEntity(nxv = s"nxv-$id", person = s"person-$id", description = s"$id description", name = id)))
+            .mapJson { (json, result) =>
+              result.status shouldEqual StatusCodes.Created
+              json shouldEqual createRespJson(id, 1L)
+            }
+
+          cl(Req(PUT, s"$iamBase/acls/$id", headersGroup, permissionsJson)).mapResp { result =>
+            result.status shouldEqual StatusCodes.OK
+            result.entity.isKnownEmpty() shouldEqual true
+          }
+
+          //Get permission added
+          eventually {
+            cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
+              result.status shouldEqual StatusCodes.OK
+              json should (equal(
+                jsonContentOf(
+                  "/iam/project-perms-response.json",
+                  resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/read", "projects/write""", quote(
+                    "{path}")                                   -> id)))
+                or equal(
+                  jsonContentOf(
+                    "/iam/project-perms-response.json",
+                    resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/write", "projects/read""", quote(
+                      "{path}")                                   -> id))))
+            }
+          }
+        }
+      }
+
+      "return only projects the user has access to" in {
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(projectIds),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "return only projects the user has access to in reverse name order" in {
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(projectIds.reverse),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?sort=-nxv:name")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?sort=-nxv:name", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "return only projects the user has access to with all fields" in {
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResultsWithAllFields(projectIds),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?fields=nxv:_all")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?fields=nxv:_all", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "return only the project that matches the query param" in {
+        val id = projectIds.last
+
+        val expectedResults = Json.obj(
+          "@context"  -> Json.fromString(config.prefixes.searchContext.toString),
+          "_maxScore" -> Json.fromDoubleOrString(1.0),
+          "_results"  -> projectListingResultsWithScore(Seq(id)),
+          "_total"    -> Json.fromInt(1),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?q=$id")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?q=$id", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "return search results with pagination" in {
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(projectIds.slice(2, 4)),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_next"     -> Json.fromString(s"$adminBase/projects?from=4&size=2"),
+            "_previous" -> Json.fromString(s"$adminBase/projects?from=0&size=2"),
+            "_self"     -> Json.fromString(s"$adminBase/projects?from=2&size=2")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?from=2&size=2", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "filter projects by deprecation status" in {
+
+        val deprecatedProjects    = projectIds.take(2)
+        val nonDeprecatedProjects = projectIds.drop(2)
+
+        forAll(deprecatedProjects) { id =>
+          cl(Req(DELETE, s"$adminBase/projects/$id?rev=1", headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual createRespJson(id, 2L)
+          }
+        }
+
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(projectIds),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects")
+          )
+        )
+
+        val expectedResultsDeprecated = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(deprecatedProjects),
+          "_total"   -> Json.fromInt(deprecatedProjects.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?deprecated=true")
+          )
+        )
+
+        val expectedResultsNonDeprecated = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(nonDeprecatedProjects),
+          "_total"   -> Json.fromInt(nonDeprecatedProjects.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?deprecated=false")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?deprecated=true", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResultsDeprecated
+          }
+        }
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?deprecated=false", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResultsNonDeprecated
+          }
+        }
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
           }
         }
       }
