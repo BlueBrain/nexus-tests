@@ -624,7 +624,7 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
         }
       }
 
-      val projectIds: immutable.Seq[String] = 1 to 3 map { _ =>
+      val projectIds: immutable.Seq[String] = 1 to 5 map { _ =>
         genId()
       } sorted
 
@@ -633,6 +633,20 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
           ids.map { id =>
             Json.obj(
               "_id" -> Json.fromString(s"$adminBase/projects/$id"),
+              "_source" -> Json.obj(
+                "@id" -> Json.fromString(s"$adminBase/projects/$id")
+              )
+            )
+          }: _*
+        )
+      }
+
+      def projectListingResultsWithScore(ids: Seq[String]): Json = {
+        Json.arr(
+          ids.map { id =>
+            Json.obj(
+              "_id"    -> Json.fromString(s"$adminBase/projects/$id"),
+              "_score" -> Json.fromDoubleOrString(1.0),
               "_source" -> Json.obj(
                 "@id" -> Json.fromString(s"$adminBase/projects/$id")
               )
@@ -660,7 +674,8 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
       }
 
       "create project and grant project permissions to user" in {
-        val permissionsJson = jsonContentOf("/iam/add.json", replSub + (quote("{perms}") -> "projects/read")).toEntity
+        val permissionsJson =
+          jsonContentOf("/iam/add.json", replSub + (quote("{perms}") -> """projects/read","projects/write""")).toEntity
 
         forAll(projectIds) { id =>
           cl(
@@ -682,9 +697,15 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
           eventually {
             cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
               result.status shouldEqual StatusCodes.OK
-              json shouldEqual jsonContentOf(
-                "/iam/project-perms-response.json",
-                resourceIamCtx ++ replSub + (quote("{perms}") -> "projects/read", quote("{path}") -> id))
+              json should (equal(
+                jsonContentOf("/iam/project-perms-response.json",
+                              resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/read","projects/write""", quote(
+                                "{path}")                                   -> id)))
+                or equal(
+                  jsonContentOf(
+                    "/iam/project-perms-response.json",
+                    resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/write","projects/read""", quote(
+                      "{path}")                                   -> id))))
             }
           }
         }
@@ -708,6 +729,24 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
         }
       }
 
+      "return only projects the user has access to in reverse name order" in {
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(projectIds.reverse),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?sort=-nxv:name")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?sort=-nxv:name", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
       "return only projects the user has access to with all fields" in {
         val expectedResults = Json.obj(
           "@context" -> Json.fromString(config.prefixes.searchContext.toString),
@@ -720,6 +759,108 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
 
         eventually {
           cl(Req(uri = s"$adminBase/projects?fields=nxv:_all", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "return only the project that matches the query param" in {
+        val id = projectIds.last
+
+        val expectedResults = Json.obj(
+          "@context"  -> Json.fromString(config.prefixes.searchContext.toString),
+          "_maxScore" -> Json.fromDoubleOrString(1.0),
+          "_results"  -> projectListingResultsWithScore(Seq(id)),
+          "_total"    -> Json.fromInt(1),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?q=$id")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?q=$id", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "return search results with pagination" in {
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(projectIds.slice(2, 4)),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_next"     -> Json.fromString(s"$adminBase/projects?from=4&size=2"),
+            "_previous" -> Json.fromString(s"$adminBase/projects?from=0&size=2"),
+            "_self"     -> Json.fromString(s"$adminBase/projects?from=2&size=2")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?from=2&size=2", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResults
+          }
+        }
+      }
+
+      "filter projects by deprecation status" in {
+
+        val deprecatedProjects    = projectIds.take(2)
+        val nonDeprecatedProjects = projectIds.drop(2)
+
+        forAll(deprecatedProjects) { id =>
+          cl(Req(DELETE, s"$adminBase/projects/$id?rev=1", headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual createRespJson(id, 2L)
+          }
+        }
+
+        val expectedResults = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(projectIds),
+          "_total"   -> Json.fromInt(projectIds.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects")
+          )
+        )
+
+        val expectedResultsDeprecated = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(deprecatedProjects),
+          "_total"   -> Json.fromInt(deprecatedProjects.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?deprecated=true")
+          )
+        )
+
+        val expectedResultsNonDeprecated = Json.obj(
+          "@context" -> Json.fromString(config.prefixes.searchContext.toString),
+          "_results" -> projectListingResults(nonDeprecatedProjects),
+          "_total"   -> Json.fromInt(nonDeprecatedProjects.size),
+          "_links" -> Json.obj(
+            "_self" -> Json.fromString(s"$adminBase/projects?deprecated=false")
+          )
+        )
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?deprecated=true", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResultsDeprecated
+          }
+        }
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects?deprecated=false", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual expectedResultsNonDeprecated
+          }
+        }
+
+        eventually {
+          cl(Req(uri = s"$adminBase/projects", headers = headersUser)).mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.OK
             json shouldEqual expectedResults
           }
