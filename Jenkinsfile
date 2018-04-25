@@ -12,7 +12,7 @@ pipeline {
             }
             steps {
                 checkout scm
-                sh 'sbt clean scalafmtCheck scalafmtSbtCheck test:scalafmtCheck scapegoat test:scapegoat test:compile'
+                sh 'sbt clean scalafmtCheck scalafmtSbtCheck test:scalafmtCheck scapegoat test:scapegoat'
             }
         }
         stage("Run") {
@@ -25,7 +25,7 @@ pipeline {
             }
             post {
                 always {
-                    junit '**/target/test-reports/*.xml'
+                    junit 'target/test-reports/TEST*.xml'
                 }
             }
         }
