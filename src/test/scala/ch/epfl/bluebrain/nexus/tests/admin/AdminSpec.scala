@@ -494,10 +494,11 @@ class AdminSpec extends BaseSpec with OptionValues with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.Created
           json shouldEqual createRespJson(id, 1L)
         }
-
-        cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json shouldEqual jsonContentOf("/iam/project-perms-response-empty.json", resourceIamCtx)
+        eventually {
+          cl(Req(uri = s"$adminBase/projects/$id/acls", headers = headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual jsonContentOf("/iam/project-perms-response-empty.json", resourceIamCtx)
+          }
         }
       }
 
