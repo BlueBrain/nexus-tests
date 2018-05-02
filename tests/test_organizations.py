@@ -15,7 +15,7 @@ class TestOrganizations(object):
 
     headers = {'Content-type': 'application/json'}
 
-    @pytest.mark.dev
+    @pytest.mark.disabled
     def test1_create_org(self, url, uid):
         """Test to create, update, get and deprecate an 'organization'.
         """

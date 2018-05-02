@@ -32,8 +32,15 @@ def url(request):
     myurl = os.path.join(map_url[environment], api)
     return myurl
 
+@pytest.fixture
+def domain_url(url):
+    """Returns the URL to the sandbox organization.
+    """
+    return os.path.join(url, "domains", "sandbox")
+
 
 @pytest.fixture(scope="module")
 def uid():
     test_uuid = "test" + str(uuid.uuid4()).replace('-','')[:20]
+    print(test_uuid)
     return test_uuid
