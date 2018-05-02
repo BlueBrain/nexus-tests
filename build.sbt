@@ -71,7 +71,7 @@ lazy val root = project
       scalaTest       % Test,
       slf4j           % Test
     ),
-    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-u", "target/test-reports")
+    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports")
   )
 
 /* ********************************************************
