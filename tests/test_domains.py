@@ -44,13 +44,12 @@ class TestDomains(object):
         assert response.status_code == 409
 
         # Retrieve domain in different formats
-        #GET /v0/domains/{orgId}/{domId}?format={format}
         for format_ in ['compacted', 'expanded', 'flattened']:
             response = requests.get(rurl, params={'format':format_})
             print "\n\n FORMAT %s" % format_
             pprint.pprint(json.loads(response.text))
 
-        # Update the domain> Not possible
+        # Update the domain: Not possible
 
         # Retrieve all domains created so far
         params = {
@@ -66,7 +65,6 @@ class TestDomains(object):
             response = requests.get(domain_url)
             assert response.status_code == 200
             response = json.loads(response.text)
-            #pprint.pprint(response)
             deprecated = response['nxv:deprecated']
             current_rev = response['nxv:rev']
 
@@ -80,10 +78,3 @@ class TestDomains(object):
                 assert current_rev == 2
                 print("Domain %s already deprecated" % domain_url.split('/')[-1])
 
-
-# GET /v0/domains/{orgId}/
-#       ?q={full_text_search_query}
-#       &filter={filter}
-#       &from={from}
-#       &size={size}
-#       &deprecated={deprecated}
