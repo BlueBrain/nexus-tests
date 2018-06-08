@@ -89,10 +89,10 @@ class BaseSpec
   private[tests] implicit class JsonSyntax(json: Json) {
     def toEntity: RequestEntity = HttpEntity(ContentTypes.`application/json`, json.noSpaces)
 
-    def getString(field: String): String   = json.asObject.flatMap(_(field)).flatMap(_.asString).get
-    def getLong(field: String): Long       = json.asObject.flatMap(_(field)).flatMap(_.asNumber).flatMap(_.toLong).get
-    def getBoolean(field: String): Boolean = json.asObject.flatMap(_(field)).flatMap(_.asBoolean).get
-    def getJson(field: String): Json       = json.asObject.flatMap(_(field)).get
+    def getString(field: String): String   = json.asObject.flatMap(_(field)).flatMap(_.asString).value
+    def getLong(field: String): Long       = json.asObject.flatMap(_(field)).flatMap(_.asNumber).flatMap(_.toLong).value
+    def getBoolean(field: String): Boolean = json.asObject.flatMap(_(field)).flatMap(_.asBoolean).value
+    def getJson(field: String): Json       = json.asObject.flatMap(_(field)).value
 
     def updateField(field: String, value: String): Json = json.mapObject(_.add(field, Json.fromString(value)))
   }

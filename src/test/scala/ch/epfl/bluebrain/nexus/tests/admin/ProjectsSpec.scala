@@ -495,7 +495,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     }
 
     "return only the project that matches the query param" in {
-      val id     = projectIds.last
+      val id     = projectIds.lastOption.value
       val projId = id.split("/")(1)
 
       val expectedResults = Json.obj(
