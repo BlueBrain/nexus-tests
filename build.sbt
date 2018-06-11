@@ -71,7 +71,8 @@ lazy val root = project
       scalaTest       % Test,
       slf4j           % Test
     ),
-    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports")
+    parallelExecution in Test := false,
+    Test / testOptions        += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports")
   )
 
 /* ********************************************************
