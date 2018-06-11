@@ -10,6 +10,15 @@ import pytest
 import requests
 
 
+def check_status(response, code):
+    if response.status_code == code:
+        # All OK
+        pass
+    else:
+        #print(response.text)
+        raise ValueError(response.text)
+
+
 class TestDomains(object):
     """Test suite for testing 'Domains'.
     """
@@ -29,11 +38,11 @@ class TestDomains(object):
         rurl = os.path.join(domain_url, uid)
         response = requests.put(rurl, data=json.dumps(payload),
                                 headers=self.headers)
-        assert response.status_code == 201
+        check_status(response, 201)
 
         # Verify creation
         response = requests.get(rurl)
-        assert response.status_code == 200
+        check_status(response, 200)
         response = json.loads(response.text)
         current_rev = response['nxv:rev']
         assert response["@id"] == rurl
@@ -41,7 +50,7 @@ class TestDomains(object):
          # Try to create again; error expected
         response = requests.put(rurl, data=json.dumps(payload),
                                 headers=self.headers)
-        assert response.status_code == 409
+        check_status(response, 409)
 
         # Retrieve domain in different formats
         for format_ in ['compacted', 'expanded', 'flattened']:
@@ -63,7 +72,7 @@ class TestDomains(object):
             # Get the current version of the domain
             domain_url = domain['resultId']
             response = requests.get(domain_url)
-            assert response.status_code == 200
+            check_status(response, 200)
             response = json.loads(response.text)
             deprecated = response['nxv:deprecated']
             current_rev = response['nxv:rev']
@@ -77,4 +86,3 @@ class TestDomains(object):
             else:
                 assert current_rev == 2
                 print("Domain %s already deprecated" % domain_url.split('/')[-1])
-
