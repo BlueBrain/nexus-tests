@@ -151,12 +151,13 @@ class BaseSpec
                                            id: String,
                                            name: String,
                                            rev: Long,
+                                           label: String,
                                            deprecated: Boolean = false) = {
     json.getString("@context") shouldEqual config.prefixes.coreContext.toString()
     json.getString("@id") shouldEqual s"${config.admin.uri.toString()}/$idPrefix/$id"
     json.getString("@type") shouldEqual s"nxv:$tpe"
     json.getString("_uuid") should fullyMatch regex """[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"""
-    json.getString("label") shouldEqual id
+    json.getString("label") shouldEqual label
     json.getString("name") shouldEqual name
     json.getLong("_rev") shouldEqual rev
     json.getBoolean("_deprecated") shouldEqual deprecated

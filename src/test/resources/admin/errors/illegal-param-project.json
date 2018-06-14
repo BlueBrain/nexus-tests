@@ -1,5 +1,5 @@
 {
   "@context": "{error-context}",
   "code": "IllegalParam",
-  "message" : "Predicate failed: \"{orgId}/123=\".matches(\"[a-zA-Z0-9-_]{3,16}/[a-zA-Z0-9-_]{3,16}\")."
+  "message" : "Predicate failed: \"123=\".matches(\"[a-zA-Z0-9-_]{3,16}\")."
 }

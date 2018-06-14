@@ -109,7 +109,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       eventually {
         cl(Req(uri = s"$adminBase/orgs/$id", headers = headersUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          validateAdminResource(json, "Organization", "orgs", id, name, 1L)
+          validateAdminResource(json, "Organization", "orgs", id, name, 1L, id)
 
         }
       }
@@ -195,25 +195,25 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
       cl(Req(uri = s"$adminBase/orgs/$id", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3L)
+        validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3, id)
 
       }
 
       cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3L)
+        validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3L, id)
 
       }
 
       cl(Req(uri = s"$adminBase/orgs/$id?rev=2", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, updatedName, 2L)
+        validateAdminResource(json, "Organization", "orgs", id, updatedName, 2L, id)
 
       }
 
       cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, name, 1L)
+        validateAdminResource(json, "Organization", "orgs", id, name, 1L, id)
       }
     }
 
@@ -258,13 +258,13 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
       cl(Req(uri = s"$adminBase/orgs/$id", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, name, 2L, true)
+        validateAdminResource(json, "Organization", "orgs", id, name, 2L, id,true)
 
       }
 
       cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, name, 1L)
+        validateAdminResource(json, "Organization", "orgs", id, name, 1L, id)
 
       }
     }
