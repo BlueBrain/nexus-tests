@@ -106,8 +106,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     "fail when the project segment is illegal" in {
       cl(Req(PUT, s"$adminBase/projects/$orgId/123=", headersUser, projectReqEntity())).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.BadRequest
-        json shouldEqual jsonContentOf("/admin/errors/illegal-param-project.json",
-                                       errorCtx + (quote("{orgId}") -> orgId))
+        json shouldEqual jsonContentOf("/admin/errors/illegal-param-project.json", errorCtx)
       }
     }
   }
@@ -152,13 +151,13 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           validateProject(json, create.toJson.value, base)
-          validateAdminResource(json, "Project", "projects", id, name, 1L)
+          validateAdminResource(json, "Project", "projects", id, name, 1L, projId)
         }
 
         cl(Req(uri = s"$adminBase/projects/$id", headers = headersUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           validateProject(json, create.toJson.value, base)
-          validateAdminResource(json, "Project", "projects", id, name, 1L)
+          validateAdminResource(json, "Project", "projects", id, name, 1L, projId)
         }
       }
     }
@@ -248,25 +247,25 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       cl(Req(uri = s"$adminBase/projects/$id", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateProject(json, updateRev3.toJson.value, baseRev3)
-        validateAdminResource(json, "Project", "projects", id, nameRev3, 3L)
+        validateAdminResource(json, "Project", "projects", id, nameRev3, 3L, projId)
       }
 
       cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateProject(json, updateRev3.toJson.value, baseRev3)
-        validateAdminResource(json, "Project", "projects", id, nameRev3, 3L)
+        validateAdminResource(json, "Project", "projects", id, nameRev3, 3L, projId)
       }
 
       cl(Req(uri = s"$adminBase/projects/$id?rev=2", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateProject(json, updateRev2.toJson.value, baseRev2)
-        validateAdminResource(json, "Project", "projects", id, nameRev2, 2L)
+        validateAdminResource(json, "Project", "projects", id, nameRev2, 2L, projId)
       }
 
       cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateProject(json, create.toJson.value, base)
-        validateAdminResource(json, "Project", "projects", id, name, 1L)
+        validateAdminResource(json, "Project", "projects", id, name, 1L, projId)
       }
     }
 
@@ -329,13 +328,13 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       cl(Req(uri = s"$adminBase/projects/$id", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateProject(json, create.toJson.value, base)
-        validateAdminResource(json, "Project", "projects", id, name, 2L, true)
+        validateAdminResource(json, "Project", "projects", id, name, 2L, projId, true)
       }
 
       cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateProject(json, create.toJson.value, base)
-        validateAdminResource(json, "Project", "projects", id, name, 1L)
+        validateAdminResource(json, "Project", "projects", id, name, 1L, projId)
       }
     }
 
