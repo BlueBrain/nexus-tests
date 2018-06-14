@@ -258,7 +258,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
       cl(Req(uri = s"$adminBase/orgs/$id", headers = headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, name, 2L, id,true)
+        validateAdminResource(json, "Organization", "orgs", id, name, 2L, id, true)
 
       }
 
