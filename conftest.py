@@ -34,13 +34,23 @@ def url(request):
 
 @pytest.fixture
 def domain_url(url):
-    """Returns the URL to the sandbox organization.
+    """Returns the URL to the sandbox domains.
     """
     return os.path.join(url, "domains", "sandbox")
 
+@pytest.fixture
+def schema_url(url):
+    """Returns the URL to the sandbox schemas.
+    """
+    return os.path.join(url, "schemas", "sandbox")
+
+@pytest.fixture
+def data_url(url):
+    """Returns the URL to the sandbox data.
+    """
+    return os.path.join(url, "data", "sandbox")
 
 @pytest.fixture(scope="module")
 def uid():
     test_uuid = "test" + str(uuid.uuid4()).replace('-','')[:20]
-    print(test_uuid)
     return test_uuid
