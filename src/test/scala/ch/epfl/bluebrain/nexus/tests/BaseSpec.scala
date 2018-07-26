@@ -45,6 +45,7 @@ class BaseSpec
   private[tests] val resourceIamCtx                = Map(quote("{success-iam-context}") -> config.iam.coreContext.toString)
   private[tests] val adminBase                     = config.admin.uri
   private[tests] val iamBase                       = config.iam.uri
+  private[tests] val kgBase                        = config.kg.uri
   private[tests] val replSub                       = Map(quote("{sub}") -> config.iam.userSub)
 
   def cleanAcls = {
@@ -95,6 +96,7 @@ class BaseSpec
     def getJson(field: String): Json       = json.asObject.flatMap(_(field)).value
 
     def updateField(field: String, value: String): Json = json.mapObject(_.add(field, Json.fromString(value)))
+    def removeField(field: String): Json                = json.mapObject(_.remove(field))
   }
 
   private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse])(

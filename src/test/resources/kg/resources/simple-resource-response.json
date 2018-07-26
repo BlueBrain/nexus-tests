@@ -1,0 +1,21 @@
+{
+  "@context": [
+    {
+      "nxv": "https://bluebrain.github.io/nexus/vocabulary/",
+      "other": "https://some.other.prefix.com/"
+    },
+    "https://bluebrain.github.io/nexus/contexts/resource"
+  ],
+  "@id": "https://dev.nexus.test.com/simplified-resource/1",
+  "@type": "nxv:TestResource",
+  "nxv:projects": [
+    "testProject2",
+    "testProject"
+  ],
+  "other:priority": {priority},
+  "_constrainedBy": "https://dev.nexus.test.com/test-schema",
+  "_createdBy": "http://iam.dev.nexus.ocp.bbp.epfl.ch/v1/realms/bbp-test/users/ca88f6d1-4f71-4fc0-b023-de82b8afdc30",
+  "_updatedBy": "http://iam.dev.nexus.ocp.bbp.epfl.ch/v1/realms/bbp-test/users/ca88f6d1-4f71-4fc0-b023-de82b8afdc30",
+  "_rev": {rev},
+  "_deprecated": false
+}
