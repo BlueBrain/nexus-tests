@@ -12,7 +12,6 @@ import org.scalatest.{CancelAfterFailure, Inspectors}
 class AclsSpec extends BaseSpec with Inspectors with CancelAfterFailure with Eventually {
 
   "checking ACLs" should {
-    "clear permissions" in cleanAcls
 
     "add permissions for users" in {
       val json =

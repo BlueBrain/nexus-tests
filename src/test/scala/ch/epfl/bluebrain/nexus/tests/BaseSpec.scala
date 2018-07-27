@@ -20,7 +20,7 @@ import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import io.circe.parser._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{Assertion, Matchers, OptionValues, WordSpecLike}
+import org.scalatest._
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -28,6 +28,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 class BaseSpec
     extends WordSpecLike
+    with BeforeAndAfterAll
     with Matchers
     with ScalatestRouteTest
     with ScalaFutures
@@ -45,8 +46,13 @@ class BaseSpec
   private[tests] val resourceIamCtx                = Map(quote("{success-iam-context}") -> config.iam.coreContext.toString)
   private[tests] val adminBase                     = config.admin.uri
   private[tests] val iamBase                       = config.iam.uri
+  private[tests] val kgBase                        = config.kg.uri
   private[tests] val replSub                       = Map(quote("{sub}") -> config.iam.userSub)
 
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    val _ = cleanAcls
+  }
   def cleanAcls = {
 
     cl(Req(uri = s"$iamBase/acls/*/*?parents=true", headers = headersGroup)).mapJson { (json, result) =>
@@ -95,6 +101,7 @@ class BaseSpec
     def getJson(field: String): Json       = json.asObject.flatMap(_(field)).value
 
     def updateField(field: String, value: String): Json = json.mapObject(_.add(field, Json.fromString(value)))
+    def removeField(field: String): Json                = json.mapObject(_.remove(field))
   }
 
   private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse])(

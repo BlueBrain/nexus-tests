@@ -26,7 +26,6 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     val orgId  = genId()
     val projId = genId()
     val id     = s"$orgId/$projId"
-    "clear permissions" in cleanAcls
 
     "fail if the permissions are missing" in {
       eventually {
