@@ -50,8 +50,8 @@ class BaseSpec
   private[tests] val replSub                       = Map(quote("{sub}") -> config.iam.userSub)
 
   override def beforeAll(): Unit = {
-    cleanAcls
     super.beforeAll()
+    val _ = cleanAcls
   }
   def cleanAcls = {
 
