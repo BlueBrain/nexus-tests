@@ -13,11 +13,6 @@ import org.scalatest.{CancelAfterFailure, OptionValues}
 
 class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually {
 
-  "managing ACLs" should {
-
-    "delete all ACLs for user" in cleanAcls
-  }
-
   "creating an organization" should {
 
     "fail if the permissions are missing" in {

@@ -15,10 +15,6 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   val projId1 = genId()
   val id1     = s"$orgId/$projId1"
 
-  "cleaning ACLs" should {
-    "delete all ACLs for user" in cleanAcls
-  }
-
   "creating projects" should {
 
     "add projects/create, orgs/create, orgs/write, resources/create, resources/read, resources/write  permissions for user" in {

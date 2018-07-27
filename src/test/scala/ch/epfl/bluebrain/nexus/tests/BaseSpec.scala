@@ -20,7 +20,7 @@ import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import io.circe.parser._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{Assertion, Matchers, OptionValues, WordSpecLike}
+import org.scalatest._
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -28,6 +28,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 class BaseSpec
     extends WordSpecLike
+    with BeforeAndAfterAll
     with Matchers
     with ScalatestRouteTest
     with ScalaFutures
@@ -48,6 +49,10 @@ class BaseSpec
   private[tests] val kgBase                        = config.kg.uri
   private[tests] val replSub                       = Map(quote("{sub}") -> config.iam.userSub)
 
+  override def beforeAll(): Unit = {
+    cleanAcls
+    super.beforeAll()
+  }
   def cleanAcls = {
 
     cl(Req(uri = s"$iamBase/acls/*/*?parents=true", headers = headersGroup)).mapJson { (json, result) =>
