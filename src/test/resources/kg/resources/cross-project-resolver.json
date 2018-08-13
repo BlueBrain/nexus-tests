@@ -1,0 +1,16 @@
+{
+  "@id": "http://example.com/id",
+  "@type": ["nxv:Resolver", "nxv:CrossProject"],
+  "resourceTypes": ["nxv:Schema"],
+  "projects": [
+    "{project}"
+  ],
+  "identities": [
+    {
+      "@type": "UserRef",
+      "realm": "bbp-test",
+      "sub": "ca88f6d1-4f71-4fc0-b023-de82b8afdc30"
+    }
+  ],
+  "priority": 50
+}

@@ -4,9 +4,9 @@
     "other": "https://some.other.prefix.com/"
   },
   "@type": "nxv:TestResource",
-  "@id": "https://dev.nexus.test.com/simplified-resource/{resourceId}",
+  "@id": "https://dev.nexus.test.com/simplified-resolver/1",
 
-  "other:priority": {priority},
+  "other:priority": 5,
   "nxv:projects": [
     "testProject",
     "testProject2"

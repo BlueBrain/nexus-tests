@@ -13,7 +13,9 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   val orgId   = genId()
   val projId1 = genId()
+  val projId2 = genId()
   val id1     = s"$orgId/$projId1"
+  val id2     = s"$orgId/$projId2"
 
   "creating projects" should {
 
@@ -53,7 +55,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   "creating a resource" should {
     "succeed if the payload is correct" in {
-      val payload = jsonContentOf("/kg/resources/simple-resource.json", Map(quote("{priority}") -> "5"))
+      val payload = jsonContentOf("/kg/resources/simple-resource.json",
+                                  Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1"))
 
       eventually {
         cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
@@ -73,9 +76,44 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
   }
 
+  "cross-project resolvers" should {
+    "fail if the schema doesn't exist in the project" in {
+      val payload = jsonContentOf("/kg/resources/simple-resource.json",
+                                  Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
+
+      cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
+        result =>
+          result.status shouldEqual StatusCodes.NotFound
+      }
+    }
+
+    "create a cross-project-resolver for proj2" in {
+      val resolverPayload =
+        jsonContentOf("/kg/resources/cross-project-resolver.json", Map(quote("{project}") -> id1))
+
+      cl(Req(POST, s"$kgBase/resolvers/$id2/", headersUser, resolverPayload.toEntity)).mapResp { result =>
+        result.status shouldEqual StatusCodes.Created
+      }
+    }
+
+    "resolve schema from the other project" in {
+      val payload = jsonContentOf("/kg/resources/simple-resource.json",
+                                  Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
+
+      eventually {
+        cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
+          result =>
+            result.status shouldEqual StatusCodes.Created
+        }
+      }
+    }
+
+  }
+
   "updating a resource" should {
     "send the update" in {
-      val payload = jsonContentOf("/kg/resources/simple-resource.json", Map(quote("{priority}") -> "3"))
+      val payload = jsonContentOf("/kg/resources/simple-resource.json",
+                                  Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
       cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser, payload.toEntity)).mapResp {
         result =>
@@ -119,20 +157,44 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
     "fetch a tagged value" in {
 
-      val exptectedTag1 = jsonContentOf("/kg/resources/simple-resource-response.json",
-                                        Map(quote("{priority}") -> "3", quote("{rev}") -> "2"))
+      val expectedTag1 = jsonContentOf("/kg/resources/simple-resource-response.json",
+                                       Map(quote("{priority}") -> "3", quote("{rev}") -> "2"))
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual exptectedTag1
+          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expectedTag1
       }
 
-      val exptectedTag2 = jsonContentOf("/kg/resources/simple-resource-response.json",
-                                        Map(quote("{priority}") -> "5", quote("{rev}") -> "1"))
+      val expectedTag2 = jsonContentOf("/kg/resources/simple-resource-response.json",
+                                       Map(quote("{priority}") -> "5", quote("{rev}") -> "1"))
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.0", headersUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual exptectedTag2
+          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expectedTag2
+      }
+    }
+  }
+
+  "listing resources" should {
+    "add more resource to the project" in {
+
+      forAll(2 to 5) { resourceId =>
+        val payload = jsonContentOf("/kg/resources/simple-resource.json",
+                                    Map(quote("{priority}") -> "3", quote("{resourceId}") -> s"$resourceId"))
+        cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:$resourceId", headersUser, payload.toEntity))
+          .mapResp { result =>
+            result.status shouldEqual StatusCodes.Created
+          }
+      }
+
+    }
+    "list the resources" in {
+      val expected = jsonContentOf("/kg/listings/response.json", Map(quote("{proj}") -> id1))
+      eventually {
+        cl(Req(GET, s"$kgBase/resources/$id1/test-schema", headersUser)).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
+        }
       }
     }
   }
