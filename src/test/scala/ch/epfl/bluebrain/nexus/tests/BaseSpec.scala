@@ -93,7 +93,7 @@ class BaseSpec
   private[tests] implicit def toPath(str: String): AkkaPath = AkkaPath(str)
 
   private[tests] implicit class JsonSyntax(json: Json) {
-    def toEntity: RequestEntity = HttpEntity(ContentTypes.`application/json`, json.noSpaces)
+    def toEntity: HttpEntity.Strict = HttpEntity(ContentTypes.`application/json`, json.noSpaces)
 
     def getString(field: String): String   = json.asObject.flatMap(_(field)).flatMap(_.asString).value
     def getLong(field: String): Long       = json.asObject.flatMap(_(field)).flatMap(_.asNumber).flatMap(_.toLong).value
@@ -104,10 +104,13 @@ class BaseSpec
     def removeField(field: String): Json                = json.mapObject(_.remove(field))
   }
 
-  private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse])(
-      implicit um: FromEntityUnmarshaller[Json]) {
-    def mapJson(body: (Json, HttpResponse) => Assertion): Assertion =
+  private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse]) {
+
+    def mapJson(body: (Json, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[Json]): Assertion =
       whenReady(value)(res => um(res.entity).map(json => body(json, res)).futureValue)
+
+    def mapString(body: (String, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[String]): Assertion =
+      whenReady(value)(res => um(res.entity).map(s => body(s, res)).futureValue)
 
     def getJson[A](handler: Json => A)(implicit um: FromEntityUnmarshaller[Json]): A = {
       whenReady(value) { res =>
