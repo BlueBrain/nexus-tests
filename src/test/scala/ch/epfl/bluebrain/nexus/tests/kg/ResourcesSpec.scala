@@ -218,6 +218,112 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         }
 
     }
+
+    "update attachment with JSON" in {
+      val multipartForm =
+        Multipart
+          .FormData(
+            Multipart.FormData.BodyPart
+              .Strict("file",
+                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment2.json")),
+                      Map("filename" -> "attachment.json")))
+          .toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json?rev=5",
+            headersUser,
+            multipartForm)).mapResp { result =>
+        result.status shouldEqual StatusCodes.OK
+      }
+    }
+
+    "fetch updated attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment2.json")
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", headersUser))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+
+    }
+
+    "fetch previous revision of attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json?rev=5", headersUser))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+
+    }
+
+    "upload second attachment" in {
+      val multipartForm =
+        Multipart
+          .FormData(
+            Multipart.FormData.BodyPart
+              .Strict("file",
+                      HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes),
+                      Map("filename" -> "attachment.json")))
+          .toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment2?rev=6",
+            headersUser,
+            multipartForm).removeHeader("Content-Type")).mapResp { result =>
+        result.status shouldEqual StatusCodes.OK
+      }
+    }
+
+    "fetch second attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment2")
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment2", headersUser))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment2"
+          content shouldEqual expectedContent
+        }
+
+    }
+
+    "delete the attachment" in {
+      cl(
+        Req(DELETE,
+            s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json?rev=7",
+            headersUser)).mapResp { result =>
+        result.status shouldEqual StatusCodes.OK
+      }
+
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", headersUser))
+        .mapResp { result =>
+          result.status shouldEqual StatusCodes.NotFound
+        }
+    }
+
+    "fetch the attachment at a previous revision" in {
+      val expectedContent = contentOf("/kg/resources/attachment2.json")
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json?rev=7", headersUser))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+    }
+
   }
 
   "listing resources" should {
