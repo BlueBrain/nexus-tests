@@ -29,7 +29,7 @@
           "maxCount": 1
         },
         {
-          "path": "nxv:projects",
+          "path": "other:projects",
           "name": "Project UID",
           "description": "The project UUID",
           "datatype": "xsd:string",

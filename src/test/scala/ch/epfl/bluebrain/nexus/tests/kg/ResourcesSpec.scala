@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, Multipart, StatusCode
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
 
@@ -52,10 +53,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
       eventually {
-        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapJson {
-          (json, result) =>
-            println(json.spaces2)
-            result.status shouldEqual StatusCodes.Created
+        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapResp { result =>
+          result.status shouldEqual StatusCodes.Created
         }
       }
     }
@@ -67,8 +66,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
                                   Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1"))
 
       eventually {
-        cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
-          result =>
+        cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser, payload.toEntity)).mapString {
+          (json, result) =>
             result.status shouldEqual StatusCodes.Created
         }
       }
@@ -76,8 +75,13 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
     "fetch the payload" in {
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser)).mapJson { (json, result) =>
-        val expected = jsonContentOf("/kg/resources/simple-resource-response.json",
-                                     Map(quote("{priority}") -> "5", quote("{rev}") -> "1"))
+        val expected = jsonContentOf(
+          "/kg/resources/simple-resource-response.json",
+          Map(quote("{priority}")  -> "5",
+              quote("{rev}")       -> "1",
+              quote("{resources}") -> s"$kgBase/resources/$id1",
+              quote("{project}")   -> s"$adminBase/projects/$id1")
+        )
         result.status shouldEqual StatusCodes.OK
         json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
       }
@@ -125,17 +129,19 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
-
-      println(s"$kgBase/resources/$id1/test-schema/test-resource:1")
-      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser, payload.toEntity)).mapJson {
-        (json, result) =>
-          println(json.noSpaces)
+      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser, payload.toEntity)).mapResp {
+        result =>
           result.status shouldEqual StatusCodes.OK
       }
     }
     "fetch the update" in {
-      val expected = jsonContentOf("/kg/resources/simple-resource-response.json",
-                                   Map(quote("{priority}") -> "3", quote("{rev}") -> "2"))
+      val expected = jsonContentOf(
+        "/kg/resources/simple-resource-response.json",
+        Map(quote("{priority}")  -> "3",
+            quote("{rev}")       -> "2",
+            quote("{resources}") -> s"$kgBase/resources/$id1",
+            quote("{project}")   -> s"$adminBase/projects/$id1")
+      )
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
@@ -143,8 +149,13 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
 
     "fetch previous revision" in {
-      val expected = jsonContentOf("/kg/resources/simple-resource-response.json",
-                                   Map(quote("{priority}") -> "5", quote("{rev}") -> "1"))
+      val expected = jsonContentOf(
+        "/kg/resources/simple-resource-response.json",
+        Map(quote("{priority}")  -> "5",
+            quote("{rev}")       -> "1",
+            quote("{resources}") -> s"$kgBase/resources/$id1",
+            quote("{project}")   -> s"$adminBase/projects/$id1")
+      )
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
@@ -170,16 +181,26 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
     "fetch a tagged value" in {
 
-      val expectedTag1 = jsonContentOf("/kg/resources/simple-resource-response.json",
-                                       Map(quote("{priority}") -> "3", quote("{rev}") -> "2"))
+      val expectedTag1 = jsonContentOf(
+        "/kg/resources/simple-resource-response.json",
+        Map(quote("{priority}")  -> "3",
+            quote("{rev}")       -> "2",
+            quote("{resources}") -> s"$kgBase/resources/$id1",
+            quote("{project}")   -> s"$adminBase/projects/$id1")
+      )
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expectedTag1
       }
 
-      val expectedTag2 = jsonContentOf("/kg/resources/simple-resource-response.json",
-                                       Map(quote("{priority}") -> "5", quote("{rev}") -> "1"))
+      val expectedTag2 = jsonContentOf(
+        "/kg/resources/simple-resource-response.json",
+        Map(quote("{priority}")  -> "5",
+            quote("{rev}")       -> "1",
+            quote("{resources}") -> s"$kgBase/resources/$id1",
+            quote("{project}")   -> s"$adminBase/projects/$id1")
+      )
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.0", headersUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -344,14 +365,28 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
     }
     "list the resources" in {
-      val expected = jsonContentOf("/kg/listings/response.json", Map(quote("{proj}") -> id1))
+      val expected = jsonContentOf("/kg/listings/response.json",
+                                   Map(quote("{resources}") -> s"$kgBase/resources/$id1",
+                                       quote("{project}")   -> s"$adminBase/projects/$id1"))
       eventually {
         cl(Req(GET, s"$kgBase/resources/$id1/test-schema", headersUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
+          removeSearchMetadata(json) shouldEqual expected
         }
       }
     }
   }
 
+  def removeSearchMetadata(json: Json): Json =
+    json.hcursor
+      .downField("_results")
+      .withFocus(
+        _.mapArray(
+          _.map(
+            _.removeField("_createdAt").removeField("_createdBy").removeField("_updatedAt").removeField("_updatedBy")
+          )
+        )
+      )
+      .top
+      .value
 }
