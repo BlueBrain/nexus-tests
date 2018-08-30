@@ -3,9 +3,8 @@ package ch.epfl.bluebrain.nexus.tests.kg
 import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers.ContentDispositionTypes
-import akka.http.scaladsl.model.headers.{`Content-Disposition`, `Content-Type`}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, Multipart, RequestEntity, StatusCodes, HttpRequest => Req}
+import akka.http.scaladsl.model.headers.{ContentDispositionTypes, `Content-Disposition`, `Content-Type`}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, Multipart, StatusCodes, HttpRequest => Req}
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
@@ -25,7 +24,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     "add projects/create, orgs/create, orgs/write, resources/create, resources/read, resources/write  permissions for user" in {
       val json = jsonContentOf(
         "/iam/add.json",
-        replSub + (quote("{perms}") -> """projects/create","projects/read","orgs/write","resources/create","resources/read","resources/write","orgs/create""")
+        replSub + (quote("{perms}") -> """projects/create","projects/read","orgs/write","orgs/read","schemas/manage","resolvers/manage","resources/create","resources/read","resources/write","orgs/create""")
       ).toEntity
       cl(Req(PUT, s"$iamBase/acls/", headersGroup, json)).mapResp { result =>
         result.status shouldEqual StatusCodes.OK
@@ -38,11 +37,11 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         result.status shouldEqual StatusCodes.Created
       }
 
-      cl(Req(PUT, s"$adminBase/projects/$id1", headersUser, kgReqEntity())).mapResp { result =>
+      cl(Req(PUT, s"$adminBase/projects/$id1", headersUser, kgProjectReqEntity())).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
 
-      cl(Req(PUT, s"$adminBase/projects/$id2", headersUser, kgReqEntity())).mapResp { result =>
+      cl(Req(PUT, s"$adminBase/projects/$id2", headersUser, kgProjectReqEntity())).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
     }
@@ -53,8 +52,10 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
       eventually {
-        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapResp { result =>
-          result.status shouldEqual StatusCodes.Created
+        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapJson {
+          (json, result) =>
+            println(json.spaces2)
+            result.status shouldEqual StatusCodes.Created
         }
       }
     }
@@ -124,8 +125,11 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
-      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser, payload.toEntity)).mapResp {
-        result =>
+
+      println(s"$kgBase/resources/$id1/test-schema/test-resource:1")
+      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser, payload.toEntity)).mapJson {
+        (json, result) =>
+          println(json.noSpaces)
           result.status shouldEqual StatusCodes.OK
       }
     }
@@ -348,13 +352,6 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         }
       }
     }
-  }
-
-  private def kgReqEntity(path: String = "/kg/projects/project.json",
-                          name: String = genString(),
-                          base: String = s"${config.kg.uri.toString()}/resources/${genString()}/"): RequestEntity = {
-    val rep = Map(quote("{name}") -> name, quote("{base}") -> base)
-    jsonContentOf(path, rep).toEntity
   }
 
 }

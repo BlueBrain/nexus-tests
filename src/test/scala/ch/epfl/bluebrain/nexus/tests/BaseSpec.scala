@@ -99,6 +99,7 @@ class BaseSpec
     def getLong(field: String): Long       = json.asObject.flatMap(_(field)).flatMap(_.asNumber).flatMap(_.toLong).value
     def getBoolean(field: String): Boolean = json.asObject.flatMap(_(field)).flatMap(_.asBoolean).value
     def getJson(field: String): Json       = json.asObject.flatMap(_(field)).value
+    def getArray(field: String): Seq[Json] = json.asObject.flatMap(_(field)).flatMap(_.asArray).value
 
     def updateField(field: String, value: String): Json = json.mapObject(_.add(field, Json.fromString(value)))
     def removeField(field: String): Json                = json.mapObject(_.remove(field))
@@ -118,7 +119,7 @@ class BaseSpec
       }
     }
 
-    def mapResp(body: (HttpResponse) => Assertion): Assertion =
+    def mapResp(body: HttpResponse => Assertion): Assertion =
       whenReady(value)(body(_))
 
   }
@@ -151,6 +152,13 @@ class BaseSpec
   private[tests] def orgReqEntity(name: String = genString()): RequestEntity = {
     val rep = Map(quote("{name}") -> name)
     jsonContentOf("/admin/orgs/payload.json", rep).toEntity
+  }
+
+  def kgProjectReqEntity(path: String = "/kg/projects/project.json",
+                         name: String = genString(),
+                         base: String = s"${config.kg.uri.toString()}/resources/${genString()}/"): RequestEntity = {
+    val rep = Map(quote("{name}") -> name, quote("{base}") -> base)
+    jsonContentOf(path, rep).toEntity
   }
 
   private[tests] def createRespJson(id: String, rev: Long, tpe: String = "projects"): Json = {
