@@ -7,7 +7,7 @@
   "@id": "https://dev.nexus.test.com/simplified-resource/{resourceId}",
 
   "other:priority": {priority},
-  "nxv:projects": [
+  "other:projects": [
     "testProject",
     "testProject2"
   ]

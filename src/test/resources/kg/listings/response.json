@@ -3,22 +3,52 @@
     "https://bluebrain.github.io/nexus/contexts/search",
     "https://bluebrain.github.io/nexus/contexts/resource"
   ],
-  "total": 5,
-  "results": [
+  "_total": 5,
+  "_results": [
     {
-      "resultId": "http://127.0.0.1:8080/resources/{proj}/test-schema/test-resource:1"
+      "@id": "https://dev.nexus.test.com/simplified-resource/1",
+      "@type": "nxv:TestResource",
+      "_self": "{resources}/test-schema/test-resource:1",
+      "_constrainedBy": "https://dev.nexus.test.com/test-schema",
+      "_project": "{project}",
+      "_rev": 8,
+      "_deprecated": false
     },
     {
-      "resultId": "http://127.0.0.1:8080/resources/{proj}/test-schema/test-resource:2"
+      "@id": "https://dev.nexus.test.com/simplified-resource/2",
+      "@type": "nxv:TestResource",
+      "_self": "{resources}/test-schema/test-resource:2",
+      "_constrainedBy": "https://dev.nexus.test.com/test-schema",
+      "_project": "{project}",
+      "_rev": 1,
+      "_deprecated": false
     },
     {
-      "resultId": "http://127.0.0.1:8080/resources/{proj}/test-schema/test-resource:3"
+      "@id": "https://dev.nexus.test.com/simplified-resource/3",
+      "@type": "nxv:TestResource",
+      "_self": "{resources}/test-schema/test-resource:3",
+      "_constrainedBy": "https://dev.nexus.test.com/test-schema",
+      "_project": "{project}",
+      "_rev": 1,
+      "_deprecated": false
     },
     {
-      "resultId": "http://127.0.0.1:8080/resources/{proj}/test-schema/test-resource:4"
+      "@id": "https://dev.nexus.test.com/simplified-resource/4",
+      "@type": "nxv:TestResource",
+      "_self": "{resources}/test-schema/test-resource:4",
+      "_constrainedBy": "https://dev.nexus.test.com/test-schema",
+      "_project": "{project}",
+      "_rev": 1,
+      "_deprecated": false
     },
     {
-      "resultId": "http://127.0.0.1:8080/resources/{proj}/test-schema/test-resource:5"
+      "@id": "https://dev.nexus.test.com/simplified-resource/5",
+      "@type": "nxv:TestResource",
+      "_self": "{resources}/test-schema/test-resource:5",
+      "_constrainedBy": "https://dev.nexus.test.com/test-schema",
+      "_project": "{project}",
+      "_rev": 1,
+      "_deprecated": false
     }
   ]
 }

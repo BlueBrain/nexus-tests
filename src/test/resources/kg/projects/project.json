@@ -21,6 +21,10 @@
     {
       "prefix": "example-id",
       "namespace": "http://example.com/id"
+    },
+    {
+      "prefix": "patchedcell",
+      "namespace": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/"
     }
   ]
 }
