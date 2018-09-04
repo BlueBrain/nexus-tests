@@ -5,7 +5,7 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods.{DELETE, GET, POST, PUT}
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.http.JsonOps._
+import ch.epfl.bluebrain.nexus.commons.http.CirceSyntax
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import io.circe.Json
 import org.scalatest.{CancelAfterFailure, Inspectors}
@@ -13,7 +13,7 @@ import org.scalatest.concurrent.Eventually
 
 import scala.collection.immutable
 
-class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
+class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with CirceSyntax {
 
   private def validateProject(response: Json, payload: Json, base: String) = {
 

@@ -24,8 +24,7 @@ class Settings(config: Config) extends Extension {
     loadConfigOrThrow[KgConfig](config, "app.kg"),
     loadConfigOrThrow[AdminConfig](config, "app.admin"),
     loadConfigOrThrow[IamConfig](config, "app.iam"),
-    loadConfigOrThrow[PrefixesConfig](config, "app.prefixes"),
-    loadConfigOrThrow[PaginationConfig](config, "app.pagination")
+    loadConfigOrThrow[PrefixesConfig](config, "app.prefixes")
   )
 
 }

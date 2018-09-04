@@ -22,7 +22,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   "creating projects" should {
 
-    "add projects/create, orgs/create, orgs/write, resources/create, resources/read, resources/write  permissions for user" in {
+    "add necessary permissions for user" in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> """projects/create","projects/read","orgs/write","orgs/read","schemas/manage","resolvers/manage","resources/create","resources/read","resources/write","orgs/create""")
@@ -53,8 +53,9 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
       eventually {
-        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapResp { result =>
-          result.status shouldEqual StatusCodes.Created
+        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapString {
+          (json, result) =>
+            result.status shouldEqual StatusCodes.Created
         }
       }
     }
