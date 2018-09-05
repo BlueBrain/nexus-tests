@@ -36,7 +36,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       eventually {
         cl(Req(PUT, s"$adminBase/orgs/${genId()}", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.BadRequest
-          json.removeKeys("violations") shouldEqual jsonContentOf("/admin/errors/create-no-name-resp.json", errorCtx)
+          json shouldEqual jsonContentOf("/admin/errors/create-no-name-resp.json", errorCtx)
         }
       }
     }

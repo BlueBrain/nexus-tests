@@ -1,4 +1,10 @@
 {
   "@context": "{error-context}",
-  "code": "ShapeConstraintViolations"
+  "code": "ResourceValidationFailed",
+  "report": {
+    "@context": "https://bluebrain.github.io/nexus/contexts/shacl",
+    "@type": "sh:ValidationReport",
+    "conforms": true,
+    "targetedNodes": 0
+  }
 }

@@ -8,7 +8,7 @@
   "hits": {
     "hits": [
       {
-        "_id": "https%3a%2f%2fbbp.epfl.ch%2fnexus%2fv0%2fdata%2fbbp%2fexperiment%2fpatchedcell%2fv0.1.0%2f010b8ecb-21ac-4987-8faa-91f1274e656d",
+        "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/010b8ecb-21ac-4987-8faa-91f1274e656d",
         "_index": "{index}",
         "_source": {
           "@type": "Cell",
@@ -27,7 +27,7 @@
         ]
       },
       {
-        "_id": "https%3a%2f%2fbbp.epfl.ch%2fnexus%2fv0%2fdata%2fbbp%2fexperiment%2fpatchedcell%2fv0.1.0%2f04e5f081-26fb-49ea-9d38-da7ef49d9e9f",
+        "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/04e5f081-26fb-49ea-9d38-da7ef49d9e9f",
         "_index": "{index}",
         "_source": {
           "@type": "Cell",
@@ -46,7 +46,7 @@
         ]
       },
       {
-        "_id": "https%3a%2f%2fbbp.epfl.ch%2fnexus%2fv0%2fdata%2fbbp%2fexperiment%2fpatchedcell%2fv0.1.0%2f08825325-0a84-4924-839b-baabcd9bdbb8",
+        "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/08825325-0a84-4924-839b-baabcd9bdbb8",
         "_index": "{index}",
         "_source": {
           "@type": "Cell",
@@ -65,7 +65,7 @@
         ]
       },
       {
-        "_id": "https%3a%2f%2fbbp.epfl.ch%2fnexus%2fv0%2fdata%2fbbp%2fexperiment%2fpatchedcell%2fv0.1.0%2f048bf2a9-c3e4-4401-bb1e-61f5fcacb85b",
+        "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/048bf2a9-c3e4-4401-bb1e-61f5fcacb85b",
         "_index": "{index}",
         "_source": {
           "@type": "Cell",
@@ -84,7 +84,7 @@
         ]
       },
       {
-        "_id": "https%3a%2f%2fbbp.epfl.ch%2fnexus%2fv0%2fdata%2fbbp%2fexperiment%2fpatchedcell%2fv0.1.0%2f03e9025f-35ab-42ca-ac4a-5da2701b93f3",
+        "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/03e9025f-35ab-42ca-ac4a-5da2701b93f3",
         "_index": "{index}",
         "_source": {
           "@type": "Cell",
