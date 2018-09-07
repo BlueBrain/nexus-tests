@@ -44,13 +44,18 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
       }
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 3
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
     }
 
     "fail if the project name is missing" in {
       eventually {
         cl(Req(PUT, s"$adminBase/projects/$id", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.BadRequest
-          json.removeKeys("violations") shouldEqual jsonContentOf("/admin/errors/create-no-name-resp.json", errorCtx)
         }
       }
     }

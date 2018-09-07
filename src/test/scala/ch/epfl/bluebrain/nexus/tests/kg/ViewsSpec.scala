@@ -28,6 +28,12 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
       }
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 10
+        }
+      }
     }
 
     "succeed if payload is correct" in {

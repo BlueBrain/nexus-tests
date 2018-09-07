@@ -30,6 +30,12 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
       }
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 1
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
     }
 
     "fail if the organizations name is missing" in {

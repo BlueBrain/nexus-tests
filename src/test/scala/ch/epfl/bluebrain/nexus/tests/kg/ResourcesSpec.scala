@@ -31,9 +31,17 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
       }
+
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 10
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
     }
 
     "succeed if payload is correct" in {
+
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity())).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
@@ -111,15 +119,23 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
+    "wait for the cross-project resolver to be indexed" in {
+      eventually {
+        cl(Req(GET, s"$kgBase/resolvers/$id2", headersUser)).mapJson { (json, result) =>
+          println(json.spaces2)
+          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 2
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
+    }
+
     "resolve schema from the other project" in {
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
-      eventually {
-        cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
-          result =>
-            result.status shouldEqual StatusCodes.Created
-        }
+      cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
+        result =>
+          result.status shouldEqual StatusCodes.Created
       }
     }
 
