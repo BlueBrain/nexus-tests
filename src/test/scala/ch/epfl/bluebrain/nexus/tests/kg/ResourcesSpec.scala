@@ -122,7 +122,6 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     "wait for the cross-project resolver to be indexed" in {
       eventually {
         cl(Req(GET, s"$kgBase/resolvers/$id2", headersUser)).mapJson { (json, result) =>
-          println(json.spaces2)
           json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 2
           result.status shouldEqual StatusCodes.OK
         }
