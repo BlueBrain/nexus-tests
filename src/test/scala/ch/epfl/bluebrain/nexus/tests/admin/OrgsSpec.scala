@@ -5,13 +5,13 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.http.JsonOps._
+import ch.epfl.bluebrain.nexus.commons.http.CirceSyntax
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, OptionValues}
 
-class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually {
+class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually with CirceSyntax {
 
   "creating an organization" should {
 
@@ -30,13 +30,19 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
       }
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 1
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
     }
 
     "fail if the organizations name is missing" in {
       eventually {
         cl(Req(PUT, s"$adminBase/orgs/${genId()}", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.BadRequest
-          json.removeKeys("violations") shouldEqual jsonContentOf("/admin/errors/create-no-name-resp.json", errorCtx)
+          json shouldEqual jsonContentOf("/admin/errors/create-no-name-resp.json", errorCtx)
         }
       }
     }

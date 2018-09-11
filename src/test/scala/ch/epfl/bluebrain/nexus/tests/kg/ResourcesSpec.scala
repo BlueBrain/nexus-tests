@@ -22,7 +22,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   "creating projects" should {
 
-    "add projects/create, orgs/create, orgs/write, resources/create, resources/read, resources/write  permissions for user" in {
+    "add necessary permissions for user" in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> """projects/create","projects/read","orgs/write","orgs/read","schemas/manage","resolvers/manage","resources/create","resources/read","resources/write","orgs/create""")
@@ -31,9 +31,17 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
       }
+
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 10
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
     }
 
     "succeed if payload is correct" in {
+
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity())).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
@@ -53,8 +61,9 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
       eventually {
-        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapResp { result =>
-          result.status shouldEqual StatusCodes.Created
+        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapString {
+          (json, result) =>
+            result.status shouldEqual StatusCodes.Created
         }
       }
     }
@@ -110,15 +119,22 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
+    "wait for the cross-project resolver to be indexed" in {
+      eventually {
+        cl(Req(GET, s"$kgBase/resolvers/$id2", headersUser)).mapJson { (json, result) =>
+          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 2
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
+    }
+
     "resolve schema from the other project" in {
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
-      eventually {
-        cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
-          result =>
-            result.status shouldEqual StatusCodes.Created
-        }
+      cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUser, payload.toEntity)).mapResp {
+        result =>
+          result.status shouldEqual StatusCodes.Created
       }
     }
 

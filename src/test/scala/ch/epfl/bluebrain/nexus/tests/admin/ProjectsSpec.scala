@@ -5,7 +5,7 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods.{DELETE, GET, POST, PUT}
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.http.JsonOps._
+import ch.epfl.bluebrain.nexus.commons.http.CirceSyntax
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import io.circe.Json
 import org.scalatest.{CancelAfterFailure, Inspectors}
@@ -13,7 +13,7 @@ import org.scalatest.concurrent.Eventually
 
 import scala.collection.immutable
 
-class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
+class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with CirceSyntax {
 
   private def validateProject(response: Json, payload: Json, base: String) = {
 
@@ -44,13 +44,18 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
       }
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 3
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
     }
 
     "fail if the project name is missing" in {
       eventually {
         cl(Req(PUT, s"$adminBase/projects/$id", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.BadRequest
-          json.removeKeys("violations") shouldEqual jsonContentOf("/admin/errors/create-no-name-resp.json", errorCtx)
         }
       }
     }

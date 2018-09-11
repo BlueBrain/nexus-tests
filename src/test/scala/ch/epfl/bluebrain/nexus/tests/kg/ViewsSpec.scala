@@ -2,9 +2,10 @@ package ch.epfl.bluebrain.nexus.tests.kg
 import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
+import akka.http.scaladsl.model.{HttpEntity, StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
+import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import io.circe.Json
 import org.scalatest.{CancelAfterFailure, Inspectors}
@@ -18,7 +19,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
   "creating projects" should {
 
-    "add projects/create, orgs/create, orgs/write, resources/create, resources/read, resources/write  permissions for user" in {
+    "add necessary permissions for user" in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> """projects/create","projects/read","orgs/write","resources/create","views/manage","resolvers/read","resources/read","resources/write","orgs/read","orgs/create""")
@@ -26,6 +27,12 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(Req(PUT, s"$iamBase/acls/", headersGroup, json)).mapResp { result =>
         result.status shouldEqual StatusCodes.OK
         result.entity.isKnownEmpty() shouldEqual true
+      }
+      eventually {
+        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json.getArray("acl").head.getArray("permissions").size shouldEqual 10
+        }
       }
     }
 
@@ -129,8 +136,31 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           .mapJson { (json, result) =>
             val index = json.getJson("hits").getArray("hits").head.getString("_index")
             result.status shouldEqual StatusCodes.OK
-            json.removeField("took") shouldEqual jsonContentOf("/kg/views/search-response.json",
+            json.removeField("took") shouldEqual jsonContentOf("/kg/views/es-search-response.json",
                                                                Map(quote("{index}") -> index))
+          }
+      }
+    }
+
+    "search instances in SPARQL endpoint" in {
+      val query =
+        """
+          |prefix nsg: <https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/>
+          |
+          |select ?s where {
+          |  ?s nsg:brainLocation / nsg:brainRegion <http://www.parcellation.org/0000013>
+          |}
+          |order by ?s
+        """.stripMargin
+      eventually {
+        cl(
+          Req(POST,
+              s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/sparql",
+              headersUser,
+              HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
+          .mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual jsonContentOf("/kg/views/sparql-search-response.json")
           }
       }
     }

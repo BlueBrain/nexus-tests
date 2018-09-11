@@ -34,8 +34,7 @@ val pureconfigVersion = "0.9.1"
 val scalaTestVersion  = "3.0.5"
 
 // Nexus dependency versions
-val serviceVersion = "0.10.8"
-val commonsVersion = "0.10.9"
+val commonsVersion = "0.10.25"
 
 // Dependency modules
 lazy val akkaHttpCore    = "com.typesafe.akka"     %% "akka-http-core"    % akkaHttpVersion
@@ -47,10 +46,8 @@ lazy val scalaTest       = "org.scalatest"         %% "scalatest"         % scal
 lazy val slf4j           = "com.typesafe.akka"     %% "akka-slf4j"        % akkaVersion
 
 // Nexus dependency modules
-lazy val commonsIam        = "ch.epfl.bluebrain.nexus" %% "iam"                 % commonsVersion
-lazy val commonsQueryTypes = "ch.epfl.bluebrain.nexus" %% "commons-query-types" % commonsVersion
-lazy val commonsTest       = "ch.epfl.bluebrain.nexus" %% "commons-test"        % commonsVersion
-lazy val serviceHttp       = "ch.epfl.bluebrain.nexus" %% "service-http"        % serviceVersion
+lazy val commonsHttp = "ch.epfl.bluebrain.nexus" %% "commons-http" % commonsVersion
+lazy val commonsTest = "ch.epfl.bluebrain.nexus" %% "commons-test" % commonsVersion
 
 lazy val root = project
   .in(file("."))
@@ -62,12 +59,10 @@ lazy val root = project
     libraryDependencies ++= Seq(
       akkaHttpCore,
       akkaStream,
-      commonsQueryTypes,
       pureconfig,
       akkaHttpTestKit % Test,
-      commonsIam      % Test,
+      commonsHttp     % Test,
       commonsTest     % Test,
-      serviceHttp     % Test,
       scalaTest       % Test,
       slf4j           % Test
     ),

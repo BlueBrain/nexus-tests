@@ -1,7 +1,6 @@
 package ch.epfl.bluebrain.nexus.tests.config
 
 import akka.http.scaladsl.model.Uri
-import ch.epfl.bluebrain.nexus.commons.types.search.Pagination
 import ch.epfl.bluebrain.nexus.tests.config.AppConfig._
 
 import scala.concurrent.duration.Duration
@@ -16,12 +15,7 @@ import scala.concurrent.duration.Duration
   * @param prefixes   the collection of prefixes used throughout the service
   * @param pagination Routes pagination settings
   */
-final case class AppConfig(http: HttpConfig,
-                           kg: KgConfig,
-                           admin: AdminConfig,
-                           iam: IamConfig,
-                           prefixes: PrefixesConfig,
-                           pagination: PaginationConfig)
+final case class AppConfig(http: HttpConfig, kg: KgConfig, admin: AdminConfig, iam: IamConfig, prefixes: PrefixesConfig)
 
 object AppConfig {
 
@@ -39,9 +33,5 @@ object AppConfig {
                                   searchContext: Uri,
                                   distributionContext: Uri,
                                   errorContext: Uri)
-
-  final case class PaginationConfig(from: Long, size: Int, maxSize: Int) {
-    val pagination: Pagination = Pagination(from, size)
-  }
 
 }
