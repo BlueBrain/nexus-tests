@@ -25,16 +25,16 @@ scalafmt: {
  */
 
 // Dependency versions
-val akkaVersion       = "2.5.11"
-val akkaHttpVersion   = "10.0.13"
-val catsVersion       = "1.1.0"
-val circeVersion      = "0.9.2"
+val akkaVersion       = "2.5.16"
+val akkaHttpVersion   = "10.1.5"
+val catsVersion       = "1.3.1"
+val circeVersion      = "0.9.3"
 val mockitoVersion    = "2.16.0"
-val pureconfigVersion = "0.9.1"
+val pureconfigVersion = "0.9.2"
 val scalaTestVersion  = "3.0.5"
 
 // Nexus dependency versions
-val commonsVersion = "0.10.25"
+val commonsVersion = "0.10.28"
 
 // Dependency modules
 lazy val akkaHttpCore    = "com.typesafe.akka"     %% "akka-http-core"    % akkaHttpVersion

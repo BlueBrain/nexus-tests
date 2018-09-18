@@ -113,6 +113,10 @@ class BaseSpec
     def mapString(body: (String, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[String]): Assertion =
       whenReady(value)(res => um(res.entity).map(s => body(s, res)).futureValue)
 
+    def mapByteString(body: (ByteString, HttpResponse) => Assertion)(
+        implicit um: FromEntityUnmarshaller[ByteString]): Assertion =
+      whenReady(value)(res => um(res.entity).map(s => body(s, res)).futureValue)
+
     def getJson[A](handler: Json => A)(implicit um: FromEntityUnmarshaller[Json]): A = {
       whenReady(value) { res =>
         um(res.entity).map(handler(_)).futureValue
