@@ -41,17 +41,20 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
 
     "succeed if payload is correct" in {
-
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity())).mapResp { result =>
-        result.status shouldEqual StatusCodes.Created
+      eventually {
+        cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity())).mapResp { result =>
+          result.status shouldEqual StatusCodes.Created
+        }
       }
-
-      cl(Req(PUT, s"$adminBase/projects/$id1", headersUser, kgProjectReqEntity())).mapResp { result =>
-        result.status shouldEqual StatusCodes.Created
+      eventually {
+        cl(Req(PUT, s"$adminBase/projects/$id1", headersUser, kgProjectReqEntity())).mapResp { result =>
+          result.status shouldEqual StatusCodes.Created
+        }
       }
-
-      cl(Req(PUT, s"$adminBase/projects/$id2", headersUser, kgProjectReqEntity())).mapResp { result =>
-        result.status shouldEqual StatusCodes.Created
+      eventually {
+        cl(Req(PUT, s"$adminBase/projects/$id2", headersUser, kgProjectReqEntity())).mapResp { result =>
+          result.status shouldEqual StatusCodes.Created
+        }
       }
     }
   }
@@ -92,7 +95,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
               quote("{project}")   -> s"$adminBase/projects/$id1")
         )
         result.status shouldEqual StatusCodes.OK
-        json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
+        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
       }
     }
   }
@@ -160,7 +163,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       )
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
+        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
       }
     }
 
@@ -174,7 +177,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       )
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
+        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
       }
     }
   }
@@ -207,7 +210,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expectedTag1
+          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag1)
       }
 
       val expectedTag2 = jsonContentOf(
@@ -220,7 +223,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.0", headersUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expectedTag2
+          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
       }
     }
   }
