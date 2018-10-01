@@ -2,8 +2,9 @@ package ch.epfl.bluebrain.nexus.tests.kg
 
 import java.util.regex.Pattern.quote
 
+import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers.{ContentDispositionTypes, `Content-Disposition`, `Content-Type`}
+import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, Multipart, StatusCodes, HttpRequest => Req}
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
@@ -11,6 +12,8 @@ import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
+
+import scala.collection.immutable.Seq
 
 class ResourcesSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
 
@@ -250,7 +253,6 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
 
     "fetch attachment" in {
-
       val expectedContent = contentOf("/kg/resources/attachment.json")
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", headersUser))
         .mapString { (content, result) =>
@@ -260,7 +262,20 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
+    }
 
+    "fetch gzipped attachment" in {
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      val requestHeaders  = headersUser ++ Seq(`Accept-Encoding`(HttpEncodings.gzip))
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", requestHeaders))
+        .mapByteString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
+        }
     }
 
     "update attachment with JSON" in {

@@ -3,7 +3,7 @@ package ch.epfl.bluebrain.nexus.tests.config
 import akka.http.scaladsl.model.Uri
 import ch.epfl.bluebrain.nexus.tests.config.AppConfig._
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Case class which aggregates the configuration parameters
@@ -13,13 +13,12 @@ import scala.concurrent.duration.Duration
   * @param admin      admin connection settings
   * @param iam        IAM connection settings
   * @param prefixes   the collection of prefixes used throughout the service
-  * @param pagination Routes pagination settings
   */
 final case class AppConfig(http: HttpConfig, kg: KgConfig, admin: AdminConfig, iam: IamConfig, prefixes: PrefixesConfig)
 
 object AppConfig {
 
-  final case class HttpConfig(patienceConfig: Duration)
+  final case class HttpConfig(patienceConfig: FiniteDuration)
 
   final case class KgConfig(uri: Uri)
 
