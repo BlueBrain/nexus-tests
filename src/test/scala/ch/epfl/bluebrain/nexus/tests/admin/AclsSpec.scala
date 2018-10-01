@@ -28,9 +28,9 @@ class AclsSpec extends BaseSpec with Inspectors with CancelAfterFailure with Eve
       val entity = jsonContentOf("/iam/patch-single.json", replSub + (quote("{perms}") -> "projects/read")).toEntity
       cl(Req(PATCH, s"$iamBase/acls/", headersGroup, entity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json shouldEqual jsonContentOf(
-          "/iam/patch-response-perms.json",
-          replSub ++ resourceIamCtx + (quote("{perms}") -> """projects/create","projects/write"""))
+        json should equalIgnoreArrayOrder(
+          jsonContentOf("/iam/patch-response-perms.json",
+                        replSub ++ resourceIamCtx + (quote("{perms}") -> """projects/create","projects/write""")))
       }
     }
 
@@ -90,11 +90,12 @@ class AclsSpec extends BaseSpec with Inspectors with CancelAfterFailure with Eve
       eventually {
         cl(Req(uri = s"$adminBase/projects/$id/acls?parents=true", headers = headersUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json shouldEqual jsonContentOf(
-            "/iam/project-perms-response.json",
-            resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/create","projects/write","orgs/create","projects/read""", quote(
-              "{path}")                                   -> "")
-          )
+          json should equalIgnoreArrayOrder(
+            jsonContentOf(
+              "/iam/project-perms-response.json",
+              resourceIamCtx ++ replSub + (quote("{perms}") -> """projects/create","projects/write","orgs/create","projects/read""", quote(
+                "{path}")                                   -> "")
+            ))
         }
       }
     }
