@@ -17,10 +17,12 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.config.Settings
 import com.typesafe.config.ConfigFactory
-import io.circe.Json
 import io.circe.parser._
-import org.scalatest.concurrent.ScalaFutures
+import io.circe.syntax._
+import io.circe.{Json, JsonObject}
 import org.scalatest._
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.matchers.{MatchResult, Matcher}
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -80,6 +82,30 @@ class BaseSpec
 
       result.status shouldEqual StatusCodes.OK
 
+    }
+  }
+
+  def equalIgnoreArrayOrder(json: Json) = IgnoredArrayOrder(json)
+
+  case class IgnoredArrayOrder(json: Json) extends Matcher[Json] {
+    private def sortKeys(value: Json): Json = {
+      def canonicalJson(json: Json): Json =
+        json.arrayOrObject[Json](json,
+                                 arr => Json.fromValues(arr.sortBy(_.hashCode()).map(canonicalJson)),
+                                 obj => sorted(obj).asJson)
+
+      def sorted(jObj: JsonObject): JsonObject =
+        JsonObject.fromIterable(jObj.toVector.sortBy(_._1).map { case (k, v) => k -> canonicalJson(v) })
+
+      canonicalJson(value)
+    }
+
+    override def apply(left: Json): MatchResult = {
+      val leftSorted  = sortKeys(left)
+      val rightSorted = sortKeys(json)
+      MatchResult(leftSorted == rightSorted,
+                  s"Both Json are not equal (ignoring array order)\n$leftSorted\ndid not equal\n$rightSorted",
+                  "")
     }
   }
 
