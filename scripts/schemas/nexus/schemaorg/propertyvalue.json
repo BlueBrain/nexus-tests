@@ -1,0 +1,18 @@
+{
+  "@context": {
+    "this": "https://bluebrain.github.io/nexus/schemas/schemaorg/propertyvalue/shapes/"
+  },
+  "@id": "https://bluebrain.github.io/nexus/schemas/schemaorg/propertyvalue",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/propertyvalue"
+  ],
+  "shapes": [
+    {
+      "@id": "this:PropertyValueShape",
+      "@type": "sh:NodeShape",
+      "targetClass": "schema:PropertyValue",
+      "node":"https://bluebrain.github.io/nexus/schemas/schemaorgsh/propertyvalue/shapes/PropertyValueShape"
+    }
+  ]
+}

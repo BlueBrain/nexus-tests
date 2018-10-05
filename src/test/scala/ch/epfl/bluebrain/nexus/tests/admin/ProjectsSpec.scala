@@ -54,7 +54,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
 
     "fail if the project name is missing" in {
       eventually {
-        cl(Req(PUT, s"$adminBase/projects/$id", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
+        cl(Req(PUT, s"$adminBase/projects/$id", headersUser, Json.obj().toEntity)).mapJson { (_, result) =>
           result.status shouldEqual StatusCodes.BadRequest
         }
       }

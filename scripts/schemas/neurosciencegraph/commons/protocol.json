@@ -1,0 +1,64 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/protocol/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/protocol",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity",
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/identifier",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/organization",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/person"
+  ],
+  "shapes": [
+    {
+      "@id": "this:ProtocolShape",
+      "@type": "sh:NodeShape",
+      "label": "Protocol shape definition.",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity/shapes/EntityShape"
+        },
+        {
+          "path": "schema:identifier",
+          "name": "Identifier",
+          "description": "The identifier of protocol such as a DOI, ISBN,...",
+          "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/identifier/shapes/IdentifierShape"
+        },
+        {
+          "path": "schema:datePublished",
+          "name": "date published",
+          "description": "Publishing date of protocol.",
+          "datatype": "xsd:dateTime",
+          "maxCount": 1
+        },
+        {
+          "path": "schema:author",
+          "name": "Author",
+          "description": "Author of the protocol",
+          "xone": [
+            {
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/person/shapes/PersonShape"
+            },
+            {
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/organization/shapes/OrganizationShape"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "@id": "this:HadProtocolValueShape",
+      "@type": "sh:PropertyShape",
+      "path": "nsg:hadProtocol",
+      "name": "Protocol",
+      "description": "The value of nsg:hadProtocol should be of type nsg:Protocol.",
+      "class": "nsg:Protocol",
+      "seeAlso": "this:ProtocolShape"
+    }
+  ]
+}

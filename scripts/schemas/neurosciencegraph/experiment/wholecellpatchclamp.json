@@ -1,0 +1,43 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/experiment/wholecellpatchclamp/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/experiment/wholecellpatchclamp",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/activity"
+  ],
+  "@type": "nxv:Schema",
+  "shapes": [
+    {
+      "@id": "this:WholeCellPatchClampShape",
+      "@type": "sh:NodeShape",
+      "label": "Whole cell patch clamp",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "targetClass": "nsg:WholeCellPatchClamp",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/activity/shapes/ActivityShape"
+        },
+        {
+          "property": [
+            {
+              "path": "prov:used",
+              "description": "The slice used",
+              "class": "nsg:Slice",
+              "minCount": 1
+            },
+            {
+              "path": "prov:generated",
+              "description": "The patched slice generated",
+              "class": "nsg:PatchedSlice",
+              "minCount": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

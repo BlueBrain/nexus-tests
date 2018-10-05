@@ -1,0 +1,61 @@
+{
+  "@context": {
+    "this": "https://bluebrain.github.io/nexus/schemas/core/distribution/shapes/"
+  },
+  "@id": "https://bluebrain.github.io/nexus/schemas/core/distribution",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/core/quantitativevalue",
+    "https://bluebrain.github.io/nexus/schemas/core/digest"
+  ],
+  "shapes": [
+    {
+      "@id": "this:DistributionShape",
+      "@type": "sh:NodeShape",
+      "and": [
+        {
+          "or": [
+            {
+              "path": "schema:downloadURL",
+              "name": "Download URL",
+              "description": "When followed this link leads to the actual data.",
+              "nodeKind": "sh:IRI",
+              "minCount": 1,
+              "maxCount": 1
+            },
+            {
+              "path": "schema:accessURL",
+              "description": "When followed this link leads to a resource providing further description on how to download the attached data.",
+              "name": "Access URL",
+              "nodeKind": "sh:IRI",
+              "minCount": 1,
+              "maxCount": 1
+            }
+          ]
+        },
+        {
+          "property": [
+            {
+              "path": "schema:contentSize",
+              "node": "https://bluebrain.github.io/nexus/schemas/core/quantitativevalue/shapes/PositiveQuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nxv:digest",
+              "node": "https://bluebrain.github.io/nexus/schemas/core/digest/shapes/DigestShape"
+            },
+            {
+              "path": "schema:mediaType",
+              "name": "Media type",
+              "description": "The media value should start with one of the following application|audio|font|image|message|model|multipart|text|video followed by / and then any Alphanumeric characters.",
+              "comment": "The pattern used here is temporary and not complete. The media type values need to be taken from a controlled vocabulary: to be handled in a next iteration.",
+              "datatype": "xsd:string",
+              "sh:pattern": "^(application|audio|font|image|message|model|multipart|text|video)/[A-Za-z0-9]+",
+              "maxCount": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

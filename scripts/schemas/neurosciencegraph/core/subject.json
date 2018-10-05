@@ -1,0 +1,143 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/subject/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/subject",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue"
+  ],
+  "shapes": [
+    {
+      "@id": "this:SubjectShape",
+      "@type": "sh:NodeShape",
+      "label": "Subject shape definition",
+      "comment": "Subject used in experiment",
+      "targetClass": "nsg:Subject",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity/shapes/EntityShape"
+        },
+        {
+          "property": [
+            {
+              "path": "nsg:species",
+              "name": "Species",
+              "description": "The species of the subject",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/SpeciesOntologyTermShape",
+              "minCount": 1,
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:strain",
+              "name": "Strain",
+              "description": "Subject strain",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/StrainOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:transgenic",
+              "name": "Transgenic",
+              "description": "Transgenic modification of subject",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/TransgenicOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:sex",
+              "name": "Sex",
+              "description": "The sex of the subject",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/SexOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:age",
+              "name": "Age",
+              "description": "The age of the subject.",
+              "node": "this:AgeShape",
+              "maxCount": 1
+            },
+            {
+              "path": "schema:birthDate",
+              "name": "Date of birth",
+              "description": "Date of birth of subject.",
+              "datatype": "xsd:dateTime",
+              "lessThan": "schema:deathDate",
+              "maxCount": 1
+            },
+            {
+              "path": "schema:deathDate",
+              "name": "Date of sacrifice",
+              "description": "Date of sacrifice of subject.",
+              "datatype": "xsd:dateTime",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:dateOfSurgery",
+              "name": "Date of surgery",
+              "description": "Date of surgery of subject.",
+              "datatype": "xsd:dateTime",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:diseaseModel",
+              "name": "Disease",
+              "description": "Disease modeled in subject.",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/DiseaseModelOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:disease",
+              "name": "Disease",
+              "description": "Disease of subject.",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/DiseaseOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:treatment",
+              "name": "Treatment",
+              "description": "Treatment of the subject.",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/TreatmentOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "schema:weight",
+              "name": "Weight",
+              "description": "Weight of the subject.",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "@id": "this:AgeShape",
+      "@type": "sh:NodeShape",
+      "property": [
+        {
+          "path": "nsg:period",
+          "name": "Period",
+          "in": [
+            "Pre-natal",
+            "Post-natal"
+          ],
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "path": "schema:value",
+          "name": "Age value",
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+          "minCount": 1,
+          "maxCount": 1
+        }
+      ]
+    }
+  ]
+}

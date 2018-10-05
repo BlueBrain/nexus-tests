@@ -1,0 +1,72 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/stimulusexperiment/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/stimulusexperiment",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/experimentalactivity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/typedlabeledontologyterm"
+  ],
+  "shapes": [
+    {
+      "@id": "this:StimulusExperimentShape",
+      "@type": "sh:NodeShape",
+      "label": "Stimulus experiment shape definition",
+      "targetClass": "nsg:StimulusExperiment",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/experimentalactivity/shapes/ExperimentalActivityShape"
+        },
+        {
+          "property": [
+            {
+              "path": "nsg:stimulus",
+              "name": "Stimulus",
+              "description": "The shape of the stimulus",
+              "node": "this:StimulusShape",
+              "minCount": 1,
+              "maxCount": 1
+            },
+            {
+              "path": "prov:used",
+              "description": "The patched cell used",
+              "class": "nsg:PatchedCell",
+              "minCount": 1,
+              "maxCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "@id": "this:StimulusShape",
+      "@type": "sh:NodeShape",
+      "label": "Stimulus shape definition",
+      "property": [
+        {
+          "path": "rdf:type",
+          "name": "Stimulus type",
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/typedlabeledontologyterm/shapes/StimulusTypeOntologyTermShape",
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "path": "nsg:eCode",
+          "name": "eCode",
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/typedlabeledontologyterm/shapes/EcodeOntologyTermShape",
+          "maxCount": 1
+        },
+        {
+          "path": "schema:description",
+          "datatype": "xsd:string",
+          "maxCount": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "@context": {
+    "this": "https://bluebrain.github.io/nexus/schemas/schemaorg/identifier/shapes/"
+  },
+  "@id": "https://bluebrain.github.io/nexus/schemas/schemaorg/identifier",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/identifier"
+  ],
+  "shapes": [
+    {
+      "@id": "this:IdentifierShape",
+      "@type": "sh:NodeShape",
+      "targetClass": "schema:Identifier",
+      "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/identifier/shapes/IdentifierShape"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellcollection/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellcollection",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/collection"
+  ],
+  "shapes": [
+    {
+      "@id": "this:PatchedCellCollectionShape",
+      "@type": "sh:NodeShape",
+      "label": "Patched cell collection shape",
+      "targetClass": "nsg:Collection",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/collection/shapes/CollectionShape"
+        },
+        {
+          "property": [
+            {
+              "path": "prov:hadMember",
+              "name": "Member",
+              "description": "The patchedCell member(s) of the collection",
+              "class": "nsg:PatchedCell",
+              "seeAlso": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcell/shapes/PatchedCellShape"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

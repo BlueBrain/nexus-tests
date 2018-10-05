@@ -1,0 +1,23 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/slice/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/slice",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/entity"
+  ],
+  "shapes": [
+    {
+      "@id": "this:SliceShape",
+      "@type": "sh:NodeShape",
+      "label": "Slice shape definition",
+      "targetClass": "nsg:Slice",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity/shapes/EntityShape"
+    }
+  ]
+}

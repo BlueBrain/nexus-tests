@@ -1,0 +1,23 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/protocol/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/protocol",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/protocol"
+  ],
+  "shapes": [
+    {
+      "@id": "this:ProtocolShape",
+      "label": "A shape for describing a nsg:Protocol instance",
+      "comments": "This shape is for a generic protocol.",
+      "targetClass": "nsg:Protocol",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/protocol/shapes/ProtocolShape"
+    }
+  ]
+}

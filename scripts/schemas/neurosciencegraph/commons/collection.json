@@ -1,0 +1,42 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/collection/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/collection",
+  "@type" : "nxv:Schema",
+  "imports" : [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity",
+    "https://bluebrain.github.io/nexus/schemas/provsh/collection"
+  ],
+  "shapes" : [
+    {
+      "@id" : "this:CollectionShape",
+      "@type" : "sh:NodeShape",
+      "label" : "A collection shape.",
+      "nodeKind" : "sh:BlankNodeOrIRI",
+      "and" : [
+        {
+          "node" : "https://bluebrain.github.io/nexus/schemas/provsh/collection/shapes/CollectionShape"
+        },
+        {
+          "node" : "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity/shapes/EntityShape"
+        },
+        {
+          "property" : [
+            {
+              "path" : "schema:size",
+              "name" : "Size",
+              "description" : "Collection size. The collection can be empty with size 0.",
+              "datatype" : "xsd:integer",
+              "minInclusive" : 0,
+              "maxCount" : 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

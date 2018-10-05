@@ -1,0 +1,23 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/person/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/person",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/person"
+  ],
+  "shapes": [
+    {
+      "@id": "this:PersonShape",
+      "@type": "sh:NodeShape",
+      "label": "Schema.org person specification is used as a vocabulary to describe a person.",
+      "targetClass": "nsg:Person",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/person/shapes/PersonShape"
+    }
+  ]
+}

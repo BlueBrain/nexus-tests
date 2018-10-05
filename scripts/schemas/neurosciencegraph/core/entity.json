@@ -1,0 +1,21 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/entity/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/entity",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity"
+  ],
+  "shapes": [
+    {
+      "@id": "this:EntityShape",
+      "@type": "sh:NodeShape",
+      "targetClass": "nsg:Entity",
+      "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity/shapes/EntityShape"
+    }
+  ]
+}
