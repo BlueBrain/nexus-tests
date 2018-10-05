@@ -8,4 +8,4 @@ import akka.http.scaladsl.model.Uri
   * @param idPrefix    the prefix uri of the @id
   * @param schemasMap  map the string segment (of the path) to the schema @id value
   */
-case class Settings(idPrefix: Uri, schemasMap: Map[String, Uri])
+final case class Settings(idPrefix: Uri, schemasMap: Map[String, Uri])

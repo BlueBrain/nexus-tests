@@ -26,11 +26,14 @@ object Templates {
     new Templates(templates)
   }
 
+  @SuppressWarnings(Array("IncorrectlyNamedExceptions"))
   sealed abstract class TemplateLoadingError(message: String) extends Exception(message)
 
+  @SuppressWarnings(Array("IncorrectlyNamedExceptions"))
   final case class SchemaNotMapped(resource: BasePath, schemas: String)
       extends TemplateLoadingError(s"Need to map the schema: '$schemas' in path '$resource'")
 
+  @SuppressWarnings(Array("IncorrectlyNamedExceptions"))
   final case class WrongFormat(resource: BasePath)
       extends TemplateLoadingError(s"Resource in path '$resource' is not in JSON format")
 
