@@ -9,7 +9,8 @@ final case class AppConfig(http: HttpConfig,
                            kg: KgConfig,
                            uploadConfig: UploadConfig,
                            fetchConfig: FetchConfig,
-                           updateConfig: UpdateConfig)
+                           updateConfig: UpdateConfig,
+                           tagConfig: TagConfig)
 
 object AppConfig {
 
@@ -22,5 +23,7 @@ object AppConfig {
   final case class FetchConfig(project: Int, duration: FiniteDuration, reads: Int, writes: Int, users: Int)
 
   final case class UpdateConfig(project: Int, revisions: Int, revisionsStep: Int)
+
+  final case class TagConfig(tags: Int)
 
 }
