@@ -1,0 +1,95 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/experiment/brainslicing/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/experiment/brainslicing",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/activity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/brainlocation"
+  ],
+  "@type": "nxv:Schema",
+  "shapes": [
+    {
+      "@id": "this:BrainSlicingShape",
+      "@type": "sh:NodeShape",
+      "label": "Brain slicing shape definition",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "targetClass": "nsg:BrainSlicing",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/activity/shapes/ActivityShape"
+        },
+        {
+          "property": [
+            {
+              "path": "prov:used",
+              "description": "The subject used",
+              "class": "nsg:Subject",
+              "minCount": 1,
+              "maxCount": 1
+            },
+            {
+              "path": "prov:generated",
+              "description": "The slice or slice collection generated",
+              "class": "nsg:SliceCollection",
+              "minCount": 1
+            },
+            {
+              "path": "nsg:brainLocation",
+              "name": "Brain location",
+              "description": "Brain location information",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/brainlocation/shapes/BrainLocationShape"
+            },
+            {
+              "path": "nsg:slicingPlane",
+              "name": "Slicing plane",
+              "description": "Slicing plane of the brain",
+              "in": [
+                "Sagittal",
+                "Para-sagittal",
+                "Coronal",
+                "Horizontal"
+              ],
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:slicingAngle",
+              "name": "Slicing angle",
+              "description": "Slicing angle of brain",
+              "datatype": "xsd:string",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:cuttingThickness",
+              "name": "Cutting thickness",
+              "description": "Cutting thickness of brain slice",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:hemisphere",
+              "name": "Hemisphere",
+              "description": "Brain hemisphere that was sliced",
+              "in": [
+                "Left",
+                "Right"
+              ],
+              "maxCount": 2
+            },
+            {
+              "path": "nsg:solution",
+              "name": "Solution",
+              "description": "Solution in which the brain was sliced (e.g. Ringer's solution)",
+              "datatype": "xsd:string",
+              "maxCount": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

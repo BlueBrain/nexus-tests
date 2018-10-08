@@ -1,0 +1,38 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "@base": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/activity/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/activity",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/provsh/activity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/protocol"
+  ],
+  "@type": "nxv:Schema",
+  "shapes": [
+    {
+      "@id": "ActivityShape",
+      "@type": "sh:NodeShape",
+      "label": "Activity description.",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/provsh/activity/shapes/ActivityShape"
+        },
+        {
+          "property": [
+            {
+              "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/protocol/shapes/HadProtocolValueShape"
+            },
+            {
+              "path": "prov:used",
+              "minCount": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

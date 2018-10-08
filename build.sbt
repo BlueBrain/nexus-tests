@@ -24,17 +24,22 @@ scalafmt: {
 }
  */
 
+import org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings
+
 // Dependency versions
-val akkaVersion       = "2.5.16"
+val ammoniteVersion   = "1.2.1"
+val akkaVersion       = "2.5.17"
 val akkaHttpVersion   = "10.1.5"
-val catsVersion       = "1.3.1"
-val circeVersion      = "0.9.3"
-val mockitoVersion    = "2.16.0"
+val catsVersion       = "1.4.0"
+val circeVersion      = "0.10.0"
+val mockitoVersion    = "2.22.0"
 val pureconfigVersion = "0.9.2"
 val scalaTestVersion  = "3.0.5"
+val gatlingVersion    = "3.0.0-RC3"
 
 // Nexus dependency versions
-val commonsVersion = "0.10.28"
+val commonsVersion = "0.10.31"
+val serviceVersion = "0.10.17"
 
 // Dependency modules
 lazy val akkaHttpCore    = "com.typesafe.akka"     %% "akka-http-core"    % akkaHttpVersion
@@ -48,9 +53,17 @@ lazy val slf4j           = "com.typesafe.akka"     %% "akka-slf4j"        % akka
 // Nexus dependency modules
 lazy val commonsHttp = "ch.epfl.bluebrain.nexus" %% "commons-http" % commonsVersion
 lazy val commonsTest = "ch.epfl.bluebrain.nexus" %% "commons-test" % commonsVersion
+lazy val serviceHttp = "ch.epfl.bluebrain.nexus" %% "service-http" % serviceVersion
+
+// Performance tests
+lazy val gatling       = "io.gatling"            % "gatling-test-framework"    % gatlingVersion
+lazy val gatlingCharts = "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
+lazy val ammoniteOps   = "com.lihaoyi"           %% "ammonite-ops"             % ammoniteVersion
 
 lazy val root = project
+  .enablePlugins(GatlingPlugin)
   .in(file("."))
+  .settings(inConfig(IntegrationTest)(scalafmtConfigSettings))
   .settings(noPublish)
   .settings(
     name                  := "tests",
@@ -60,11 +73,16 @@ lazy val root = project
       akkaHttpCore,
       akkaStream,
       pureconfig,
+      commonsTest,
+      serviceHttp,
+      ammoniteOps,
       akkaHttpTestKit % Test,
       commonsHttp     % Test,
       commonsTest     % Test,
       scalaTest       % Test,
-      slf4j           % Test
+      slf4j           % Test,
+      gatling         % "test,it",
+      gatlingCharts   % "test,it"
     ),
     parallelExecution in Test := false,
     Test / testOptions        += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports")

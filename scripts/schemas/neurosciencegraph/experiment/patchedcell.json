@@ -1,0 +1,124 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcell/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcell",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/brainlocation"
+  ],
+  "shapes": [
+    {
+      "@id": "this:PatchedCellShape",
+      "@type": "sh:NodeShape",
+      "label": "Patched cell shape definition",
+      "targetClass": "nsg:PatchedCell",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity/shapes/EntityShape"
+        },
+        {
+          "property": [
+            {
+              "path": "nsg:brainLocation",
+              "name": "Brain location",
+              "description": "Brain location information of the patchedcell",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/brainlocation/shapes/BrainLocationShape"
+            },
+            {
+              "path": "nsg:putativeEtype",
+              "name": "Putative e-type",
+              "description": "The putative e-type of the patched cell",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/CellTypeOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:eType",
+              "name": "E-type",
+              "description": "The e-type of the patched cell",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/CellTypeOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:mType",
+              "name": "Morphology type",
+              "description": "The morphology type of the patched cell",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/CellTypeOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:pipetteNumber",
+              "name": "Pipette number",
+              "description": "Number of pipettes used",
+              "datatype": "xsd:string",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:startMembranePotential",
+              "name": "Start membrane potential",
+              "description": "Membrane potential of patched cell at beginning",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:endMembranePotential",
+              "name": "End membrane potential",
+              "description": "Membrane potential of patched cell at the end",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:sealResistance",
+              "name": "Seal resistance",
+              "description": "Seal resistance of patch",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:pipetteResistance",
+              "name": "Pipette resistance",
+              "description": "Resistance of pipette used",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:liquidJunctionPotential",
+              "name": "Liquid junction potential",
+              "description": "Liquid junction potential of patch",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:labelingCompound",
+              "name": "Labeling compound",
+              "description": "The compound used in the pipette to label the cell",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/LabelingCompoundOntologyTermShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:chlorideReversalPotential",
+              "name": "Chloride reversal potential",
+              "description": "The chloride reversal potential calculated from the intracellular solution of the pipette",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:solution",
+              "name": "Pipette solution",
+              "description": "Solution used to fill the pipette",
+              "datatype": "xsd:string",
+              "maxCount": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

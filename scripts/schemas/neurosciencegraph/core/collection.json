@@ -1,0 +1,23 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/collection/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/collection",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/collection"
+  ],
+  "shapes": [
+    {
+      "@id": "this:CollectionShape",
+      "@type": "sh:NodeShape",
+      "label": "A collection shape.",
+      "targetClass": "nsg:Collection",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/collection/shapes/CollectionShape"
+    }
+  ]
+}

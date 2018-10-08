@@ -68,7 +68,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
       eventually {
         cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUser, schemaPayload.toEntity)).mapString {
-          (json, result) =>
+          (_, result) =>
             result.status shouldEqual StatusCodes.Created
         }
       }
@@ -82,7 +82,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
       eventually {
         cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser, payload.toEntity)).mapString {
-          (json, result) =>
+          (_, result) =>
             result.status shouldEqual StatusCodes.Created
         }
       }

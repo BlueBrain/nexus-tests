@@ -1,0 +1,38 @@
+{
+  "@context": {
+    "this": "https://bluebrain.github.io/nexus/schemas/core/quantitativevalue/shapes/"
+  },
+  "@id": "https://bluebrain.github.io/nexus/schemas/core/quantitativevalue",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/quantitativevalue"
+  ],
+  "shapes": [
+    {
+      "@id": "this:PositiveQuantitativeValueShape",
+      "@type": "sh:NodeShape",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/quantitativevalue/shapes/QuantitativeValueShape"
+        },
+        {
+          "property": [
+            {
+              "path": "schema:value",
+              "name": "Value",
+              "minInclusive": 0,
+              "minCount": 1,
+              "maxCount": 1
+            },
+            {
+              "path": "schema:unitCode",
+              "name": "Unit",
+              "minCount": 1,
+              "maxCount": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "@context": {
+    "this": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/identifier/shapes/"
+  },
+  "@id": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/identifier",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/propertyvalue"
+  ],
+  "shapes": [
+    {
+      "@id": "this:IdentifierShape",
+      "@type": "sh:NodeShape",
+      "property": [
+        {
+          "path": "schema:identifier",
+          "name": "Identifier",
+          "description": "A landing page describing the dataset.",
+          "xone": [
+            {
+              "nodeKind": "sh:IRI"
+            },
+            {
+              "datatype": "xsd:string"
+            },
+            {
+              "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/propertyvalue/shapes/PropertyValueShape"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

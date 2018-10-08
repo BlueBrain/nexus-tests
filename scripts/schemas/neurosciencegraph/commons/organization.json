@@ -1,0 +1,44 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/organization/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/organization",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/organization",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/identifier"
+  ],
+  "@type": "nxv:Schema",
+  "shapes": [
+    {
+      "@id": "this:OrganizationShape",
+      "@type": "sh:NodeShape",
+      "label": "A shape for describing an organization based on http://schema.org/Organization.",
+      "comment": "A nsg:Organization can have a GRID identifier.",
+      "seeAlso": [
+        "http://schema.org/Organization",
+        "https://www.grid.ac"
+      ],
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/organization/shapes/OrganizationShape"
+        },
+        {
+          "property": [
+            {
+              "path": "schema:parentOrganization",
+              "name": "Parent Organization",
+              "node": "this:OrganizationShape"
+            },
+            {
+              "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/identifier/shapes/WithGridIdentifierPropertyShape"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

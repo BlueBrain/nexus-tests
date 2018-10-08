@@ -1,0 +1,40 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/person/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/person",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/person",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/organization"
+  ],
+  "shapes": [
+    {
+      "@id": "this:PersonShape",
+      "@type": "sh:NodeShape",
+      "label": "Schema.org person specification is used as a vocabulary to describe a person.",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/person/shapes/PersonShape"
+        },
+        {
+          "property": [
+            {
+              "path": "schema:affiliation",
+              "name": "Person's affiliation",
+              "class": "nsg:Organization",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/organization/shapes/OrganizationShape"
+            },
+            {
+              "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/identifier/shapes/WithOrcidIdentifierPropertyShape"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

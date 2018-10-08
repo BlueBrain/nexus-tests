@@ -1,0 +1,25 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/labeledontologyentity",
+  "@type": "nxv:Schema",
+  "shapes": [
+    {
+      "@id": "this:LabeledOntologyEntityShape",
+      "@type": "sh:NodeShape",
+      "nodeKind": "sh:IRI",
+      "property": [
+        {
+          "path": "rdfs:label",
+          "name": "Label",
+          "description": "Human readable label.",
+          "datatype": "xsd:string"
+        }
+      ]
+    }
+  ]
+}

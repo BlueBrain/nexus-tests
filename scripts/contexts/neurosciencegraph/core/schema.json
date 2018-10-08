@@ -1,0 +1,7 @@
+{
+  "@context": {
+    "nsg": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/"
+  },
+  "@id": "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+  "@type": "nxv:Context"
+}

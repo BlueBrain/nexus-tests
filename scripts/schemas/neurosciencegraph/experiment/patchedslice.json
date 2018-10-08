@@ -1,0 +1,68 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellslice/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellslice",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/brainlocation",
+    "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue"
+  ],
+  "shapes": [
+    {
+      "@id": "this:PatchedSliceShape",
+      "@type": "sh:NodeShape",
+      "label": "Patched slice shape definition",
+      "targetClass": "nsg:PatchedSlice",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/entity/shapes/EntityShape"
+        },
+        {
+          "property": [
+            {
+              "path": "nsg:brainLocation",
+              "name": "Brain location",
+              "description": "Brain location information of the patchedcell",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/brainlocation/shapes/BrainLocationShape"
+            },
+            {
+              "path": "nsg:hasPart",
+              "name": "Patched cells collection",
+              "description": "The collection of patched cells.",
+              "class": "nsg:Collection",
+              "minCount": 1
+            },
+            {
+              "path": "prov:wasRevisionOf",
+              "name": "Slice",
+              "description": "The slice this patchedSlice is a revision of.",
+              "class": "nsg:Slice",
+              "minCount": 1,
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:bathSolution",
+              "name": "Bath solution",
+              "description": "Solution used in the bath while recording",
+              "datatype": "xsd:string",
+              "maxCount": 1
+            },
+            {
+              "path": "nsg:temperature",
+              "name": "Temperature",
+              "description": "Recording temperature",
+              "node": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/quantitativevalue/shapes/QuantitativeValueShape",
+              "maxCount": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

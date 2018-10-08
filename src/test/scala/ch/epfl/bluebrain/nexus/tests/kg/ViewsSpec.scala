@@ -54,7 +54,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
       eventually {
         cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testView", headersUser, payload.toEntity)).mapString {
-          (json, result) =>
+          (_, result) =>
             result.status shouldEqual StatusCodes.Created
         }
       }
@@ -63,7 +63,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     "create a context" in {
       val payload = jsonContentOf("/kg/views/context.json")
       cl(Req(PUT, s"$kgBase/resources/$fullId/resource/test-resource:context", headersUser, payload.toEntity))
-        .mapString { (json, result) =>
+        .mapString { (_, result) =>
           result.status shouldEqual StatusCodes.Created
         }
     }
@@ -91,7 +91,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               s"$kgBase/resources/$fullId/resource/patchedcell:$id",
               headersUser,
               payload.removeField("@id").toEntity))
-          .mapString { (json, result) =>
+          .mapString { (_, result) =>
             result.status shouldEqual StatusCodes.Created
           }
       }

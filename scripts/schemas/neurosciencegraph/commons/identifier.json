@@ -1,0 +1,113 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/neurosciencegraph/schema",
+    {
+      "this": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/identifier/shapes/"
+    }
+  ],
+  "@id": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/identifier",
+  "@type": "nxv:Schema",
+  "imports": [
+    "https://bluebrain.github.io/nexus/schemas/schemaorgsh/person",
+    "https://bluebrain.github.io/nexus/schemas/schemaorg/propertyvalue"
+  ],
+  "shapes": [
+    {
+      "@id": "this:WithIdentifierPropertyShape",
+      "@type": "sh:PropertyShape",
+      "label": "Schema.org identifier shape.",
+      "path": "schema:identifier",
+      "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/identifier/shapes/IdentifierShape"
+    },
+    {
+      "@id": "this:WithStructuredIdentifierShape",
+      "@type": "sh:PropertyShape",
+      "label": "Key value type of identifier.",
+      "path": "schema:identifier",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "node": "https://bluebrain.github.io/nexus/schemas/schemaorg/propertyvalue/shapes/PropertyValueShape"
+    },
+    {
+      "@id": "this:WithOrcidIdentifierPropertyShape",
+      "@type": "sh:PropertyShape",
+      "label": "A shape for an ORCID based researcher identifier.",
+      "seeAlso": "https://support.orcid.org/knowledgebase/articles/116780-structure-of-the-orcid-identifier",
+      "path": "schema:identifier",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/schemaorg/propertyvalue/shapes/PropertyValueShape"
+        },
+        {
+          "or": [
+            {
+              "path": "schema:propertyID",
+              "name": "Orcid ID",
+              "description": "The property name.",
+              "datatype": "xsd:string",
+              "hasValue": "http//orcid.org",
+              "maxCount": 1
+            },
+            {
+              "path": "schema:name",
+              "name": "Orcid ID",
+              "description": "The property name.",
+              "datatype": "xsd:string",
+              "hasValue": "orcid",
+              "maxCount": 1
+            }
+          ]
+        },
+        {
+          "path": "schema:value",
+          "name": "Orcid",
+          "description": "The orcid identifier",
+          "nodeKind": "sh:IRI",
+          "minCount": 1,
+          "maxCount": 1
+        }
+      ]
+    },
+    {
+      "@id": "this:WithGridIdentifierPropertyShape",
+      "@type": "sh:PropertyShape",
+      "label": "A shape for GRID (https://www.grid.ac) based organization identifier.",
+      "seeAlso": "https://www.grid.ac",
+      "path": "schema:identifier",
+      "nodeKind": "sh:BlankNodeOrIRI",
+      "and": [
+        {
+          "node": "https://bluebrain.github.io/nexus/schemas/schemaorgsh/propertyvalue/shapes/PropertyValueShape"
+        },
+        {
+          "or": [
+            {
+              "path": "schema:propertyID",
+              "name": "GRID ID property",
+              "description": "The GRID property identifier.",
+              "datatype": "xsd:string",
+              "hasValue": "http//orcid.org",
+              "maxCount": 1
+            },
+            {
+              "path": "schema:name",
+              "name": "Orcid ID",
+              "description": "The property name.",
+              "datatype": "xsd:string",
+              "hasValue": "grid",
+              "maxCount": 1
+            }
+          ]
+        },
+        {
+          "path": "schema:value",
+          "name": "GRID ID",
+          "description": "The GRID identifier",
+          "nodeKind": "sh:IRI",
+          "minCount": 1,
+          "maxCount": 1
+        }
+      ]
+    }
+  ]
+}
