@@ -6,10 +6,9 @@ import java.util.concurrent.ThreadLocalRandom
 import ch.epfl.bluebrain.nexus.perf.config.Settings
 import com.typesafe.config.ConfigFactory
 import io.gatling.core.Predef._
-import io.gatling.core.session.Expression
 import io.gatling.http.Predef._
 
-class TagSimulation extends Simulation {
+class GetByTagSimulation extends Simulation {
 
   val config = new Settings(ConfigFactory.parseResources("perf-tests.conf").resolve()).appConfig
 
@@ -31,17 +30,14 @@ class TagSimulation extends Simulation {
   val httpConf = http
     .baseUrl(config.kg.base.toString) // Here is the root for all relative URLs
     .authorizationHeader(s"Bearer ${config.http.token}")
+  val journeyDuration = config.fetchConfig.duration
 
   val project      = config.updateConfig.project
   val revisions    = config.updateConfig.revisions
   val revisionStep = config.updateConfig.revisionsStep
   val tags         = config.tagConfig.tags
 
-  val repeatCountExpression: Expression[Int] = { session =>
-    Math.min(revisions / revisionStep, session("search_total").as[Int])
-  }
-
-  val scn = scenario("tag")
+  val scn = scenario("get by tag")
     .feed(schemas)
     .exec { session =>
       val s = session("schema").as[String]
@@ -50,37 +46,23 @@ class TagSimulation extends Simulation {
     .exec(http("list ${schema}")
       .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
       check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-    .repeat(repeatCountExpression, "instanceNumber")(
+    .during(journeyDuration)(
       exec { session =>
-        val s              = session("schema").as[String]
-        val instanceNumber = session("instanceNumber").as[Int] + 1
-        session
-          .set("encodedId", URLEncoder.encode(s"$s/ids/$instanceNumber", "UTF-8"))
-      }.repeat(tags, "tagCounter")(
-        exec { session =>
-          session.set("tag", session("tagCounter").as[Int] + 1)
-        }.exec(
-            http("fetch from ${schema}")
-              .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
-              .check(jsonPath("$.._rev")
-                .ofType[Int]
-                .saveAs("currentRevision"))
-          )
-          .exec { session =>
-            val rnd = ThreadLocalRandom
-              .current()
-              .nextInt(session("currentRevision").as[Int]) + 1
-            session.set("tagRevision", rnd)
-          }
-          .exec(
-            http("tag ${schema}")
-              .put(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}/tags?rev=$${currentRevision}")
-              .body(StringBody("""{"tag": "v0.0.${tag}","rev": ${tagRevision}} """))
-              .header("Content-Type", "application/json")
-          )
+        val rnd = ThreadLocalRandom
+          .current()
+          .nextInt(Math.min(revisions / revisionStep, session("search_total").as[Int])) + 1
+        val s = session("schema").as[String]
+        val tag = ThreadLocalRandom
+          .current()
+          .nextInt(tags) + 1
+        session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8")).set("tag", tag)
+
+      }.exec(
+        http("fetch by tag ${schema}")
+          .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?tag=v0.0.$${tag}")
       )
     )
 
-  setUp(scn.inject(atOnceUsers(12)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
 
 }
