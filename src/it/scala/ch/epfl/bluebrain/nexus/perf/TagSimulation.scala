@@ -26,7 +26,9 @@ class TagSimulation extends Simulation {
     Map("schema" -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/trace"),
     Map("schema" -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/stimulusexperiment"),
     Map("schema" -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/person")
-  ).toArray.circular
+  )
+
+  val schemasFeeder = schemas.toArray.circular
 
   val httpConf = http
     .baseUrl(config.kg.base.toString) // Here is the root for all relative URLs
@@ -42,7 +44,7 @@ class TagSimulation extends Simulation {
   }
 
   val scn = scenario("tag")
-    .feed(schemas)
+    .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
       session.set("encodedSchema", URLEncoder.encode(s, "UTF-8"))
@@ -81,6 +83,6 @@ class TagSimulation extends Simulation {
       )
     )
 
-  setUp(scn.inject(atOnceUsers(12)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(schemas.size)).protocols(httpConf))
 
 }
