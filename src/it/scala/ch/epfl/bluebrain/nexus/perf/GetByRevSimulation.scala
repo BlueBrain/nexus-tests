@@ -41,32 +41,36 @@ class GetByRevSimulation extends Simulation {
       val s = session("schema").as[String]
       session.set("encodedSchema", URLEncoder.encode(s, "UTF-8"))
     }
-    .exec(http("list ${schema}")
-      .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
-      check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-    .during(journeyDuration)(
-      exec { session =>
-        val rnd = ThreadLocalRandom
-          .current()
-          .nextInt(Math.min(revisions / revisionStep, session("search_total").as[Int])) + 1
-        val s = session("schema").as[String]
-        session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
-      }.exec(
-          http("fetch")
-            .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
-            .check(jsonPath("$.._rev").ofType[Int].saveAs("revisions"))
+    .tryMax(config.http.retries) {
+      exec(
+        http("list ${schema}")
+          .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
+          check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
+        .during(journeyDuration)(
+          exec { session =>
+            val rnd = ThreadLocalRandom
+              .current()
+              .nextInt(Math.min(revisions / revisionStep, session("search_total").as[Int])) + 1
+            val s = session("schema").as[String]
+            session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
+          }.exec(
+              http("fetch")
+                .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                .check(jsonPath("$.._rev").ofType[Int].saveAs("revisions"))
+            )
+            .exec { session =>
+              val rnd = ThreadLocalRandom
+                .current()
+                .nextInt(session("revisions").as[Int]) + 1
+              session.set("revisionToFetch", rnd)
+            }
+            .exec(
+              http("fetch revision ${revisionToFetch}")
+                .get(
+                  s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${revisionToFetch}")
+            )
         )
-        .exec { session =>
-          val rnd = ThreadLocalRandom
-            .current()
-            .nextInt(session("revisions").as[Int]) + 1
-          session.set("revisionToFetch", rnd)
-        }
-        .exec(
-          http("fetch revision ${revisionToFetch}")
-            .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${revisionToFetch}")
-        )
-    )
+    }
 
   setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
 
