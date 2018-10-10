@@ -46,53 +46,54 @@ class FetchSimulation extends Simulation {
       val s = session("schema").as[String]
       session.set("encodedSchema", URLEncoder.encode(s, "UTF-8"))
     }
-    .exec(http("list ${schema}")
-      .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
-      check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-    .during(journeyDuration)(
-      repeat(reads)(
-        exec { session =>
-          val rnd = ThreadLocalRandom
-            .current()
-            .nextInt(session("search_total").as[Int]) + 1
-          val s = session("schema").as[String]
-          session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
-        }.exec(
-          http("fetch from ${schema}")
-            .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
-        )
-      ).repeat(writes)(
-        exec { session =>
-          val rnd = ThreadLocalRandom
-            .current()
-            .nextInt(session("search_total").as[Int]) + 1
-          val s = session("schema").as[String]
-          session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
-
-        }.exec(
+    .tryMax(config.http.retries) {
+      exec(
+        http("list ${schema}")
+          .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
+          check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
+        .during(journeyDuration)(repeat(reads)(
+          exec { session =>
+            val rnd = ThreadLocalRandom
+              .current()
+              .nextInt(session("search_total").as[Int]) + 1
+            val s = session("schema").as[String]
+            session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
+          }.exec(
             http("fetch from ${schema}")
               .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
-              .check(bodyString.saveAs("savedPayload"))
           )
-          .exec { session =>
-            val json     = parse(session("savedPayload").as[String]).right.get
-            val revision = json.asObject.getOrElse(JsonObject())("_rev").flatMap(_.asNumber).flatMap(_.toInt).get
-            val update = json.mapObject { obj =>
-              obj
-                .filterKeys(s => !s.startsWith("_"))
-                .add(s"nxv:updated${revision + 1}", Json.fromString(s"${UUID.randomUUID().toString}"))
+        ).repeat(writes)(
+          exec { session =>
+            val rnd = ThreadLocalRandom
+              .current()
+              .nextInt(session("search_total").as[Int]) + 1
+            val s = session("schema").as[String]
+            session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
+
+          }.exec(
+              http("fetch from ${schema}")
+                .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                .check(bodyString.saveAs("savedPayload"))
+            )
+            .exec { session =>
+              val json     = parse(session("savedPayload").as[String]).right.get
+              val revision = json.asObject.getOrElse(JsonObject())("_rev").flatMap(_.asNumber).flatMap(_.toInt).get
+              val update = json.mapObject { obj =>
+                obj
+                  .filterKeys(s => !s.startsWith("_"))
+                  .add(s"nxv:updated${revision + 1}", Json.fromString(s"${UUID.randomUUID().toString}"))
+              }
+              session.set("updateRevision", revision).set("updatePayload", update.spaces2)
             }
-            session.set("updateRevision", revision).set("updatePayload", update.spaces2)
-          }
-          .exec(
-            http("update ${schema}")
-              .put(
-                s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
-              .body(StringBody("${updatePayload}"))
-              .header("Content-Type", "application/json")
-          )
-      ))
-  //  setUp(scn.inject(constantUsersPerSec(1) during (30 seconds)).protocols(httpConf))
+            .exec(
+              http("update ${schema}")
+                .put(
+                  s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
+                .body(StringBody("${updatePayload}"))
+                .header("Content-Type", "application/json")
+            )
+        ))
+    }
 
   setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
 

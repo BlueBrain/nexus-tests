@@ -14,7 +14,7 @@ final case class AppConfig(http: HttpConfig,
 
 object AppConfig {
 
-  final case class HttpConfig(token: String)
+  final case class HttpConfig(token: String, retries: Int)
 
   final case class KgConfig(base: Uri)
 

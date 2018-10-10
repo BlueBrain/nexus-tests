@@ -52,42 +52,19 @@ class UpdateSimulation extends Simulation {
       val s = session("schema").as[String]
       session.set("encodedSchema", URLEncoder.encode(s, "UTF-8"))
     }
-    .exec(http("list ${schema}")
-      .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
-      check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-    .repeat(repeatCountExpression, "instanceNumber")(
-      exec { session =>
-        val s              = session("schema").as[String]
-        val instanceNumber = session("instanceNumber").as[Int] + 1
-        session
-          .set("encodedId", URLEncoder.encode(s"$s/ids/$instanceNumber", "UTF-8"))
-          .set("expectedRevisions", Math.max((revisions - (instanceNumber - 1) * revisionStep) - 1, 1))
-      }.exec(
-          http("fetch from ${schema}")
-            .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
-            .check(jsonPath("$.._rev")
-                     .ofType[Int]
-                     .saveAs("currentRevision"),
-                   bodyString.saveAs("savedPayload"))
-        )
-        .asLongAs(revisionExpression)(
+    .tryMax(config.http.retries) {
+      exec(
+        http("list ${schema}")
+          .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
+          check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
+        .repeat(repeatCountExpression, "instanceNumber")(
           exec { session =>
-            val json     = parse(session("savedPayload").as[String]).right.get
-            val revision = json.asObject.getOrElse(JsonObject())("_rev").flatMap(_.asNumber).flatMap(_.toInt).get
-            val update = json.mapObject { obj =>
-              obj
-                .filterKeys(s => !s.startsWith("_"))
-                .add(s"nxv:updated${revision + 1}", Json.fromString(s"${UUID.randomUUID().toString}"))
-            }
-            session.set("updateRevision", revision).set("updatePayload", update.spaces2)
+            val s              = session("schema").as[String]
+            val instanceNumber = session("instanceNumber").as[Int] + 1
+            session
+              .set("encodedId", URLEncoder.encode(s"$s/ids/$instanceNumber", "UTF-8"))
+              .set("expectedRevisions", Math.max((revisions - (instanceNumber - 1) * revisionStep) - 1, 1))
           }.exec(
-              http("update ${schema}")
-                .put(
-                  s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
-                .body(StringBody("${updatePayload}"))
-                .header("Content-Type", "application/json")
-            )
-            .exec(
               http("fetch from ${schema}")
                 .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
                 .check(jsonPath("$.._rev")
@@ -95,8 +72,33 @@ class UpdateSimulation extends Simulation {
                          .saveAs("currentRevision"),
                        bodyString.saveAs("savedPayload"))
             )
+            .asLongAs(revisionExpression)(
+              exec { session =>
+                val json     = parse(session("savedPayload").as[String]).right.get
+                val revision = json.asObject.getOrElse(JsonObject())("_rev").flatMap(_.asNumber).flatMap(_.toInt).get
+                val update = json.mapObject { obj =>
+                  obj
+                    .filterKeys(s => !s.startsWith("_"))
+                    .add(s"nxv:updated${revision + 1}", Json.fromString(s"${UUID.randomUUID().toString}"))
+                }
+                session.set("updateRevision", revision).set("updatePayload", update.spaces2)
+              }.exec(
+                  http("update ${schema}")
+                    .put(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
+                    .body(StringBody("${updatePayload}"))
+                    .header("Content-Type", "application/json")
+                )
+                .exec(
+                  http("fetch from ${schema}")
+                    .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                    .check(jsonPath("$.._rev")
+                             .ofType[Int]
+                             .saveAs("currentRevision"),
+                           bodyString.saveAs("savedPayload"))
+                )
+            )
         )
-    )
+    }
 
   setUp(scn.inject(atOnceUsers(12)).protocols(httpConf))
 

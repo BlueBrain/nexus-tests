@@ -12,7 +12,7 @@ import io.circe.parser.parse
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 
-class UploadSimulation extends Simulation {
+class CreateSimulation extends Simulation {
 
   private val config        = new Settings(ConfigFactory.parseResources("perf-tests.conf").resolve()).appConfig
   private val projectNumber = config.uploadConfig.project.toString
@@ -74,13 +74,15 @@ class UploadSimulation extends Simulation {
   private val scn = scenario("upload")
     .repeat(size / parallelUsers) {
       feed(feeder.iterator)
-        .exec(
-          http("post to ${schemaNonEncoded}")
-            .post("/resources/perftestorg/perftestproj${project}/${schema}")
-            .body(StringBody("${payload}"))
-            .header("Content-Type", "application/json")
-            .check(status.in(201, 409))
-        )
+        .tryMax(config.http.retries) {
+          exec(
+            http("post to ${schemaNonEncoded}")
+              .post("/resources/perftestorg/perftestproj${project}/${schema}")
+              .body(StringBody("${payload}"))
+              .header("Content-Type", "application/json")
+              .check(status.in(201, 409))
+          )
+        }
     }
 
   setUp(scn.inject(atOnceUsers(parallelUsers)).protocols(httpConf))
