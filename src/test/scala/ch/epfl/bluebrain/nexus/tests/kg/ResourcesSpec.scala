@@ -104,6 +104,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   }
 
   "cross-project resolvers" should {
+    val resolverPayload =
+      jsonContentOf("/kg/resources/cross-project-resolver.json", Map(quote("{project}") -> id1))
     "fail if the schema doesn't exist in the project" in {
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
@@ -115,8 +117,6 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
 
     "create a cross-project-resolver for proj2" in {
-      val resolverPayload =
-        jsonContentOf("/kg/resources/cross-project-resolver.json", Map(quote("{project}") -> id1))
 
       eventually {
         cl(Req(POST, s"$kgBase/resolvers/$id2", headersUser, resolverPayload.toEntity)).mapResp { result =>
@@ -125,11 +125,35 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
+    "update a cross-project-resolver for proj2" in {
+      val updated = resolverPayload deepMerge Json.obj("priority" -> Json.fromInt(20))
+      eventually {
+        cl(Req(PUT, s"$kgBase/resolvers/$id2/example-id?rev=1", headersUser, updated.toEntity)).mapResp { result =>
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
+    }
+
+    "fetch the update" in {
+      val expected =
+        jsonContentOf(
+          "/kg/resources/cross-project-resolver-updated-resp.json",
+          Map(quote("{project}")        -> id1,
+              quote("{resources}")      -> s"$kgBase/resolvers/$id2",
+              quote("{project-parent}") -> s"$adminBase/projects/$id2")
+        )
+      cl(Req(GET, s"$kgBase/resolvers/$id2/example-id", headersUser)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
+      }
+    }
+
     "wait for the cross-project resolver to be indexed" in {
+      val expected = jsonContentOf("/kg/resources/cross-project-resolver-list.json", Map(quote("{project}") -> id1))
       eventually {
         cl(Req(GET, s"$kgBase/resolvers/$id2", headersUser)).mapJson { (json, result) =>
-          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 2
           result.status shouldEqual StatusCodes.OK
+          json should equalIgnoreArrayOrder(expected)
         }
       }
     }
