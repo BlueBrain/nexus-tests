@@ -1,0 +1,43 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/search",
+    "https://bluebrain.github.io/nexus/contexts/resource",
+    "https://bluebrain.github.io/nexus/contexts/resolver"
+  ],
+  "_total": 2,
+  "_results": [
+    {
+      "@id": "nxv:InProject",
+      "@type": [
+        "InProject",
+        "Resolver"
+      ],
+      "priority": 1,
+      "_rev": 1,
+      "_deprecated": false
+    },
+    {
+      "@id": "http://example.com/id",
+      "@type": [
+        "Resolver",
+        "CrossProject"
+      ],
+      "identities": [
+        {
+          "@type": "UserRef",
+          "realm": "bbp-test",
+          "sub": "ca88f6d1-4f71-4fc0-b023-de82b8afdc30"
+        }
+      ],
+      "priority": 20,
+      "projects": [
+        "{project}"
+      ],
+      "resourceTypes": [
+        "nxv:Schema"
+      ],
+      "_rev": 2,
+      "_deprecated": false
+    }
+  ]
+}
