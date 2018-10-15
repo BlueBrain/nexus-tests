@@ -18,7 +18,7 @@ Running this script will create projects in organization `perftestorg` with name
 Running the upload simulation
 
 ```
-sbt  'gatling-it:testOnly ch.epfl.bluebrain.nexus.perf.UploadSimulation'
+sbt  'gatling-it:testOnly ch.epfl.bluebrain.nexus.perf.CreateSimulation'
 ```
 
 
