@@ -15,7 +15,7 @@ class AddAttachmentSimulation extends BaseSimulation {
   val attachments         = config.attachmentsConfig.attachmentsPerInstance
   val attachmentSize      = config.attachmentsConfig.attachmentSize
 
-  val attachmentFile = pwd / 'tmp / s"test_attachment"
+  val attachmentFile = pwd / 'tmp / "test_attachment"
 
   rm ! attachmentFile
   write(attachmentFile, Random.alphanumeric.take(attachmentSize).mkString)
