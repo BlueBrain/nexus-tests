@@ -35,7 +35,7 @@ val circeVersion      = "0.10.0"
 val mockitoVersion    = "2.22.0"
 val pureconfigVersion = "0.9.2"
 val scalaTestVersion  = "3.0.5"
-val gatlingVersion    = "3.0.0-RC3"
+val gatlingVersion    = "3.0.0-RC4"
 
 // Nexus dependency versions
 val commonsVersion = "0.10.31"

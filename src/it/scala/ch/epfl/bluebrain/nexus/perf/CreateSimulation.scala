@@ -15,9 +15,9 @@ import io.gatling.http.Predef._
 class CreateSimulation extends Simulation {
 
   private val config        = new Settings(ConfigFactory.parseResources("perf-tests.conf").resolve()).appConfig
-  private val projectNumber = config.uploadConfig.project.toString
-  private val size          = config.uploadConfig.size
-  private val parallelUsers = config.uploadConfig.parallelUsers
+  private val projectNumber = config.createConfig.project.toString
+  private val size          = config.createConfig.size
+  private val parallelUsers = config.createConfig.parallelUsers
 
   private val map = Map[String, Uri](
     "person"                -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/person",
@@ -50,7 +50,7 @@ class CreateSimulation extends Simulation {
             Map(
               "payload" -> parse(instance.payload).right.get.mapObject { obj =>
                 obj.add("@id", Json.fromString(s"${obj("@id").get.asString.get}/resource"))
-              },
+              }.noSpaces,
               "project"          -> projectNumber,
               "schema"           -> "resource",
               "schemaNonEncoded" -> "resource"
