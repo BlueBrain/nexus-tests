@@ -31,6 +31,7 @@ object AppConfig {
                                      instances: Int,
                                      attachmentSize: Int,
                                      attachmentsPerInstance: Int,
-                                     parallelUsers: Int)
+                                     parallelUsers: Int,
+                                     duration: FiniteDuration)
 
 }
