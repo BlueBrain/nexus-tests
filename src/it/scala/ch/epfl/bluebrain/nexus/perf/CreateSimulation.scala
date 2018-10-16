@@ -3,21 +3,18 @@ package ch.epfl.bluebrain.nexus.perf
 import java.net.URLEncoder
 
 import akka.http.scaladsl.model.Uri
-import ch.epfl.bluebrain.nexus.perf.config.Settings
 import ch.epfl.bluebrain.nexus.perf.data.generation.{ResourcesGenerator, Templates}
-import ch.epfl.bluebrain.nexus.perf.data.generation.types.{Settings => GenerationSettings}
-import com.typesafe.config.ConfigFactory
+import ch.epfl.bluebrain.nexus.perf.data.generation.types.Settings
 import io.circe.Json
 import io.circe.parser.parse
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 
-class CreateSimulation extends Simulation {
+class CreateSimulation extends BaseSimulation {
 
-  private val config        = new Settings(ConfigFactory.parseResources("perf-tests.conf").resolve()).appConfig
-  private val projectNumber = config.uploadConfig.project.toString
-  private val size          = config.uploadConfig.size
-  private val parallelUsers = config.uploadConfig.parallelUsers
+  private val projectNumber = config.createConfig.project.toString
+  private val size          = config.createConfig.size
+  private val parallelUsers = config.createConfig.parallelUsers
 
   private val map = Map[String, Uri](
     "person"                -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/person",
@@ -33,7 +30,7 @@ class CreateSimulation extends Simulation {
     "subject"               -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/subject",
     "wholecellpatchclamp"   -> "https://bluebrain.github.io/nexus/schemas/experiment/wholecellpatchclamp"
   )
-  private val settings  = GenerationSettings(Uri("http://example.com/ids/"), map)
+  private val settings  = Settings(Uri("http://example.com/ids/"), map)
   private val templates = Templates(settings)
 
   private def feeder =
@@ -50,7 +47,7 @@ class CreateSimulation extends Simulation {
             Map(
               "payload" -> parse(instance.payload).right.get.mapObject { obj =>
                 obj.add("@id", Json.fromString(s"${obj("@id").get.asString.get}/resource"))
-              },
+              }.noSpaces,
               "project"          -> projectNumber,
               "schema"           -> "resource",
               "schemaNonEncoded" -> "resource"
@@ -66,10 +63,6 @@ class CreateSimulation extends Simulation {
             ))
         }
       }
-
-  private val httpConf = http
-    .baseUrl(config.kg.base.toString) // Here is the root for all relative URLs
-    .authorizationHeader(s"Bearer ${config.http.token}")
 
   private val scn = scenario("upload")
     .repeat(size / parallelUsers) {
