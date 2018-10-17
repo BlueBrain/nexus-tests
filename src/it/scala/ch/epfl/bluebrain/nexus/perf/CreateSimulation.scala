@@ -3,8 +3,8 @@ package ch.epfl.bluebrain.nexus.perf
 import java.net.URLEncoder
 
 import akka.http.scaladsl.model.Uri
-import ch.epfl.bluebrain.nexus.perf.data.generation.{ResourcesGenerator, Templates}
 import ch.epfl.bluebrain.nexus.perf.data.generation.types.Settings
+import ch.epfl.bluebrain.nexus.perf.data.generation.{ResourcesGenerator, Templates}
 import io.circe.Json
 import io.circe.parser.parse
 import io.gatling.core.Predef._
