@@ -3,8 +3,8 @@ package ch.epfl.bluebrain.nexus.perf
 import java.net.URLEncoder
 
 import akka.http.scaladsl.model.Uri
-import ch.epfl.bluebrain.nexus.perf.data.generation.{ResourcesGenerator, Templates}
 import ch.epfl.bluebrain.nexus.perf.data.generation.types.Settings
+import ch.epfl.bluebrain.nexus.perf.data.generation.{ResourcesGenerator, Templates}
 import io.circe.Json
 import io.circe.parser.parse
 import io.gatling.core.Predef._
@@ -15,23 +15,8 @@ class CreateSimulation extends BaseSimulation {
   private val projectNumber = config.createConfig.project.toString
   private val size          = config.createConfig.size
   private val parallelUsers = config.createConfig.parallelUsers
-
-  private val map = Map[String, Uri](
-    "person"                -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/person",
-    "stimulusexperiment"    -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/stimulusexperiment",
-    "trace"                 -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/trace",
-    "tracegeneration"       -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/tracegeneration",
-    "brainslicing"          -> "https://bluebrain.github.io/nexus/schemas/experiment/brainslicing",
-    "patchedcell"           -> "https://bluebrain.github.io/nexus/schemas/experiment/patchedcell",
-    "patchedcellcollection" -> "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellcollection",
-    "patchedslice"          -> "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellslice",
-    "protocol"              -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/protocol",
-    "slice"                 -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/slice",
-    "subject"               -> "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/subject",
-    "wholecellpatchclamp"   -> "https://bluebrain.github.io/nexus/schemas/experiment/wholecellpatchclamp"
-  )
-  private val settings  = Settings(Uri("http://example.com/ids/"), map)
-  private val templates = Templates(settings)
+  private val settings      = Settings(Uri("http://example.com/ids/"), map)
+  private val templates     = Templates(settings)
 
   private def feeder =
     ResourcesGenerator(templates, 1, size / 20, 20)
