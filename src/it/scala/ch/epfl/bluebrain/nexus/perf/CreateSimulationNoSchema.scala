@@ -3,8 +3,6 @@ package ch.epfl.bluebrain.nexus.perf
 import akka.http.scaladsl.model.Uri
 import ch.epfl.bluebrain.nexus.perf.data.generation.types.Settings
 import ch.epfl.bluebrain.nexus.perf.data.generation.{ResourcesGenerator, Templates}
-import io.circe.Json
-import io.circe.parser.parse
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 
@@ -33,33 +31,13 @@ class CreateSimulationNoSchema extends BaseSimulation {
 
   private def feeder =
     ResourcesGenerator(templates, 1, size / 20, 20)
-      .flatMap { instance =>
-        if (instance.schema.toString == "https://bluebrain.github.io/nexus/schemas/experiment/wholecellpatchclamp") {
-          Stream(
-            Map(
-              "payload"          -> instance.payload,
-              "project"          -> projectNumber,
-              "schema"           -> "resource",
-              "schemaNonEncoded" -> "resource"
-            ),
-            Map(
-              "payload" -> parse(instance.payload).right.get.mapObject { obj =>
-                obj.add("@id", Json.fromString(s"${obj("@id").get.asString.get}/resource"))
-              }.noSpaces,
-              "project"          -> projectNumber,
-              "schema"           -> "resource",
-              "schemaNonEncoded" -> "resource"
-            )
-          )
-        } else {
-          Stream(
-            Map(
-              "payload"          -> instance.payload,
-              "project"          -> projectNumber,
-              "schema"           -> "resource",
-              "schemaNonEncoded" -> "resource"
-            ))
-        }
+      .map { instance =>
+        Map(
+          "payload"          -> instance.payload,
+          "project"          -> projectNumber,
+          "schema"           -> "resource",
+          "schemaNonEncoded" -> "resource"
+        )
       }
 
   private val scn = scenario("upload")
