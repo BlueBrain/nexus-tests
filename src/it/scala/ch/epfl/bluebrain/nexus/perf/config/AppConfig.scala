@@ -11,7 +11,8 @@ final case class AppConfig(http: HttpConfig,
                            fetchConfig: FetchConfig,
                            updateConfig: UpdateConfig,
                            tagConfig: TagConfig,
-                           attachmentsConfig: AttachmentsConfig)
+                           attachmentsConfig: AttachmentsConfig,
+                           esSearchConfig: EsSearchConfig)
 
 object AppConfig {
 
@@ -34,4 +35,5 @@ object AppConfig {
                                      parallelUsers: Int,
                                      duration: FiniteDuration)
 
+  final case class EsSearchConfig(project: Int, duration: FiniteDuration, parallelUsers: Int)
 }

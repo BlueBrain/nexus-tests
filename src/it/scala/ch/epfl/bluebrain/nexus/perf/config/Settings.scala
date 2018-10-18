@@ -26,7 +26,8 @@ class Settings(config: Config) extends Extension {
     loadConfigOrThrow[FetchConfig](config, "app.fetch"),
     loadConfigOrThrow[UpdateConfig](config, "app.update"),
     loadConfigOrThrow[TagConfig](config, "app.tag"),
-    loadConfigOrThrow[AttachmentsConfig](config, "app.attachments")
+    loadConfigOrThrow[AttachmentsConfig](config, "app.attachments"),
+    loadConfigOrThrow[EsSearchConfig](config, "app.es-search")
   )
 
 }
