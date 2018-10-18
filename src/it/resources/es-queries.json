@@ -1,0 +1,165 @@
+{
+  "queries": [
+    {
+      "query": {
+        "term": {
+          "@type": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/WholeCellPatchClamp"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "http://www.w3.org/ns/prov#Activity"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "prov:Entity"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "http://www.w3.org/ns/prov#Generation"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/Protocol"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/Person"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/StimulusExperiment"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/Trace"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/TraceGeneration"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "@type": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/Subject"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resource"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/person"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/stimulusexperiment"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/trace"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/tracegeneration"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/experiment/brainslicing"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcell"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellcollection"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/experiment/patchedcellslice"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/protocol"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/slice"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/neurosciencegraph/core/subject"
+        }
+      }
+    },
+    {
+      "query": {
+        "term": {
+          "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/experiment/wholecellpatchclamp"
+        }
+      }
+    }
+  ]
+}
