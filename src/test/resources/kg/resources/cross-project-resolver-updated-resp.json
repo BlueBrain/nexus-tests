@@ -1,8 +1,8 @@
 {
   "@id": "http://example.com/id",
   "@context": [
-    "https://bluebrain.github.io/nexus/contexts/resolver",
-    "https://bluebrain.github.io/nexus/contexts/resource"
+    "https://bluebrain.github.io/nexus/contexts/resolver.json",
+    "https://bluebrain.github.io/nexus/contexts/resource.json"
   ],
   "@type": [
     "Resolver",
@@ -23,7 +23,7 @@
   ],
   "priority": 20,
   "_self": "{resources}/example-id",
-  "_constrainedBy": "nxs:resolver",
+  "_constrainedBy": "nxs:resolver.json",
   "_project": "{project-parent}",
   "_createdBy": "http://iam.dev.nexus.ocp.bbp.epfl.ch/v1/realms/bbp-test/users/ca88f6d1-4f71-4fc0-b023-de82b8afdc30",
   "_updatedBy": "http://iam.dev.nexus.ocp.bbp.epfl.ch/v1/realms/bbp-test/users/ca88f6d1-4f71-4fc0-b023-de82b8afdc30",

@@ -5,7 +5,7 @@
     "View"
   ],
   "resourceSchemas": [
-    "https://bluebrain.github.io/nexus/schemas/resource"
+    "https://bluebrain.github.io/nexus/schemas/resource.json"
   ],
   "mapping": {
     "doc": {
