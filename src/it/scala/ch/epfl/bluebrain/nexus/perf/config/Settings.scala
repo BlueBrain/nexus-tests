@@ -27,7 +27,8 @@ class Settings(config: Config) extends Extension {
     loadConfigOrThrow[UpdateConfig](config, "app.update"),
     loadConfigOrThrow[TagConfig](config, "app.tag"),
     loadConfigOrThrow[AttachmentsConfig](config, "app.attachments"),
-    loadConfigOrThrow[EsSearchConfig](config, "app.es-search")
+    loadConfigOrThrow[EsSearchConfig](config, "app.es-search"),
+    loadConfigOrThrow[BlazegraphConfig](config, "app.blazegraph")
   )
 
 }

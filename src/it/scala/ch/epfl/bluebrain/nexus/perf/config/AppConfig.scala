@@ -12,7 +12,8 @@ final case class AppConfig(http: HttpConfig,
                            updateConfig: UpdateConfig,
                            tagConfig: TagConfig,
                            attachmentsConfig: AttachmentsConfig,
-                           esSearchConfig: EsSearchConfig)
+                           esSearchConfig: EsSearchConfig,
+                           blazegraphConfig: BlazegraphConfig)
 
 object AppConfig {
 
@@ -36,4 +37,5 @@ object AppConfig {
                                      duration: FiniteDuration)
 
   final case class EsSearchConfig(project: Int, duration: FiniteDuration, parallelUsers: Int)
+  final case class BlazegraphConfig(project: Int, duration: FiniteDuration, parallelUsers: Int)
 }
