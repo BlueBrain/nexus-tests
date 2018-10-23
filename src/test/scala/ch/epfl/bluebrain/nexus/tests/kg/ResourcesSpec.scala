@@ -188,9 +188,11 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             quote("{resources}") -> s"$kgBase/resources/$id1",
             quote("{project}")   -> s"$adminBase/projects/$id1")
       )
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1", headersUser)).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
+        }
       }
     }
 
@@ -202,9 +204,11 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             quote("{resources}") -> s"$kgBase/resources/$id1",
             quote("{project}")   -> s"$adminBase/projects/$id1")
       )
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1?rev=1", headersUser)).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
+        }
       }
     }
   }
@@ -219,12 +223,12 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         .mapResp { resp =>
           resp.status shouldEqual StatusCodes.Created
         }
-      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1/tags?rev=3", headersUser, tag2.toEntity))
+      cl(Req(PUT, s"$kgBase/data/$id1/test-resource:1/tags?rev=3", headersUser, tag2.toEntity))
         .mapResp { resp =>
           resp.status shouldEqual StatusCodes.Created
         }
-
     }
+
     "fetch a tagged value" in {
 
       val expectedTag1 = jsonContentOf(
@@ -247,10 +251,9 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             quote("{resources}") -> s"$kgBase/resources/$id1",
             quote("{project}")   -> s"$adminBase/projects/$id1")
       )
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.0", headersUser)).mapJson {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
+      cl(Req(GET, s"$kgBase/data/$id1/test-resource:1?tag=v1.0.0", headersUser)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
       }
     }
   }
@@ -278,28 +281,32 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
     "fetch attachment" in {
       val expectedContent = contentOf("/kg/resources/attachment.json")
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", headersUser))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1/attachments/attachment.json", headersUser))
+          .mapString { (content, result) =>
+            result.status shouldEqual StatusCodes.OK
+            result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+            result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+            result.header[`Content-Type`].value.value shouldEqual "application/json"
+            content shouldEqual expectedContent
+          }
+      }
     }
 
     "fetch gzipped attachment" in {
       val expectedContent = contentOf("/kg/resources/attachment.json")
       val requestHeaders  = headersUser ++ Seq(`Accept-Encoding`(HttpEncodings.gzip))
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", requestHeaders))
-        .mapByteString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
-        }
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1/attachments/attachment.json", requestHeaders))
+          .mapByteString { (content, result) =>
+            result.status shouldEqual StatusCodes.OK
+            result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
+            result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+            result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+            result.header[`Content-Type`].value.value shouldEqual "application/json"
+            Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
+          }
+      }
     }
 
     "update attachment with JSON" in {
@@ -324,29 +331,31 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     "fetch updated attachment" in {
 
       val expectedContent = contentOf("/kg/resources/attachment2.json")
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", headersUser))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
-
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1/attachments/attachment.json", headersUser))
+          .mapString { (content, result) =>
+            result.status shouldEqual StatusCodes.OK
+            result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+            result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+            result.header[`Content-Type`].value.value shouldEqual "application/json"
+            content shouldEqual expectedContent
+          }
+      }
     }
 
     "fetch previous revision of attachment" in {
 
       val expectedContent = contentOf("/kg/resources/attachment.json")
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json?rev=5", headersUser))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
-
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1/attachments/attachment.json?rev=5", headersUser))
+          .mapString { (content, result) =>
+            result.status shouldEqual StatusCodes.OK
+            result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+            result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+            result.header[`Content-Type`].value.value shouldEqual "application/json"
+            content shouldEqual expectedContent
+          }
+      }
     }
 
     "upload second attachment" in {
@@ -360,10 +369,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           .toEntity()
 
       cl(
-        Req(PUT,
-            s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment2?rev=6",
-            headersUser,
-            multipartForm).removeHeader("Content-Type")).mapResp { result =>
+        Req(PUT, s"$kgBase/data/$id1/test-resource:1/attachments/attachment2?rev=6", headersUser, multipartForm)
+          .removeHeader("Content-Type")).mapResp { result =>
         result.status shouldEqual StatusCodes.OK
       }
     }
@@ -371,14 +378,15 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     "fetch second attachment" in {
 
       val expectedContent = contentOf("/kg/resources/attachment2")
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment2", headersUser))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment2"
-          content shouldEqual expectedContent
-        }
-
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1/attachments/attachment2", headersUser))
+          .mapString { (content, result) =>
+            result.status shouldEqual StatusCodes.OK
+            result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+            result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment2"
+            content shouldEqual expectedContent
+          }
+      }
     }
 
     "delete the attachment" in {
@@ -388,25 +396,27 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             headersUser)).mapResp { result =>
         result.status shouldEqual StatusCodes.OK
       }
-
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json", headersUser))
-        .mapResp { result =>
-          result.status shouldEqual StatusCodes.NotFound
-        }
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1/attachments/attachment.json", headersUser))
+          .mapResp { result =>
+            result.status shouldEqual StatusCodes.NotFound
+          }
+      }
     }
 
     "fetch the attachment at a previous revision" in {
       val expectedContent = contentOf("/kg/resources/attachment2.json")
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/attachments/attachment.json?rev=7", headersUser))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
+      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/data/$id1")) { base =>
+        cl(Req(GET, s"$base/test-resource:1/attachments/attachment.json?rev=7", headersUser))
+          .mapString { (content, result) =>
+            result.status shouldEqual StatusCodes.OK
+            result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+            result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+            result.header[`Content-Type`].value.value shouldEqual "application/json"
+            content shouldEqual expectedContent
+          }
+      }
     }
-
   }
 
   "listing resources" should {
@@ -422,6 +432,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
 
     }
+
     "list the resources" in {
       val expected = jsonContentOf("/kg/listings/response.json",
                                    Map(quote("{resources}") -> s"$kgBase/resources/$id1",
