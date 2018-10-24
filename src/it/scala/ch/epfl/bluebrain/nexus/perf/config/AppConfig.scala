@@ -13,7 +13,8 @@ final case class AppConfig(http: HttpConfig,
                            tagConfig: TagConfig,
                            attachmentsConfig: AttachmentsConfig,
                            esSearchConfig: EsSearchConfig,
-                           blazegraphConfig: BlazegraphConfig)
+                           blazegraphConfig: BlazegraphConfig,
+                           multipleProjectsConfig: MultipleProjectsConfig)
 
 object AppConfig {
 
@@ -38,4 +39,10 @@ object AppConfig {
 
   final case class EsSearchConfig(project: Int, duration: FiniteDuration, parallelUsers: Int)
   final case class BlazegraphConfig(project: Int, duration: FiniteDuration, parallelUsers: Int)
+
+  final case class MultipleProjectsConfig(projects: Int,
+                                          instancesPerProject: Int,
+                                          parallelUsers: Int,
+                                          fetchDuration: FiniteDuration,
+  )
 }

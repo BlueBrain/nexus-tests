@@ -28,7 +28,8 @@ class Settings(config: Config) extends Extension {
     loadConfigOrThrow[TagConfig](config, "app.tag"),
     loadConfigOrThrow[AttachmentsConfig](config, "app.attachments"),
     loadConfigOrThrow[EsSearchConfig](config, "app.es-search"),
-    loadConfigOrThrow[BlazegraphConfig](config, "app.blazegraph")
+    loadConfigOrThrow[BlazegraphConfig](config, "app.blazegraph"),
+    loadConfigOrThrow[MultipleProjectsConfig](config, "app.multiple-projects")
   )
 
 }
