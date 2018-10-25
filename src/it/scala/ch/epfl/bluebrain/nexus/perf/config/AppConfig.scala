@@ -14,7 +14,8 @@ final case class AppConfig(http: HttpConfig,
                            attachmentsConfig: AttachmentsConfig,
                            esSearchConfig: EsSearchConfig,
                            blazegraphConfig: BlazegraphConfig,
-                           multipleProjectsConfig: MultipleProjectsConfig)
+                           multipleProjectsConfig: MultipleProjectsConfig,
+                           fullSimulationConfig: FullSimulationConfig)
 
 object AppConfig {
 
@@ -45,4 +46,14 @@ object AppConfig {
                                           parallelUsers: Int,
                                           fetchDuration: FiniteDuration,
   )
+
+  final case class FullSimulationConfig(project: Int,
+                                        duration: FiniteDuration,
+                                        users: Int,
+                                        repeats: Int,
+                                        fetchPercentage: Double,
+                                        fetchAndUpdatePercentage: Double,
+                                        fetchAndGetByRevisionPercentage: Double,
+                                        blazegraphSearchPercentage: Double,
+                                        esSearchPercentage: Double)
 }
