@@ -29,7 +29,8 @@ class Settings(config: Config) extends Extension {
     loadConfigOrThrow[AttachmentsConfig](config, "app.attachments"),
     loadConfigOrThrow[EsSearchConfig](config, "app.es-search"),
     loadConfigOrThrow[BlazegraphConfig](config, "app.blazegraph"),
-    loadConfigOrThrow[MultipleProjectsConfig](config, "app.multiple-projects")
+    loadConfigOrThrow[MultipleProjectsConfig](config, "app.multiple-projects"),
+    loadConfigOrThrow[FullSimulationConfig](config, "app.full")
   )
 
 }
