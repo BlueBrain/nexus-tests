@@ -40,7 +40,12 @@ class BaseSimulation extends Simulation {
   )
 
   val schemasFeeder = schemas.toArray.circular
-  val httpConf = http
-    .baseUrl(config.kg.base.toString) // Here is the root for all relative URLs
-    .authorizationHeader(s"Bearer ${config.http.token}")
+
+  val httpConf =
+    if (config.http.anonymous)
+      http.baseUrl(config.kg.base.toString) // Here is the root for all relative URLs
+    else
+      http
+        .baseUrl(config.kg.base.toString)
+        .authorizationHeader(s"Bearer ${config.http.token}")
 }
