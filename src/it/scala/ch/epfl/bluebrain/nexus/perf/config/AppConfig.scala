@@ -55,5 +55,6 @@ object AppConfig {
                                         fetchAndUpdatePercentage: Double,
                                         fetchAndGetByRevisionPercentage: Double,
                                         blazegraphSearchPercentage: Double,
-                                        esSearchPercentage: Double)
+                                        esSearchPercentage: Double,
+                                        maxResources: Int)
 }
