@@ -4,4 +4,4 @@ prefix prov: <http://www.w3.org/ns/prov#>
 select ?s where {
   ?s prov:wasGeneratedBy / prov:used / ^prov:hadMember / ^nsg:hasPart / ^prov:generated / prov:used / ^prov:generated / prov:used / nsg:species / rdfs:label "Rattus norvegicus"
 }
-LIMIT 1000
+LIMIT 50

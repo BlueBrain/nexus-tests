@@ -11,7 +11,7 @@ class FetchAttachmentSimulation extends BaseSimulation {
 
   val project = config.attachmentsConfig.project
 
-  val scn = scenario("fetchAttachment")
+  val scn = scenario("FetchAttachmentSimulation")
     .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
@@ -26,7 +26,7 @@ class FetchAttachmentSimulation extends BaseSimulation {
         session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
 
       }.exec(
-          http("fetch from ${schema}")
+          http("Get Resource By Id")
             .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
             .check(bodyString.saveAs("savedPayload"))
         )
@@ -47,7 +47,7 @@ class FetchAttachmentSimulation extends BaseSimulation {
                           .nextInt(downloadUrls.size)))
         }
         .exec(
-          http("get attachment from ${schema}")
+          http("Download Attachment")
             .get("${downloadUrl}")
         )
     )

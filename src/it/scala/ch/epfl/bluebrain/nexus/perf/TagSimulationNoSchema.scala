@@ -7,7 +7,7 @@ import io.gatling.core.Predef._
 import io.gatling.core.session.Expression
 import io.gatling.http.Predef._
 
-class TagSimulation extends BaseSimulation {
+class TagSimulationNoSchema extends BaseSimulation {
 
   val project      = config.updateConfig.project
   val revisions    = config.updateConfig.revisions
@@ -18,7 +18,7 @@ class TagSimulation extends BaseSimulation {
     Math.min(revisions / revisionStep, session("search_total").as[Int])
   }
 
-  val scn = scenario("TagSimulation")
+  val scn = scenario("TagSimulationNoSchema")
     .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
@@ -27,7 +27,7 @@ class TagSimulation extends BaseSimulation {
     .tryMax(config.http.retries) {
       exec(
         http("List Resources")
-          .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
+          .get(s"/resources/perftestorg/perftestproj$project/resource")
           check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
         .repeat(repeatCountExpression, "instanceNumber")(
           exec { session =>
@@ -40,7 +40,7 @@ class TagSimulation extends BaseSimulation {
               session.set("tag", session("tagCounter").as[Int] + 1)
             }.exec(
                 http("Get Resource By Id")
-                  .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                  .get(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}")
                   .check(jsonPath("$.._rev")
                     .ofType[Int]
                     .saveAs("currentRevision"))
@@ -53,7 +53,8 @@ class TagSimulation extends BaseSimulation {
               }
               .exec(
                 http("Tag Resource")
-                  .put(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}/tags?rev=$${currentRevision}")
+                  .put(
+                    s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}/tags?rev=$${currentRevision}")
                   .body(StringBody("""{"tag": "v0.0.${tag}","rev": ${tagRevision}} """))
                   .header("Content-Type", "application/json")
               )
@@ -61,6 +62,5 @@ class TagSimulation extends BaseSimulation {
         )
     }
 
-  setUp(scn.inject(atOnceUsers(schemas.size)).protocols(httpConf))
-
+  setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
 }

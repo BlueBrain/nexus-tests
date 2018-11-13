@@ -25,12 +25,12 @@ class CreateSimulationNoSchema extends BaseSimulation {
         )
       }
 
-  private val scn = scenario("upload")
+  private val scn = scenario("CreateSimulationNoSchema")
     .repeat(size / parallelUsers) {
       feed(feeder.iterator)
         .tryMax(config.http.retries) {
           exec(
-            http("post to ${schemaNonEncoded}")
+            http("Create Resource (no validation)")
               .post("/resources/perftestorg/perftestproj${project}/${schema}")
               .body(StringBody("${payload}"))
               .header("Content-Type", "application/json")

@@ -5,4 +5,4 @@ select ?s where {
   ?s nsg:species <http://purl.obolibrary.org/obo/NCBITaxon_10116>
 
 }
-LIMIT 1000
+LIMIT 50

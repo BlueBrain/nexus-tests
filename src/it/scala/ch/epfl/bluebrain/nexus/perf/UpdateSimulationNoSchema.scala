@@ -9,7 +9,7 @@ import io.gatling.core.Predef._
 import io.gatling.core.session.Expression
 import io.gatling.http.Predef._
 
-class UpdateSimulation extends BaseSimulation {
+class UpdateSimulationNoSchema extends BaseSimulation {
 
   val project = config.updateConfig.project
 
@@ -24,7 +24,7 @@ class UpdateSimulation extends BaseSimulation {
     Math.min(revisions / revisionStep, session("search_total").as[Int])
   }
 
-  val scn = scenario("UpdateSimulation")
+  val scn = scenario("UpdateSimulationNoSchema")
     .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
@@ -33,7 +33,7 @@ class UpdateSimulation extends BaseSimulation {
     .tryMax(config.http.retries) {
       exec(
         http("List Resources")
-          .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
+          .get(s"/resources/perftestorg/perftestproj$project/resource")
           check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
         .repeat(repeatCountExpression, "instanceNumber")(
           exec { session =>
@@ -44,7 +44,7 @@ class UpdateSimulation extends BaseSimulation {
               .set("expectedRevisions", Math.max((revisions - (instanceNumber - 1) * revisionStep) - 1, 1))
           }.exec(
               http("Get Resource By Id")
-                .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                .get(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}")
                 .check(jsonPath("$.._rev")
                          .ofType[Int]
                          .saveAs("currentRevision"),
@@ -62,13 +62,13 @@ class UpdateSimulation extends BaseSimulation {
                 session.set("updateRevision", revision).set("updatePayload", update.spaces2)
               }.exec(
                   http("Update Resource")
-                    .put(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
+                    .put(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}?rev=$${updateRevision}")
                     .body(StringBody("${updatePayload}"))
                     .header("Content-Type", "application/json")
                 )
                 .exec(
                   http("Get Resource By Id")
-                    .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                    .get(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}")
                     .check(jsonPath("$.._rev")
                              .ofType[Int]
                              .saveAs("currentRevision"),
@@ -78,6 +78,6 @@ class UpdateSimulation extends BaseSimulation {
         )
     }
 
-  setUp(scn.inject(atOnceUsers(schemas.size)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
 
 }

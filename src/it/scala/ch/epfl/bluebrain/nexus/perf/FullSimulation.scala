@@ -39,7 +39,7 @@ class FullSimulation extends BaseSimulation with Resources {
     val s = session("schema").as[String]
     session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
   }.exec(
-    http("fetch from ${schema}")
+    http("Get Resource By Id")
       .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
   )
 
@@ -50,7 +50,7 @@ class FullSimulation extends BaseSimulation with Resources {
     val s = session("schema").as[String]
     session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
   }.exec(
-      http("fetch from ${schema}")
+      http("Get Resource By Id")
         .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
         .check(bodyString.saveAs("savedPayload"))
     )
@@ -65,7 +65,7 @@ class FullSimulation extends BaseSimulation with Resources {
       session.set("updateRevision", revision).set("updatePayload", update.spaces2)
     }
     .exec(
-      http("update ${schema}")
+      http("Update Resource")
         .put(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
         .body(StringBody("${updatePayload}"))
         .header("Content-Type", "application/json")
@@ -78,7 +78,7 @@ class FullSimulation extends BaseSimulation with Resources {
     val s = session("schema").as[String]
     session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
   }.exec(
-      http("fetch")
+      http("Get Resource By Id")
         .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
         .check(jsonPath("$.._rev").ofType[Int].saveAs("revisions"))
     )
@@ -89,24 +89,24 @@ class FullSimulation extends BaseSimulation with Resources {
       session.set("revisionToFetch", rnd)
     }
     .exec(
-      http("fetch revision ${revisionToFetch}")
+      http("Get Resource By Id And Rev")
         .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${revisionToFetch}")
     )
 
   val esSearch = feed(esQueries).exec(
-    http("ES search")
+    http("ElasticSearch Query")
       .post(s"/views/perftestorg/perftestproj$project/nxv:defaultElasticIndex/_search")
       .body(StringBody("${query}"))
       .asJson
   )
 
   val blazegraphSearch = feed(blazegraphQueries).exec(
-    http("Blazegraph search")
+    http("BlazeGraph Query")
       .post(s"/views/perftestorg/perftestproj$project/nxv:defaultSparqlIndex/sparql")
       .body(StringBody("${query}"))
       .header("Content-Type", "text/plain"))
 
-  val scn = scenario("full simulation")
+  val scn = scenario("FullSimulation")
     .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
@@ -114,7 +114,7 @@ class FullSimulation extends BaseSimulation with Resources {
     }
     .tryMax(config.http.retries)(
       exec(
-        http("list ${schema}")
+        http("List Resources")
           .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
           check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
         .repeat(config.fullSimulationConfig.repeats)(

@@ -6,7 +6,7 @@ import java.util.concurrent.ThreadLocalRandom
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 
-class GetByTagSimulation extends BaseSimulation {
+class GetByTagSimulationNoSchema extends BaseSimulation {
 
   val journeyDuration = config.fetchConfig.duration
 
@@ -24,7 +24,7 @@ class GetByTagSimulation extends BaseSimulation {
     .tryMax(config.http.retries) {
       exec(
         http("List Resources")
-          .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
+          .get(s"/resources/perftestorg/perftestproj$project/resource")
           check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
         .during(journeyDuration)(
           exec { session =>
@@ -39,7 +39,7 @@ class GetByTagSimulation extends BaseSimulation {
 
           }.exec(
             http("Get Resource By Id And Tag")
-              .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?tag=v0.0.$${tag}")
+              .get(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}?tag=v0.0.$${tag}")
           )
         )
     }

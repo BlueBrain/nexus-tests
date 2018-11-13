@@ -16,11 +16,11 @@ class BlazegraphSimulation extends BaseSimulation with Resources {
 
   val project = config.blazegraphConfig.project
 
-  val scn = scenario("Blazegraph search")
+  val scn = scenario("BlazegraphSimulation")
     .feed(queries)
     .during(config.blazegraphConfig.duration) {
       exec(
-        http("Blazegraph search")
+        http("BlazeGraph Query")
           .post(s"/views/perftestorg/perftestproj$project/nxv:defaultSparqlIndex/sparql")
           .body(StringBody("${query}"))
           .header("Content-Type", "text/plain")

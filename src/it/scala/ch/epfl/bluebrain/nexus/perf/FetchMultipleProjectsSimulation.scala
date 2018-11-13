@@ -17,7 +17,7 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
   val reads  = config.fetchConfig.reads
   val writes = config.fetchConfig.writes
 
-  val scn = scenario("fetching data from multiple projects")
+  val scn = scenario("FetchMultipleProjectsSimulation")
     .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
@@ -30,7 +30,7 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
             .current()
             .nextInt(numProjects) + 1
           session.set("project", project)
-        }.exec(http("list ${schema}")
+        }.exec(http("List Resources")
             .get("/resources/perftestorg/perftestproj${project}/${encodedSchema}")
             check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
           .repeat(reads)(
@@ -41,7 +41,7 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
               val s = session("schema").as[String]
               session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
             }.exec(
-              http("fetch from ${schema}")
+              http("Get Resource By Id")
                 .get("/resources/perftestorg/perftestproj${project}/${encodedSchema}/${encodedId}")
             )
           )
@@ -54,7 +54,7 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
               session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
 
             }.exec(
-                http("fetch from ${schema}")
+                http("Get Resource By Id")
                   .get("/resources/perftestorg/perftestproj${project}/${encodedSchema}/${encodedId}")
                   .check(bodyString.saveAs("savedPayload"))
               )
@@ -70,7 +70,7 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
                   session.set("updateRevision", revision).set("updatePayload", update.spaces2)
               }
               .exec(
-                http("update ${schema}")
+                http("Update Resource")
                   .put(
                     "/resources/perftestorg/perftestproj${project}/$${encodedSchema}/${encodedId}?rev=${updateRevision}")
                   .body(StringBody("${updatePayload}"))

@@ -4,4 +4,4 @@ prefix prov: <http://www.w3.org/ns/prov#>
 select ?s where {
   ?s rdf:type nsg:StimulationTrace
 }
-LIMIT 1000
+LIMIT 50
