@@ -288,8 +288,9 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
           .right
           .getOrElse(throw new RuntimeException(s"Couldn't decode ${js.noSpaces} to AclListing"))
 
-        val rev    = acls._results.head._rev
-        val entity = jsonContentOf("/iam/subtract-permissions.json", replSub + (quote("{perms}") -> "projects/write")).toEntity
+        val rev = acls._results.head._rev
+        val entity =
+          jsonContentOf("/iam/subtract-permissions.json", replSub + (quote("{perms}") -> "projects/write")).toEntity
         cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, entity)).mapResp { result =>
           result.status shouldEqual StatusCodes.OK
         }
