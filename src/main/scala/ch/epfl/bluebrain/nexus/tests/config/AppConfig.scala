@@ -24,7 +24,12 @@ object AppConfig {
 
   final case class AdminConfig(uri: Uri, attachmentSize: Long)
 
-  final case class IamConfig(uri: Uri, groupToken: String, userToken: String, userSub: String, coreContext: Uri)
+  final case class IamConfig(uri: Uri,
+                             testRealm: String,
+                             groupToken: String,
+                             userToken: String,
+                             userSub: String,
+                             coreContext: Uri)
 
   final case class PrefixesConfig(coreContext: Uri,
                                   standardsContext: Uri,

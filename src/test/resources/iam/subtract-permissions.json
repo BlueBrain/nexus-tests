@@ -1,5 +1,5 @@
 {
-  "@type": "Append",
+  "@type": "Subtract",
   "acl": [
     {
       "identity": {
