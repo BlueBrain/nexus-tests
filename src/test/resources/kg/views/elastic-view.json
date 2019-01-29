@@ -1,11 +1,11 @@
 {
   "@type": [
-    "ElasticView",
-    "Alpha",
-    "View"
+    "nxv:ElasticSearchView",
+    "nxv:Alpha",
+    "nxv:View"
   ],
   "resourceSchemas": [
-    "https://bluebrain.github.io/nexus/schemas/resource.json"
+    "https://bluebrain.github.io/nexus/schemas/unconstrained.json"
   ],
   "mapping": {
     "doc": {
@@ -57,7 +57,6 @@
           }
         }
       },
-
       "dynamic": false
     }
   }
