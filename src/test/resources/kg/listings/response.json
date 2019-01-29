@@ -8,22 +8,13 @@
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/1",
       "@type": "https://bluebrain.github.io/nexus/vocabulary/TestResource",
-      "http://www.w3.org/ns/dcat#distribution" : {
-        "@type" : "http://www.w3.org/ns/dcat#Distribution",
-        "_byteSize" : 26,
-        "_digest" : {
-          "_algorithm" : "SHA-256",
-          "_value" : "62ad07ee5e775552034186daafd7d77054620f2bc9fb8da629fd7af24b4c84e7"
-        },
-        "_downloadURL" : "{resources}/test-schema/test-resource:1/attachments/attachment2",
-        "_mediaType" : "text/plain; charset=UTF-8",
-        "_originalFileName" : "attachment2"
-      },
       "_self": "{resources}/test-schema/test-resource:1",
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
-      "_rev": 8,
-      "_deprecated": false
+      "_rev": 4,
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/2",
@@ -32,7 +23,9 @@
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,
-      "_deprecated": false
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/3",
@@ -41,7 +34,9 @@
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,
-      "_deprecated": false
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/4",
@@ -50,7 +45,9 @@
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,
-      "_deprecated": false
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/5",
@@ -59,7 +56,9 @@
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,
-      "_deprecated": false
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
     }
   ]
 }

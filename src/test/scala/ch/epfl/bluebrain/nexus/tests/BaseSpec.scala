@@ -87,7 +87,15 @@ class BaseSpec
   def ensureAdminPermissions =
     cl(Req(uri = s"$iamBase/acls/", headers = headersGroup)).mapDecoded[AclListing] { (acls, result) =>
       val requiredPermissions =
-        Set("acls/read", "acls/write", "permissions/read", "permissions/write", "realms/read", "realms/write")
+        Set("acls/read",
+            "acls/write",
+            "permissions/read",
+            "permissions/write",
+            "realms/read",
+            "realms/write",
+            "organizations/read",
+            "projects/read",
+            "events/read")
       val permissions = acls._results
         .flatMap(_.acl)
         .find {
@@ -96,6 +104,7 @@ class BaseSpec
         }
         .map(_.permissions)
         .getOrElse(Set.empty)
+      val rev = acls._results.head._rev
 
       if (permissions != requiredPermissions) {
         val json = jsonContentOf("/iam/add-group.json",
@@ -103,8 +112,8 @@ class BaseSpec
                                    quote("{perms}") -> requiredPermissions.mkString("\",\""),
                                    quote("{group}") -> "bbp-ou-nexus"
                                  ))
-        cl(Req(PATCH, s"$iamBase/acls/", headersGroup, json.toEntity)).mapResp(r =>
-          r.status shouldEqual StatusCodes.Created)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=${rev}", headersGroup, json.toEntity)).mapResp(r =>
+          r.status should (equal(StatusCodes.Created) or equal(StatusCodes.OK)))
       }
 
       result.status shouldEqual StatusCodes.OK
@@ -153,7 +162,7 @@ class BaseSpec
     def getArray(field: String): Seq[Json] = json.asObject.flatMap(_(field)).flatMap(_.asArray).value
 
     def updateField(field: String, value: String): Json = json.mapObject(_.add(field, Json.fromString(value)))
-    def removeField(field: String): Json                = json.mapObject(_.remove(field))
+    def removeField(field: String): Json                = removeFields(field)
     def removeFields(fields: String*): Json = json.mapObject { jsonObj =>
       fields.foldLeft(jsonObj) { (obj, field) =>
         obj.remove(field)
@@ -224,10 +233,9 @@ class BaseSpec
     jsonContentOf("/admin/orgs/payload.json", rep).toEntity
   }
 
-  def kgProjectReqEntity(path: String = "/kg/projects/project.json",
-                         name: String = genString(),
-                         base: String = s"${config.kg.uri.toString()}/resources/${genString()}/"): RequestEntity = {
-    val rep = Map(quote("{name}") -> name, quote("{base}") -> base)
+  def kgProjectReqEntity(path: String = "/kg/projects/project.json", name: String = genString()): RequestEntity = {
+    val base = s"${config.kg.uri.toString()}/resources/$name/_/"
+    val rep  = Map(quote("{name}") -> name, quote("{base}") -> base)
     jsonContentOf(path, rep).toEntity
   }
 

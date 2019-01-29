@@ -1,0 +1,19 @@
+{
+  "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
+  "@id": "{kgBase}/resources/{projId}/_/attachment.json",
+  "@type": "File",
+  "_bytes": 52,
+  "_digest": {
+    "_algorithm": "SHA-256",
+    "_value": "0e5ce4e33df07eb312e462d9b4646aebf44e7c4d758891e632dbb0533df85e3f"
+  },
+  "_filename": "attachment.json",
+  "_mediaType": "application/json",
+  "_self": "{kgBase}/files/{projId}/base:attachment.json",
+  "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/file.json",
+  "_project": "{project}",
+  "_rev": 3,
+  "_deprecated": true,
+  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
+}

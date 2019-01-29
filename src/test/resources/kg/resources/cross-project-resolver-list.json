@@ -1,43 +1,37 @@
 {
   "@context": [
     "https://bluebrain.github.io/nexus/contexts/search.json",
-    "https://bluebrain.github.io/nexus/contexts/resource.json",
-    "https://bluebrain.github.io/nexus/contexts/resolver.json"
+    "https://bluebrain.github.io/nexus/contexts/resource.json"
   ],
   "_total": 2,
   "_results": [
     {
-      "@id": "nxv:InProject",
+      "@id": "https://bluebrain.github.io/nexus/vocabulary/defaultInProject",
       "@type": [
-        "InProject",
-        "Resolver"
+        "https://bluebrain.github.io/nexus/vocabulary/Resolver",
+        "https://bluebrain.github.io/nexus/vocabulary/InProject"
       ],
-      "priority": 1,
+      "_self": "{kgBase}/resolvers/{projId}/nxv:defaultInProject",
+      "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
+      "_project": "{project}",
       "_rev": 1,
-      "_deprecated": false
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
     },
     {
       "@id": "http://example.com/id",
       "@type": [
-        "Resolver",
-        "CrossProject"
+        "https://bluebrain.github.io/nexus/vocabulary/CrossProject",
+        "https://bluebrain.github.io/nexus/vocabulary/Resolver"
       ],
-      "identities": [
-        {
-          "@type": "UserRef",
-          "realm": "bbp-test",
-          "sub": "ca88f6d1-4f71-4fc0-b023-de82b8afdc30"
-        }
-      ],
-      "priority": 20,
-      "projects": [
-        "{project}"
-      ],
-      "resourceTypes": [
-        "nxv:Schema"
-      ],
+      "_self": "{kgBase}/resolvers/{projId}/example-id",
+      "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
+      "_project": "{project}",
       "_rev": 2,
-      "_deprecated": false
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
     }
   ]
 }

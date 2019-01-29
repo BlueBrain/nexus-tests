@@ -7,9 +7,9 @@
   ],
   "identities": [
     {
-      "@type": "UserRef",
-      "realm": "bbp-test",
-      "sub": "ca88f6d1-4f71-4fc0-b023-de82b8afdc30"
+      "@type": "User",
+      "realm": "nexusdev",
+      "subject": "{user}"
     }
   ],
   "priority": 50

@@ -254,13 +254,8 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       val json =
         jsonContentOf("/iam/add.json",
                       replSub + (quote("{perms}") -> """projects/create","projects/read","projects/write""")).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapJson { (js, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
-        val acls = js
-          .as[AclListing]
-          .right
-          .getOrElse(throw new RuntimeException(s"Couldn't decode ${js.noSpaces} to AclListing"))
-
         val rev = acls._results.head._rev
 
         cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
