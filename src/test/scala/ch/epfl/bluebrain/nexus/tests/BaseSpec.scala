@@ -228,8 +228,8 @@ class BaseSpec
     jsonContentOf(path, rep).toEntity
   }
 
-  private[tests] def orgReqEntity(name: String = genString()): RequestEntity = {
-    val rep = Map(quote("{name}") -> name)
+  private[tests] def orgReqEntity(description: String = genString()): RequestEntity = {
+    val rep = Map(quote("{description}") -> description)
     jsonContentOf("/admin/orgs/payload.json", rep).toEntity
   }
 
@@ -239,11 +239,22 @@ class BaseSpec
     jsonContentOf(path, rep).toEntity
   }
 
-  private[tests] def createRespJson(id: String, rev: Long, tpe: String = "projects"): Json = {
-    val resp = resourceCtx ++ Map(quote("{base}") -> config.admin.uri.toString(),
-                                  quote("{id}")        -> id,
-                                  quote("{type}")      -> tpe,
-                                  quote(""""{rev}"""") -> rev.toString)
+  private[tests] def createRespJson(id: String,
+                                    rev: Long,
+                                    tpe: String = "projects",
+                                    deprecated: Boolean = false): Json = {
+    val resp = resourceCtx ++ Map(
+      quote("{id}")         -> id,
+      quote("{type}")       -> tpe,
+      quote("{rev}")        -> rev.toString,
+      quote("{iamBase}")    -> config.iam.uri.toString(),
+      quote("{realm}")      -> config.iam.testRealm,
+      quote("{user}")       -> config.iam.userSub,
+      quote("{adminBase}")  -> config.admin.uri.toString(),
+      quote("{orgId}")      -> id,
+      quote("{user}")       -> config.iam.userSub,
+      quote("{deprecated}") -> deprecated.toString()
+    )
     jsonContentOf("/admin/response.json", resp)
   }
 
@@ -251,16 +262,15 @@ class BaseSpec
                                            tpe: String,
                                            idPrefix: String,
                                            id: String,
-                                           name: String,
+                                           description: String,
                                            rev: Long,
                                            label: String,
                                            deprecated: Boolean = false) = {
-    json.getString("@context") shouldEqual config.prefixes.coreContext.toString()
     json.getString("@id") shouldEqual s"${config.admin.uri.toString()}/$idPrefix/$id"
-    json.getString("@type") shouldEqual s"nxv:$tpe"
+    json.getString("@type") shouldEqual tpe
     json.getString("_uuid") should fullyMatch regex """[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"""
-    json.getString("label") shouldEqual label
-    json.getString("name") shouldEqual name
+    json.getString("_label") shouldEqual label
+    json.getString("description") shouldEqual description
     json.getLong("_rev") shouldEqual rev
     json.getBoolean("_deprecated") shouldEqual deprecated
   }
