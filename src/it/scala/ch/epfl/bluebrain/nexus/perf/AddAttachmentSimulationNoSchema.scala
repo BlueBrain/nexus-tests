@@ -7,7 +7,7 @@ import io.gatling.http.Predef._
 
 import scala.util.Random
 
-class AddAttachmentSimulation extends BaseSimulation {
+class AddAttachmentSimulationNoSchema extends BaseSimulation {
 
   val project = config.attachmentsConfig.project
 
@@ -20,7 +20,7 @@ class AddAttachmentSimulation extends BaseSimulation {
   rm ! attachmentFile
   write(attachmentFile, Random.alphanumeric.take(attachmentSize).mkString)
 
-  val scn = scenario("AddAttachmentSimulation")
+  val scn = scenario("AddAttachmentSimulationNoSchema")
     .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
@@ -38,19 +38,19 @@ class AddAttachmentSimulation extends BaseSimulation {
             session.set("attachment", session("attachmentsCounter").as[Int] + 1)
           }.exec(
               http("Get Resource By Id")
-                .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                .get(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}")
                 .check(jsonPath("$.._rev")
                   .ofType[Int]
                   .saveAs("currentRevision"))
             )
             .exec(
               http("Upload Attachment")
-                .put(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}/attachments/attachment$${attachment}?rev=$${currentRevision}")
+                .put(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}/attachments/attachment$${attachmentsCounter}?rev=$${currentRevision}")
                 .formUpload("file", attachmentFile.toString())
             )
         )
       )
     }
 
-  setUp(scn.inject(atOnceUsers(schemas.size)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
 }

@@ -17,11 +17,11 @@ class ElasticSearchSimulation extends BaseSimulation with Resources {
 
   val project = config.esSearchConfig.project
 
-  val scn = scenario("ES search")
+  val scn = scenario("ElasticSearchSimulation")
     .feed(queries)
     .during(config.esSearchConfig.duration) {
       exec(
-        http("ES search")
+        http("ElasticSearch Query")
           .post(s"/views/perftestorg/perftestproj$project/nxv:defaultElasticIndex/_search")
           .body(StringBody("${query}"))
           .asJson

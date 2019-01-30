@@ -31,12 +31,12 @@ class CreateMultipleProjectsSimulation extends BaseSimulation {
           )
       }
 
-  private val scn = scenario("upload multiple projects")
+  private val scn = scenario("CreateMultipleProjectsSimulation")
     .repeat(totalSize / parallelUsers) {
       feed(feeder.iterator)
         .tryMax(config.http.retries) {
           exec(
-            http("post to ${schemaNonEncoded}")
+            http("Create Resource")
               .post("/resources/perftestorg/perftestproj${project}/${schema}")
               .body(StringBody("${payload}"))
               .header("Content-Type", "application/json")

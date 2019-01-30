@@ -5,4 +5,4 @@ select ?s where {
   ?s rdf:type nsg:Person
 
 }
-LIMIT 1000
+LIMIT 50

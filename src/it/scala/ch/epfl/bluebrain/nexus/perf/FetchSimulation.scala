@@ -17,7 +17,7 @@ class FetchSimulation extends BaseSimulation {
   val reads  = config.fetchConfig.reads
   val writes = config.fetchConfig.writes
 
-  val scn = scenario("fetching data")
+  val scn = scenario("FetchSimulation")
     .feed(schemasFeeder)
     .exec { session =>
       val s = session("schema").as[String]
@@ -25,7 +25,7 @@ class FetchSimulation extends BaseSimulation {
     }
     .tryMax(config.http.retries) {
       exec(
-        http("list ${schema}")
+        http("List Resources")
           .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
           check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
         .during(journeyDuration)(repeat(reads)(
@@ -36,7 +36,7 @@ class FetchSimulation extends BaseSimulation {
             val s = session("schema").as[String]
             session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
           }.exec(
-            http("fetch from ${schema}")
+            http("Get Resource By Id")
               .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
           )
         ).repeat(writes)(
@@ -48,7 +48,7 @@ class FetchSimulation extends BaseSimulation {
             session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
 
           }.exec(
-              http("fetch from ${schema}")
+              http("Get Resource By Id")
                 .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
                 .check(bodyString.saveAs("savedPayload"))
             )
@@ -63,7 +63,7 @@ class FetchSimulation extends BaseSimulation {
               session.set("updateRevision", revision).set("updatePayload", update.spaces2)
             }
             .exec(
-              http("update ${schema}")
+              http("Update Resource")
                 .put(
                   s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
                 .body(StringBody("${updatePayload}"))
