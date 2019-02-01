@@ -36,11 +36,36 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       }
     }
 
+    val id = genId()
+
     "succeed if payload is correct" in {
-      val id = genId()
       cl(Req(PUT, s"$adminBase/orgs/$id", headersUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 1L, "orgs")
+        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
+      }
+    }
+
+    "check if permissions have been created for user" in {
+      cl(Req(GET, s"$iamBase/acls/$id", headersUser)).mapDecoded[AclListing] { (acls, result) =>
+        result.status shouldEqual StatusCodes.OK
+        acls._results.head.acl.head.permissions shouldEqual Set(
+          "acls/read",
+          "acls/write",
+          "files/write",
+          "organizations/create",
+          "organizations/read",
+          "organizations/write",
+          "projects/create",
+          "projects/read",
+          "projects/write",
+          "resolvers/write",
+          "resources/read",
+          "resources/write",
+          "schemas/write",
+          "views/write",
+          "views/query"
+        )
+
       }
     }
 
@@ -48,12 +73,12 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       val id = genId()
       cl(Req(PUT, s"$adminBase/orgs/$id", headersUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 1L, "orgs")
+        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
 
       cl(Req(PUT, s"$adminBase/orgs/$id", headersUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/already-exists.json", Map(quote("{orgId}") -> id))
+        json shouldEqual jsonContentOf("/admin/errors/org-already-exists.json", Map(quote("{orgId}") -> id))
       }
 
     }
@@ -67,7 +92,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
       cl(Req(PUT, s"$adminBase/orgs/$id", headersUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 1L, "orgs")
+        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
 
       cleanAcls
@@ -143,7 +168,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     "create organization" in {
       cl(Req(PUT, s"$adminBase/orgs/$id", headersUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 1L, "orgs")
+        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
     }
 
@@ -167,7 +192,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     "fail when wrong revision is provided" in {
       cl(Req(PUT, s"$adminBase/orgs/$id?rev=4", headersUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/incorrect-revision.json", errorCtx)
+        json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json", errorCtx)
       }
     }
 
@@ -201,7 +226,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
       cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headersUser, update)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 2L, "orgs")
+        json.removeMetadata() shouldEqual createRespJson(id, 2L, "orgs", "Organization")
       }
 
       val updatedName2 = s"$id organization update 2"
@@ -209,7 +234,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
       cl(Req(PUT, s"$adminBase/orgs/$id?rev=2", headersUser, update2)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 3L, "orgs")
+        json.removeMetadata() shouldEqual createRespJson(id, 3L, "orgs", "Organization")
 
       }
 
@@ -258,7 +283,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     "create the organization" in {
       cl(Req(PUT, s"$adminBase/orgs/$id", headersUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 1L, "orgs")
+        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
     }
 
@@ -266,7 +291,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
       cl(Req(DELETE, s"$adminBase/orgs/$id?rev=4", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/incorrect-revision.json")
+        json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json")
       }
     }
 
@@ -280,7 +305,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     "succeed if organization exists" in {
       cl(Req(DELETE, s"$adminBase/orgs/$id?rev=1", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.removeFields("_uuid", "_createdAt", "_updatedAt") shouldEqual createRespJson(id, 2L, "orgs", true)
+        json.removeMetadata() shouldEqual createRespJson(id, 2L, "orgs", "Organization", true)
       }
 
       cl(Req(uri = s"$adminBase/orgs/$id", headers = headersUser)).mapJson { (json, result) =>

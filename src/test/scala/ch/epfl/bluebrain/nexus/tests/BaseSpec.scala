@@ -169,6 +169,7 @@ class BaseSpec
       }
 
     }
+    def removeMetadata(): Json = json.removeFields("_uuid", "_createdAt", "_updatedAt")
   }
 
   private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse]) {
@@ -219,12 +220,14 @@ class BaseSpec
       path: String = "/admin/projects/create.json",
       nxv: String = randomProjectPrefix,
       person: String = randomProjectPrefix,
-      name: String = genString(),
-      base: String = s"${config.admin.uri.toString()}/${genString()}"): RequestEntity = {
+      description: String = genString(),
+      base: String = s"${config.admin.uri.toString()}/${genString()}",
+      vocab: String = s"${config.admin.uri.toString()}/${genString()}"): RequestEntity = {
     val rep = Map(quote("{nxv-prefix}") -> nxv,
                   quote("{person-prefix}") -> person,
-                  quote("{name}")          -> name,
-                  quote("{base}")          -> base)
+                  quote("{description}")   -> description,
+                  quote("{base}")          -> base,
+                  quote("{vocab}")         -> vocab)
     jsonContentOf(path, rep).toEntity
   }
 
@@ -242,10 +245,12 @@ class BaseSpec
   private[tests] def createRespJson(id: String,
                                     rev: Long,
                                     tpe: String = "projects",
+                                    `@type`: String = "Project",
                                     deprecated: Boolean = false): Json = {
     val resp = resourceCtx ++ Map(
       quote("{id}")         -> id,
       quote("{type}")       -> tpe,
+      quote("{@type}")      -> `@type`,
       quote("{rev}")        -> rev.toString,
       quote("{iamBase}")    -> config.iam.uri.toString(),
       quote("{realm}")      -> config.iam.testRealm,

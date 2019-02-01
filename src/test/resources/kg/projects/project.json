@@ -3,6 +3,10 @@
   "base": "{base}",
   "apiMappings": [
     {
+      "prefix": "attachment",
+      "namespace": "{base}"
+    },
+    {
       "prefix": "nxv",
       "namespace": "https://bluebrain.github.io/nexus/vocabulary/"
     },

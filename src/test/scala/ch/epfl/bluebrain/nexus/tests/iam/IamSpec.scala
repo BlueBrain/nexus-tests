@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.Randomness
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Permissions, User}
+import ch.epfl.bluebrain.nexus.tests.iam.types._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
 
@@ -393,7 +393,11 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
           .find(_._path == "/")
           .value
           .acl
-          .head
+          .find {
+            case AclEntry(User("nexusdev", config.iam.userSub), _) => true
+            case _                                                 => false
+          }
+          .value
           .permissions shouldEqual Set("projects/create", "projects/read")
         acls._results
           .find(_._path == s"/$orgPath1")
