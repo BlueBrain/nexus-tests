@@ -1,4 +1,5 @@
 {
-  "@context": "{error-context}",
-  "code": "UnauthorizedAccess"
+  "@context": "https://bluebrain.github.io/nexus/contexts/error.json",
+  "@type": "AuthorizationFailed",
+  "reason": "The supplied authentication is not authorized to access this resource."
 }

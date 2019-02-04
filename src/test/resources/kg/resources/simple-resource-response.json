@@ -16,8 +16,8 @@
   "_self" : "{resources}/test-schema/test-resource:1",
   "_project" : "{project}",
   "_constrainedBy": "https://dev.nexus.test.com/test-schema",
-  "_createdBy": "http://iam.dev.nexus.ocp.bbp.epfl.ch/v1/realms/bbp-test/users/ca88f6d1-4f71-4fc0-b023-de82b8afdc30",
-  "_updatedBy": "http://iam.dev.nexus.ocp.bbp.epfl.ch/v1/realms/bbp-test/users/ca88f6d1-4f71-4fc0-b023-de82b8afdc30",
+  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}",
   "_rev": {rev},
   "_deprecated": false
 }

@@ -4,9 +4,9 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{HttpEntity, StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.{CancelAfterFailure, Inspectors}
 import org.scalatest.concurrent.Eventually
@@ -22,28 +22,21 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     "add necessary permissions for user" in {
       val json = jsonContentOf(
         "/iam/add.json",
-        replSub + (quote("{perms}") -> """projects/create","projects/read","orgs/write","resources/create","views/manage","resolvers/read","resources/read","resources/write","orgs/read","orgs/create""")
+        replSub + (quote("{perms}") -> "organizations/create")
       ).toEntity
-      cl(Req(PUT, s"$iamBase/acls/", headersGroup, json)).mapResp { result =>
+      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
-        result.entity.isKnownEmpty() shouldEqual true
-      }
-      eventually {
-        cl(Req(GET, s"$iamBase/acls/", headersUser)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.getArray("acl").head.getArray("permissions").size shouldEqual 10
-        }
+        val rev = acls._results.head._rev
+
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
     "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity())).mapResp { result =>
-        result.status shouldEqual StatusCodes.Created
-      }
-
-      cl(Req(PUT, s"$adminBase/projects/$fullId", headersUser, kgProjectReqEntity())).mapResp { result =>
-        result.status shouldEqual StatusCodes.Created
-      }
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity(orgId)))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+      cl(Req(PUT, s"$adminBase/projects/$fullId", headersUser, kgProjectReqEntity(name = fullId)))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
 
@@ -53,19 +46,15 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       val payload = jsonContentOf("/kg/views/elastic-view.json")
 
       eventually {
-        cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testView", headersUser, payload.toEntity)).mapString {
-          (_, result) =>
-            result.status shouldEqual StatusCodes.Created
-        }
+        cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testView", headersUser, payload.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
 
     "create a context" in {
       val payload = jsonContentOf("/kg/views/context.json")
       cl(Req(PUT, s"$kgBase/resources/$fullId/resource/test-resource:context", headersUser, payload.toEntity))
-        .mapString { (_, result) =>
-          result.status shouldEqual StatusCodes.Created
-        }
+        .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "wait until in project resolver is created" in {
@@ -91,9 +80,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               s"$kgBase/resources/$fullId/resource/patchedcell:$id",
               headersUser,
               payload.removeField("@id").toEntity))
-          .mapString { (_, result) =>
-            result.status shouldEqual StatusCodes.Created
-          }
+          .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
 

@@ -16,10 +16,11 @@ import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.config.Settings
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Group, User}
 import com.typesafe.config.ConfigFactory
 import io.circe.parser._
 import io.circe.syntax._
-import io.circe.{Json, JsonObject}
+import io.circe.{Decoder, Json, JsonObject}
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.{MatchResult, Matcher}
@@ -27,6 +28,7 @@ import org.scalatest.matchers.{MatchResult, Matcher}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.reflect._
 
 class BaseSpec
     extends WordSpecLike
@@ -53,37 +55,69 @@ class BaseSpec
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    val _ = cleanAcls
+    cleanAcls
+    val _ = ensureAdminPermissions
   }
-  def cleanAcls = {
 
-    cl(Req(uri = s"$iamBase/acls/*/*?parents=true", headers = headersGroup)).mapJson { (json, result) =>
-      result.status shouldEqual StatusCodes.OK
-      val permissions =
-        json.hcursor.get[Vector[Json]]("acl").toOption.value.foldLeft(Set.empty[(String, Set[String])]) {
-          case (acc, j) =>
-            j.hcursor.downField("identity").get[String]("sub") match {
-              case Right(s) if s == config.iam.userSub =>
-                acc + (j.hcursor.get[String]("path").toOption.value ->
-                  j.hcursor.get[Set[String]]("permissions").toOption.value)
-              case _ => acc
+  def cleanAcls =
+    cl(Req(uri = s"$iamBase/acls/*/*?ancestors=true&self=false", headers = headersGroup)).mapDecoded[AclListing] {
+      (acls, result) =>
+        result.status shouldEqual StatusCodes.OK
+
+        val permissions = acls._results
+          .map { acls =>
+            val userAcls = acls.acl.filter {
+              case AclEntry(User(_, config.iam.userSub), _) => true
+              case _                                        => false
             }
-        }
-
-      permissions.foreach {
-        case (path, perms) =>
-          val entity =
-            jsonContentOf("/iam/patch-single.json", replSub + (quote("{perms}") -> perms.mkString("""",""""))).toEntity
-          cl(Req(PATCH, s"$iamBase/acls$path", headersGroup, entity)).mapJson { (json, result) =>
-            result.status shouldEqual StatusCodes.OK
-            json shouldEqual jsonContentOf("/iam/patch-response.json", replSub ++ resourceIamCtx)
+            acls.copy(acl = userAcls)
           }
+          .filter(_.acl.nonEmpty)
+
+        permissions.foreach { acl =>
+          val entity =
+            jsonContentOf("/iam/subtract-permissions.json",
+                          replSub + (quote("{perms}") -> acl.acl.head.permissions.mkString("\",\""))).toEntity
+          cl(Req(PATCH, s"$iamBase/acls${acl._path}?rev=${acl._rev}", headersGroup, entity))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
+        }
+        result.status shouldEqual StatusCodes.OK
+    }
+
+  def ensureAdminPermissions =
+    cl(Req(uri = s"$iamBase/acls/", headers = headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      val requiredPermissions =
+        Set("acls/read",
+            "acls/write",
+            "permissions/read",
+            "permissions/write",
+            "realms/read",
+            "realms/write",
+            "organizations/read",
+            "projects/read",
+            "events/read")
+      val permissions = acls._results
+        .flatMap(_.acl)
+        .find {
+          case AclEntry(Group(_, "bbp-ou-nexus"), _) => true
+          case _                                     => false
+        }
+        .map(_.permissions)
+        .getOrElse(Set.empty)
+      val rev = acls._results.head._rev
+
+      if (permissions != requiredPermissions) {
+        val json = jsonContentOf("/iam/add-group.json",
+                                 Map(
+                                   quote("{perms}") -> requiredPermissions.mkString("\",\""),
+                                   quote("{group}") -> "bbp-ou-nexus"
+                                 ))
+        cl(Req(PATCH, s"$iamBase/acls/?rev=${rev}", headersGroup, json.toEntity)).mapResp(r =>
+          r.status should (equal(StatusCodes.Created) or equal(StatusCodes.OK)))
       }
 
       result.status shouldEqual StatusCodes.OK
-
     }
-  }
 
   def equalIgnoreArrayOrder(json: Json) = IgnoredArrayOrder(json)
 
@@ -128,13 +162,29 @@ class BaseSpec
     def getArray(field: String): Seq[Json] = json.asObject.flatMap(_(field)).flatMap(_.asArray).value
 
     def updateField(field: String, value: String): Json = json.mapObject(_.add(field, Json.fromString(value)))
-    def removeField(field: String): Json                = json.mapObject(_.remove(field))
+    def removeField(field: String): Json                = removeFields(field)
+    def removeFields(fields: String*): Json = json.mapObject { jsonObj =>
+      fields.foldLeft(jsonObj) { (obj, field) =>
+        obj.remove(field)
+      }
+
+    }
+    def removeMetadata(): Json = json.removeFields("_uuid", "_createdAt", "_updatedAt")
   }
 
   private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse]) {
 
     def mapJson(body: (Json, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[Json]): Assertion =
       whenReady(value)(res => um(res.entity).map(json => body(json, res)).futureValue)
+
+    def mapDecoded[A: ClassTag](body: (A, HttpResponse) => Assertion)(implicit decoder: Decoder[A]) =
+      mapJson { (json, response) =>
+        val obj = json
+          .as[A]
+          .right
+          .getOrElse(throw new RuntimeException(s"Couldn't decode ${json.noSpaces} to ${classTag[A].toString()}."))
+        body(obj, response)
+      }
 
     def mapString(body: (String, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[String]): Assertion =
       whenReady(value)(res => um(res.entity).map(s => body(s, res)).futureValue)
@@ -170,32 +220,46 @@ class BaseSpec
       path: String = "/admin/projects/create.json",
       nxv: String = randomProjectPrefix,
       person: String = randomProjectPrefix,
-      name: String = genString(),
-      base: String = s"${config.admin.uri.toString()}/${genString()}"): RequestEntity = {
+      description: String = genString(),
+      base: String = s"${config.admin.uri.toString()}/${genString()}",
+      vocab: String = s"${config.admin.uri.toString()}/${genString()}"): RequestEntity = {
     val rep = Map(quote("{nxv-prefix}") -> nxv,
                   quote("{person-prefix}") -> person,
-                  quote("{name}")          -> name,
-                  quote("{base}")          -> base)
+                  quote("{description}")   -> description,
+                  quote("{base}")          -> base,
+                  quote("{vocab}")         -> vocab)
     jsonContentOf(path, rep).toEntity
   }
 
-  private[tests] def orgReqEntity(name: String = genString()): RequestEntity = {
-    val rep = Map(quote("{name}") -> name)
+  private[tests] def orgReqEntity(description: String = genString()): RequestEntity = {
+    val rep = Map(quote("{description}") -> description)
     jsonContentOf("/admin/orgs/payload.json", rep).toEntity
   }
 
-  def kgProjectReqEntity(path: String = "/kg/projects/project.json",
-                         name: String = genString(),
-                         base: String = s"${config.kg.uri.toString()}/resources/${genString()}/"): RequestEntity = {
-    val rep = Map(quote("{name}") -> name, quote("{base}") -> base)
+  def kgProjectReqEntity(path: String = "/kg/projects/project.json", name: String = genString()): RequestEntity = {
+    val base = s"${config.kg.uri.toString()}/resources/$name/_/"
+    val rep  = Map(quote("{name}") -> name, quote("{base}") -> base)
     jsonContentOf(path, rep).toEntity
   }
 
-  private[tests] def createRespJson(id: String, rev: Long, tpe: String = "projects"): Json = {
-    val resp = resourceCtx ++ Map(quote("{base}") -> config.admin.uri.toString(),
-                                  quote("{id}")        -> id,
-                                  quote("{type}")      -> tpe,
-                                  quote(""""{rev}"""") -> rev.toString)
+  private[tests] def createRespJson(id: String,
+                                    rev: Long,
+                                    tpe: String = "projects",
+                                    `@type`: String = "Project",
+                                    deprecated: Boolean = false): Json = {
+    val resp = resourceCtx ++ Map(
+      quote("{id}")         -> id,
+      quote("{type}")       -> tpe,
+      quote("{@type}")      -> `@type`,
+      quote("{rev}")        -> rev.toString,
+      quote("{iamBase}")    -> config.iam.uri.toString(),
+      quote("{realm}")      -> config.iam.testRealm,
+      quote("{user}")       -> config.iam.userSub,
+      quote("{adminBase}")  -> config.admin.uri.toString(),
+      quote("{orgId}")      -> id,
+      quote("{user}")       -> config.iam.userSub,
+      quote("{deprecated}") -> deprecated.toString()
+    )
     jsonContentOf("/admin/response.json", resp)
   }
 
@@ -203,16 +267,15 @@ class BaseSpec
                                            tpe: String,
                                            idPrefix: String,
                                            id: String,
-                                           name: String,
+                                           description: String,
                                            rev: Long,
                                            label: String,
                                            deprecated: Boolean = false) = {
-    json.getString("@context") shouldEqual config.prefixes.coreContext.toString()
     json.getString("@id") shouldEqual s"${config.admin.uri.toString()}/$idPrefix/$id"
-    json.getString("@type") shouldEqual s"nxv:$tpe"
+    json.getString("@type") shouldEqual tpe
     json.getString("_uuid") should fullyMatch regex """[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"""
-    json.getString("label") shouldEqual label
-    json.getString("name") shouldEqual name
+    json.getString("_label") shouldEqual label
+    json.getString("description") shouldEqual description
     json.getLong("_rev") shouldEqual rev
     json.getBoolean("_deprecated") shouldEqual deprecated
   }

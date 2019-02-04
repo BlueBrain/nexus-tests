@@ -1,11 +1,10 @@
 {
-  "@type": "Append",
   "acl": [
     {
       "identity": {
-        "@type": "User",
+        "@type": "Group",
         "realm": "nexusdev",
-        "subject": "{sub}"
+        "group": "{group}"
       },
       "permissions": [
         "{perms}"
