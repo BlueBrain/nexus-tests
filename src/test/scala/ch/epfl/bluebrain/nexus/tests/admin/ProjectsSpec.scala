@@ -29,7 +29,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     val id     = s"$orgId/$projId"
 
     "fail to create project if the permissions are missing" in {
-      cl(Req(PUT, s"$adminBase/projects/$id", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/projects/$id", headersUserAcceptJson, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
         json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
       }
@@ -48,24 +48,26 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     }
 
     "fail to create if the HTTP verb used is POST" in {
-      cl(Req(POST, s"$adminBase/projects/$id", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
+      cl(Req(POST, s"$adminBase/projects/$id", headersUserAcceptJson, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.MethodNotAllowed
         json shouldEqual jsonContentOf("/admin/errors/method-not-supported.json")
       }
     }
 
     "create organization" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity()))
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUserAcceptJson, orgReqEntity()))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     val description = s"$id project"
     val base        = s"${config.kg.uri.toString()}/resources/$id/_/"
     val vocab       = s"${config.kg.uri.toString()}/vocabs/$id/"
-    val create      = projectReqEntity(nxv = "nxv", person = "person", description = description, base = base, vocab = vocab)
+    val createJson =
+      projectReqJson(nxv = "nxv", person = "person", description = description, base = base, vocab = vocab)
+    val create = createJson.toEntity
 
     "return not found when fetching a non existing project" in {
-      cl(Req(uri = s"$adminBase/projects/$orgId/${genId()}", headers = headersUser))
+      cl(Req(uri = s"$adminBase/projects/$orgId/${genId()}", headers = headersUserAcceptJson))
         .mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
 
@@ -80,14 +82,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     }
 
     "create project" in {
-      cl(Req(PUT, s"$adminBase/projects/$id", headersUser, create)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/projects/$id", headersUserAcceptJson, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L)
       }
     }
 
     "fail to create if project already exists" in {
-      cl(Req(PUT, s"$adminBase/projects/$id", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/projects/$id", headersUserAcceptJson, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
         json shouldEqual jsonContentOf("/admin/errors/project-already-exists.json",
                                        Map(
@@ -99,7 +101,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     }
 
     "ensure that necessary permissions have been set in IAM" in {
-      cl(Req(GET, s"$iamBase/acls/$id", headersUser)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/$id", headersUserAcceptJson)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl.head.permissions shouldEqual Set(
           "acls/read",
@@ -118,21 +120,19 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           "views/write",
           "views/query"
         )
-
       }
     }
 
     "fetch the project" in {
-      cl(Req(uri = s"$adminBase/projects/$id", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateProject(json, create.toJson.value)
+        validateProject(json, createJson)
         validateAdminResource(json, "Project", "projects", id, description, 1L, projId)
       }
     }
 
     "return not found when fetching a non existing revision of a project" in {
-      println(s"$adminBase/projects/$id?rev=3")
-      cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersUser)).mapResp { result =>
+      cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersUserAcceptJson)).mapResp { result =>
         result.status shouldEqual StatusCodes.NotFound
       }
     }
@@ -141,14 +141,15 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       val descRev2  = s"$description update 1"
       val baseRev2  = s"${config.admin.uri.toString()}/${genString()}/"
       val vocabRev2 = s"${config.admin.uri.toString()}/${genString()}/"
-      val updateRev2 =
-        projectReqEntity("/admin/projects/update.json",
-                         "nxv",
-                         "person",
-                         description = descRev2,
-                         base = baseRev2,
-                         vocab = vocabRev2)
-      cl(Req(PUT, s"$adminBase/projects/$id?rev=1", headersUser, updateRev2)).mapJson { (json, result) =>
+      val updateRev2Json =
+        projectReqJson("/admin/projects/update.json",
+                       "nxv",
+                       "person",
+                       description = descRev2,
+                       base = baseRev2,
+                       vocab = vocabRev2)
+      val updateRev2 = updateRev2Json.toEntity
+      cl(Req(PUT, s"$adminBase/projects/$id?rev=1", headersUserAcceptJson, updateRev2)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 2L)
       }
@@ -157,73 +158,75 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       val baseRev3  = s"${config.admin.uri.toString()}/${genString()}/"
       val vocabRev3 = s"${config.admin.uri.toString()}/${genString()}/"
 
-      val updateRev3 =
-        projectReqEntity("/admin/projects/update.json",
-                         "nxv",
-                         "person",
-                         description = descRev3,
-                         base = baseRev3,
-                         vocab = vocabRev3)
+      val updateRev3Json =
+        projectReqJson("/admin/projects/update.json",
+                       "nxv",
+                       "person",
+                       description = descRev3,
+                       base = baseRev3,
+                       vocab = vocabRev3)
+      val updateRev3 = updateRev3Json.toEntity
       updateRev2.dataBytes
-      cl(Req(PUT, s"$adminBase/projects/$id?rev=2", headersUser, updateRev3)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/projects/$id?rev=2", headersUserAcceptJson, updateRev3)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 3L)
       }
 
-      cl(Req(uri = s"$adminBase/projects/$id", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$id", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateProject(json, updateRev3.toJson.value)
+        validateProject(json, updateRev3Json)
         validateAdminResource(json, "Project", "projects", id, descRev3, 3L, projId)
       }
 
-      cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateProject(json, updateRev3.toJson.value)
+        validateProject(json, updateRev3Json)
         validateAdminResource(json, "Project", "projects", id, descRev3, 3L, projId)
       }
 
-      cl(Req(uri = s"$adminBase/projects/$id?rev=2", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$id?rev=2", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateProject(json, updateRev2.toJson.value)
+        validateProject(json, updateRev2Json)
         validateAdminResource(json, "Project", "projects", id, descRev2, 2L, projId)
       }
 
-      cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateProject(json, create.toJson.value)
+        validateProject(json, createJson)
         validateAdminResource(json, "Project", "projects", id, description, 1L, projId)
       }
     }
 
     "reject update  when wrong revision is provided" in {
 
-      cl(Req(PUT, s"$adminBase/projects/$id?rev=4", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/project-incorrect-revision.json")
+      cl(Req(PUT, s"$adminBase/projects/$id?rev=4", headersUserAcceptJson, Json.obj().toEntity)).mapJson {
+        (json, result) =>
+          result.status shouldEqual StatusCodes.Conflict
+          json shouldEqual jsonContentOf("/admin/errors/project-incorrect-revision.json")
       }
     }
 
     "deprecate project" in {
-      cl(Req(DELETE, s"$adminBase/projects/$id?rev=3", headersUser)).mapJson { (json, result) =>
+      cl(Req(DELETE, s"$adminBase/projects/$id?rev=3", headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 4L, deprecated = true)
       }
 
-      cl(Req(uri = s"$adminBase/projects/$id", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$id", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Project", "projects", id, s"$description update 2", 4L, projId, true)
       }
 
-      cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateProject(json, create.toJson.value)
+        validateProject(json, createJson)
         validateAdminResource(json, "Project", "projects", id, description, 1L, projId)
       }
     }
 
     "prevent fetching a project if permissions are missing" in {
       cleanAcls
-      cl(Req(uri = s"$adminBase/projects/$id", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$id", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
         json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
       }
@@ -236,9 +239,9 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     "delete all ACLs for user" in cleanAcls
 
     "return unauthorized access if user has no permissions on / " in {
-      cl(Req(GET, s"$adminBase/projects", headersUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Forbidden
-        json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
+      cl(Req(GET, s"$adminBase/projects", headersUserAcceptJson, Json.obj().toEntity)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        json shouldEqual jsonContentOf("/admin/projects/empty-project-list.json")
       }
     }
 
@@ -281,7 +284,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     }
 
     "create projects" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity())).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUserAcceptJson, orgReqEntity())).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(orgId, 1L, "orgs", "Organization")
       }
@@ -292,12 +295,12 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           Req(
             PUT,
             s"$adminBase/projects/$id",
-            headersUser,
-            projectReqEntity(nxv = s"nxv-$projId",
-                             person = s"person-$projId",
-                             description = projId,
-                             base = s"http:example.com/$projId/",
-                             vocab = s"http:example.com/$projId/vocab/")
+            headersUserAcceptJson,
+            projectReqJson(nxv = s"nxv-$projId",
+                           person = s"person-$projId",
+                           description = projId,
+                           base = s"http:example.com/$projId/",
+                           vocab = s"http:example.com/$projId/vocab/").toEntity
           ))
           .mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.Created
@@ -318,7 +321,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         "_results" -> projectListingResults(projectIds),
       )
 
-      cl(Req(uri = s"$adminBase/projects/$orgId", headers = headersUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/projects/$orgId", headers = headersUserAcceptJson)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         removeSearchMetadata(json) shouldEqual expectedResults
       }

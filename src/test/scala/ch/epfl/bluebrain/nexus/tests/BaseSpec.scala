@@ -5,7 +5,7 @@ import java.util.regex.Pattern.quote
 import akka.http.javadsl.model.headers.HttpCredentials
 import akka.http.scaladsl.model.HttpMethods.PATCH
 import akka.http.scaladsl.model.Uri.{Path => AkkaPath}
-import akka.http.scaladsl.model.headers.Authorization
+import akka.http.scaladsl.model.headers.{Accept, Authorization}
 import akka.http.scaladsl.model.{RequestEntity, StatusCodes, HttpRequest => Req, _}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
@@ -44,14 +44,16 @@ class BaseSpec
   private[tests] val credGroup                     = HttpCredentials.createOAuth2BearerToken(config.iam.groupToken)
   private[tests] val credUser                      = HttpCredentials.createOAuth2BearerToken(config.iam.userToken)
   private[tests] val headersGroup: Seq[HttpHeader] = Seq(Authorization(credGroup))
-  private[tests] val headersUser: Seq[HttpHeader]  = Seq(Authorization(credUser))
-  private[tests] val errorCtx                      = Map(quote("{error-context}") -> config.prefixes.errorContext.toString)
-  private[tests] val resourceCtx                   = Map(quote("{success-context}") -> config.prefixes.coreContext.toString)
-  private[tests] val resourceIamCtx                = Map(quote("{success-iam-context}") -> config.iam.coreContext.toString)
-  private[tests] val adminBase                     = config.admin.uri
-  private[tests] val iamBase                       = config.iam.uri
-  private[tests] val kgBase                        = config.kg.uri
-  private[tests] val replSub                       = Map(quote("{sub}") -> config.iam.userSub)
+  private[tests] val headersUserAcceptJson: Seq[HttpHeader] =
+    Seq(Authorization(credUser), Accept(MediaTypes.`application/json`))
+  private[tests] val headersUser: Seq[HttpHeader] = Seq(Authorization(credUser))
+  private[tests] val errorCtx                     = Map(quote("{error-context}") -> config.prefixes.errorContext.toString)
+  private[tests] val resourceCtx                  = Map(quote("{success-context}") -> config.prefixes.coreContext.toString)
+  private[tests] val resourceIamCtx               = Map(quote("{success-iam-context}") -> config.iam.coreContext.toString)
+  private[tests] val adminBase                    = config.admin.uri
+  private[tests] val iamBase                      = config.iam.uri
+  private[tests] val kgBase                       = config.kg.uri
+  private[tests] val replSub                      = Map(quote("{sub}") -> config.iam.userSub)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -106,7 +108,7 @@ class BaseSpec
         .getOrElse(Set.empty)
       val rev = acls._results.head._rev
 
-      if (permissions != requiredPermissions) {
+      if (!requiredPermissions.subsetOf(permissions)) {
         val json = jsonContentOf("/iam/add-group.json",
                                  Map(
                                    quote("{perms}") -> requiredPermissions.mkString("\",\""),
@@ -200,7 +202,10 @@ class BaseSpec
     }
 
     def mapResp(body: HttpResponse => Assertion): Assertion =
-      whenReady(value)(body(_))
+      whenReady(value) { resp =>
+        resp.discardEntityBytes()
+        body(resp)
+      }
 
   }
 
@@ -216,19 +221,18 @@ class BaseSpec
   private[tests] def genId(length: Int = 15): String =
     genString(length = length, Vector.range('a', 'z') ++ Vector.range('0', '9'))
 
-  private[tests] def projectReqEntity(
-      path: String = "/admin/projects/create.json",
-      nxv: String = randomProjectPrefix,
-      person: String = randomProjectPrefix,
-      description: String = genString(),
-      base: String = s"${config.admin.uri.toString()}/${genString()}",
-      vocab: String = s"${config.admin.uri.toString()}/${genString()}"): RequestEntity = {
+  private[tests] def projectReqJson(path: String = "/admin/projects/create.json",
+                                    nxv: String = randomProjectPrefix,
+                                    person: String = randomProjectPrefix,
+                                    description: String = genString(),
+                                    base: String = s"${config.admin.uri.toString()}/${genString()}",
+                                    vocab: String = s"${config.admin.uri.toString()}/${genString()}"): Json = {
     val rep = Map(quote("{nxv-prefix}") -> nxv,
                   quote("{person-prefix}") -> person,
                   quote("{description}")   -> description,
                   quote("{base}")          -> base,
                   quote("{vocab}")         -> vocab)
-    jsonContentOf(path, rep).toEntity
+    jsonContentOf(path, rep)
   }
 
   private[tests] def orgReqEntity(description: String = genString()): RequestEntity = {
