@@ -33,9 +33,9 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     }
 
     "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUser, orgReqEntity(orgId)))
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUserAcceptJson, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$fullId", headersUser, kgProjectReqEntity(name = fullId)))
+      cl(Req(PUT, s"$adminBase/projects/$fullId", headersUserAcceptJson, kgProjectReqEntity(name = fullId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
@@ -46,20 +46,20 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       val payload = jsonContentOf("/kg/views/elastic-view.json")
 
       eventually {
-        cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testView", headersUser, payload.toEntity))
+        cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testView", headersUserAcceptJson, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
 
     "create a context" in {
       val payload = jsonContentOf("/kg/views/context.json")
-      cl(Req(PUT, s"$kgBase/resources/$fullId/resource/test-resource:context", headersUser, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$fullId/resource/test-resource:context", headersUserAcceptJson, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "wait until in project resolver is created" in {
       eventually {
-        cl(Req(GET, s"$kgBase/resolvers/$fullId", headersUser)).mapJson { (json, result) =>
+        cl(Req(GET, s"$kgBase/resolvers/$fullId", headersUserAcceptJson)).mapJson { (json, result) =>
           json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 1
           result.status shouldEqual StatusCodes.OK
         }
@@ -78,7 +78,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         cl(
           Req(PUT,
               s"$kgBase/resources/$fullId/resource/patchedcell:$id",
-              headersUser,
+              headersUserAcceptJson,
               payload.removeField("@id").toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
@@ -86,7 +86,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
     "wait until in project view is indexed" in {
       eventually {
-        cl(Req(GET, s"$kgBase/views/$fullId", headersUser)).mapJson { (json, result) =>
+        cl(Req(GET, s"$kgBase/views/$fullId", headersUserAcceptJson)).mapJson { (json, result) =>
           json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 3
           result.status shouldEqual StatusCodes.OK
         }
@@ -97,11 +97,11 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
       val query = Json.obj("query" -> Json.obj("other" -> Json.obj()))
 
-      cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersUser, query.toEntity)).mapJson {
-        (json, result) =>
+      cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersUserAcceptJson, query.toEntity))
+        .mapJson { (json, result) =>
           json shouldEqual jsonContentOf("/kg/views/elastic-error.json")
           result.status shouldEqual StatusCodes.BadRequest
-      }
+        }
     }
 
     "search instances" in {
@@ -119,7 +119,11 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         )
       )
       eventually {
-        cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersUser, sortedMatchAll.toEntity))
+        cl(
+          Req(POST,
+              s"$kgBase/views/$fullId/test-resource:testView/_search",
+              headersUserAcceptJson,
+              sortedMatchAll.toEntity))
           .mapJson { (json, result) =>
             val index = json.getJson("hits").getArray("hits").head.getString("_index")
             result.status shouldEqual StatusCodes.OK
@@ -143,7 +147,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         cl(
           Req(POST,
               s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/sparql",
-              headersUser,
+              headersUserAcceptJson,
               HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
           .mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.OK

@@ -333,7 +333,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "list permissions on /*/*" in {
-      cl(Req(GET, s"$iamBase/acls/*/*", headersUser)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/*/*", headersUserAcceptJson)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._total shouldEqual 4
         val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
@@ -365,7 +365,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "list permissions on /orgpath1/*" in {
-      cl(Req(GET, s"$iamBase/acls/$orgPath1/*", headersUser)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/$orgPath1/*", headersUserAcceptJson)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._total shouldEqual 2
         val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
@@ -386,55 +386,56 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "list permissions on /*/* with ancestors" in {
-      cl(Req(GET, s"$iamBase/acls/*/*?ancestors=true", headersUser)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
-        acls._results
-          .find(_._path == "/")
-          .value
-          .acl
-          .find {
-            case AclEntry(User("nexusdev", config.iam.userSub), _) => true
-            case _                                                 => false
-          }
-          .value
-          .permissions shouldEqual Set("projects/create", "projects/read")
-        acls._results
-          .find(_._path == s"/$orgPath1")
-          .value
-          .acl
-          .head
-          .permissions shouldEqual expectedPermissions
-        acls._results
-          .find(_._path == s"/$orgPath2")
-          .value
-          .acl
-          .head
-          .permissions shouldEqual expectedPermissions
-        acls._results
-          .find(_._path == s"/$orgPath1/$projectPath1")
-          .value
-          .acl
-          .head
-          .permissions shouldEqual expectedPermissions
-        acls._results
-          .find(_._path == s"/$orgPath1/$projectPath2")
-          .value
-          .acl
-          .head
-          .permissions shouldEqual expectedPermissions
-        acls._results
-          .find(_._path == s"/$orgPath2/$projectPath1")
-          .value
-          .acl
-          .head
-          .permissions shouldEqual expectedPermissions
-        acls._results
-          .find(_._path == s"/$orgPath1/$projectPath2")
-          .value
-          .acl
-          .head
-          .permissions shouldEqual expectedPermissions
+      cl(Req(GET, s"$iamBase/acls/*/*?ancestors=true", headersUserAcceptJson)).mapDecoded[AclListing] {
+        (acls, result) =>
+          result.status shouldEqual StatusCodes.OK
+          val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
+          acls._results
+            .find(_._path == "/")
+            .value
+            .acl
+            .find {
+              case AclEntry(User("nexusdev", config.iam.userSub), _) => true
+              case _                                                 => false
+            }
+            .value
+            .permissions shouldEqual Set("projects/create", "projects/read")
+          acls._results
+            .find(_._path == s"/$orgPath1")
+            .value
+            .acl
+            .head
+            .permissions shouldEqual expectedPermissions
+          acls._results
+            .find(_._path == s"/$orgPath2")
+            .value
+            .acl
+            .head
+            .permissions shouldEqual expectedPermissions
+          acls._results
+            .find(_._path == s"/$orgPath1/$projectPath1")
+            .value
+            .acl
+            .head
+            .permissions shouldEqual expectedPermissions
+          acls._results
+            .find(_._path == s"/$orgPath1/$projectPath2")
+            .value
+            .acl
+            .head
+            .permissions shouldEqual expectedPermissions
+          acls._results
+            .find(_._path == s"/$orgPath2/$projectPath1")
+            .value
+            .acl
+            .head
+            .permissions shouldEqual expectedPermissions
+          acls._results
+            .find(_._path == s"/$orgPath1/$projectPath2")
+            .value
+            .acl
+            .head
+            .permissions shouldEqual expectedPermissions
       }
     }
   }
