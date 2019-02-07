@@ -326,6 +326,34 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         removeSearchMetadata(json) shouldEqual expectedResults
       }
     }
+
+    "list projects which user has access to" in {
+      cleanAcls
+      val projectsToList = projectIds.slice(0, 2)
+      val expectedResults = Json.obj(
+        "@context" -> Json.arr(
+          Json.fromString("https://bluebrain.github.io/nexus/contexts/admin.json"),
+          Json.fromString("https://bluebrain.github.io/nexus/contexts/resource.json"),
+          Json.fromString("https://bluebrain.github.io/nexus/contexts/search.json")
+        ),
+        "_total"   -> Json.fromInt(projectsToList.size),
+        "_results" -> projectListingResults(projectsToList),
+      )
+      val json = jsonContentOf(
+        "/iam/add.json",
+        replSub + (quote("{perms}") -> "projects/read")
+      ).toEntity
+
+      projectsToList.foreach { projectId =>
+        cl(Req(PATCH, s"$iamBase/acls/$projectId", headersGroup, json))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+
+      cl(Req(uri = s"$adminBase/projects/$orgId", headers = headersUserAcceptJson)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        removeSearchMetadata(json) shouldEqual expectedResults
+      }
+    }
   }
 
   def removeSearchMetadata(json: Json): Json =
