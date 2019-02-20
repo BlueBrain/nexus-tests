@@ -128,94 +128,73 @@ class EventsSpec
 
     "fetch project events" in {
 
-      cl(Req(GET, s"$adminBase/projects/$id", headersUserAcceptJson))
-        .mapJson { (json, resp) =>
-          resp.status shouldEqual StatusCodes.OK
-          val projectUuid = json.asObject.value("_uuid").value.asString.value
-          val projectEvents: Seq[ServerSentEvent] =
-            EventSource(s"$kgBase/events/$id", send, initialLastEventId = Some(timestamp.toString))
-            //drop resolver and view events
-              .drop(3)
-              .take(6)
-              .runWith(Sink.seq)
-              .futureValue
+      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersUserAcceptJson)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
 
-          projectEvents.size shouldEqual 6
-          projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created",
-                                                                            "Updated",
-                                                                            "TagAdded",
-                                                                            "Deprecated",
-                                                                            "FileCreated",
-                                                                            "FileUpdated")
-          removeInstants(Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)) shouldEqual jsonContentOf(
-            "/kg/events/events.json",
-            Map(
-              quote("{resources}")   -> s"$kgBase/resources/$id",
-              quote("{iamBase}")     -> config.iam.uri.toString(),
-              quote("{realm}")       -> config.iam.testRealm,
-              quote("{user}")        -> config.iam.userSub,
-              quote("{projectUuid}") -> projectUuid
-            )
-          )
-          val events: Seq[ServerSentEvent] =
-            EventSource(s"$kgBase/events", send, initialLastEventId = Some(timestamp.toString))
-            //drop resolver and view events
-              .drop(3)
-              .take(6)
-              .runWith(Sink.seq)
-              .futureValue
+      val projectEvents: Seq[ServerSentEvent] =
+        EventSource(s"$kgBase/events/$id", send, initialLastEventId = Some(timestamp.toString))
+        //drop resolver and view events
+          .drop(3)
+          .take(6)
+          .runWith(Sink.seq)
+          .futureValue
 
-          events.size shouldEqual 6
-          events.map(_.getEventType().get()).toList shouldEqual List("Created",
-                                                                     "Updated",
-                                                                     "TagAdded",
-                                                                     "Deprecated",
-                                                                     "FileCreated",
-                                                                     "FileUpdated")
-          removeInstants(Json.arr(events.map(e => parse(e.getData()).right.value): _*)) shouldEqual jsonContentOf(
-            "/kg/events/events.json",
-            Map(
-              quote("{resources}")   -> s"$kgBase/resources/$id",
-              quote("{iamBase}")     -> config.iam.uri.toString(),
-              quote("{realm}")       -> config.iam.testRealm,
-              quote("{user}")        -> config.iam.userSub,
-              quote("{projectUuid}") -> projectUuid
-            )
-          )
-        }
+      projectEvents.size shouldEqual 6
+      projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created",
+                                                                        "Updated",
+                                                                        "TagAdded",
+                                                                        "Deprecated",
+                                                                        "FileCreated",
+                                                                        "FileUpdated")
+
+      removeInstants(Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)) shouldEqual jsonContentOf(
+        "/kg/events/events.json",
+        Map(
+          quote("{resources}")   -> s"$kgBase/resources/$id",
+          quote("{iamBase}")     -> config.iam.uri.toString(),
+          quote("{realm}")       -> config.iam.testRealm,
+          quote("{user}")        -> config.iam.userSub,
+          quote("{projectUuid}") -> projectUuid
+        )
+      )
 
     }
+
     "fetch global  events" in {
 
-      cl(Req(GET, s"$adminBase/projects/$id", headersUserAcceptJson))
-        .mapJson { (json, resp) =>
-          resp.status shouldEqual StatusCodes.OK
-          val projectUuid = json.asObject.value("_uuid").value.asString.value
-          val events: Seq[ServerSentEvent] =
-            EventSource(s"$kgBase/events", send, initialLastEventId = Some(timestamp.toString))
-              .drop(3)
-              .take(6)
-              .runWith(Sink.seq)
-              .futureValue
+      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersUserAcceptJson)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
 
-          events.size shouldEqual 6
-          events.map(_.getEventType().get()).toList shouldEqual List("Created",
-                                                                     "Updated",
-                                                                     "TagAdded",
-                                                                     "Deprecated",
-                                                                     "FileCreated",
-                                                                     "FileUpdated")
-          removeInstants(Json.arr(events.map(e => parse(e.getData()).right.value): _*)) shouldEqual jsonContentOf(
-            "/kg/events/events.json",
-            Map(
-              quote("{resources}")   -> s"$kgBase/resources/$id",
-              quote("{iamBase}")     -> config.iam.uri.toString(),
-              quote("{realm}")       -> config.iam.testRealm,
-              quote("{user}")        -> config.iam.userSub,
-              quote("{projectUuid}") -> projectUuid
-            )
-          )
-        }
+      val events: Seq[ServerSentEvent] =
+        EventSource(s"$kgBase/events", send, initialLastEventId = Some(timestamp.toString))
+          .drop(3)
+          .take(6)
+          .runWith(Sink.seq)
+          .futureValue
+
+      events.size shouldEqual 6
+      events.map(_.getEventType().get()).toList shouldEqual List("Created",
+                                                                 "Updated",
+                                                                 "TagAdded",
+                                                                 "Deprecated",
+                                                                 "FileCreated",
+                                                                 "FileUpdated")
+      removeInstants(Json.arr(events.map(e => parse(e.getData()).right.value): _*)) shouldEqual jsonContentOf(
+        "/kg/events/events.json",
+        Map(
+          quote("{resources}")   -> s"$kgBase/resources/$id",
+          quote("{iamBase}")     -> config.iam.uri.toString(),
+          quote("{realm}")       -> config.iam.testRealm,
+          quote("{user}")        -> config.iam.userSub,
+          quote("{projectUuid}") -> projectUuid
+        )
+      )
 
     }
 
