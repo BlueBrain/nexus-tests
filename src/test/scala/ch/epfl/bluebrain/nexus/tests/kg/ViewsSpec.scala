@@ -1,4 +1,5 @@
 package ch.epfl.bluebrain.nexus.tests.kg
+
 import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
