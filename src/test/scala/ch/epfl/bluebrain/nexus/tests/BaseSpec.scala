@@ -176,6 +176,8 @@ class BaseSpec
 
   private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse]) {
 
+    def jsonValue(implicit um: FromEntityUnmarshaller[Json]): Json = whenReady(value)(res => um(res.entity)).futureValue
+
     def mapJson(body: (Json, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[Json]): Assertion =
       whenReady(value)(res => um(res.entity).map(json => body(json, res)).futureValue)
 

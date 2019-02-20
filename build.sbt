@@ -30,25 +30,29 @@ import org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings
 val ammoniteVersion   = "1.2.1"
 val akkaVersion       = "2.5.17"
 val akkaHttpVersion   = "10.1.5"
+val alpakkaVersion    = "1.0-M2"
 val catsVersion       = "1.4.0"
 val circeVersion      = "0.10.0"
 val mockitoVersion    = "2.22.0"
 val pureconfigVersion = "0.9.2"
 val scalaTestVersion  = "3.0.5"
 val gatlingVersion    = "3.0.0"
+val uuidGenVersion    = "3.1.5"
 
 // Nexus dependency versions
 val commonsVersion = "0.10.31"
 val serviceVersion = "0.10.17"
 
 // Dependency modules
-lazy val akkaHttpCore    = "com.typesafe.akka"     %% "akka-http-core"    % akkaHttpVersion
-lazy val akkaHttpTestKit = "com.typesafe.akka"     %% "akka-http-testkit" % akkaHttpVersion
-lazy val akkaStream      = "com.typesafe.akka"     %% "akka-stream"       % akkaVersion
-lazy val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"      % akkaVersion
-lazy val pureconfig      = "com.github.pureconfig" %% "pureconfig"        % pureconfigVersion
-lazy val scalaTest       = "org.scalatest"         %% "scalatest"         % scalaTestVersion
-lazy val slf4j           = "com.typesafe.akka"     %% "akka-slf4j"        % akkaVersion
+lazy val akkaHttpCore    = "com.typesafe.akka"     %% "akka-http-core"          % akkaHttpVersion
+lazy val akkaHttpTestKit = "com.typesafe.akka"     %% "akka-http-testkit"       % akkaHttpVersion
+lazy val akkaStream      = "com.typesafe.akka"     %% "akka-stream"             % akkaVersion
+lazy val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"            % akkaVersion
+lazy val pureconfig      = "com.github.pureconfig" %% "pureconfig"              % pureconfigVersion
+lazy val scalaTest       = "org.scalatest"         %% "scalatest"               % scalaTestVersion
+lazy val slf4j           = "com.typesafe.akka"     %% "akka-slf4j"              % akkaVersion
+lazy val alpakkaSSE      = "com.lightbend.akka"    %% "akka-stream-alpakka-sse" % alpakkaVersion
+lazy val uuidGen         = "com.fasterxml.uuid"    % "java-uuid-generator"      % uuidGenVersion
 
 // Nexus dependency modules
 lazy val commonsHttp = "ch.epfl.bluebrain.nexus" %% "commons-http" % commonsVersion
@@ -81,6 +85,8 @@ lazy val root = project
       commonsTest     % Test,
       scalaTest       % Test,
       slf4j           % Test,
+      alpakkaSSE      % Test,
+      uuidGen         % Test,
       gatling         % "test,it",
       gatlingCharts   % "test,it"
     ),
