@@ -1,0 +1,38 @@
+{
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/search.json",
+    "https://bluebrain.github.io/nexus/contexts/resource.json"
+  ],
+  "_total": 2,
+  "_results": [
+    {
+      "@id": "https://bluebrain.github.io/nexus/vocabulary/defaultElasticSearchIndex",
+      "@type": [
+        "https://bluebrain.github.io/nexus/vocabulary/ElasticSearchView",
+        "https://bluebrain.github.io/nexus/vocabulary/Alpha",
+        "https://bluebrain.github.io/nexus/vocabulary/View"
+      ],
+      "_self": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultElasticSearchIndex",
+      "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
+      "_project": "{project}",
+      "_rev": 1,
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
+    },
+    {
+      "@id": "https://bluebrain.github.io/nexus/vocabulary/defaultSparqlIndex",
+      "@type": [
+        "https://bluebrain.github.io/nexus/vocabulary/View",
+        "https://bluebrain.github.io/nexus/vocabulary/SparqlView"
+      ],
+      "_self": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultSparqlIndex",
+      "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
+      "_project": "{project}",
+      "_rev": 1,
+      "_deprecated": false,
+      "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+      "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
+    }
+  ]
+}

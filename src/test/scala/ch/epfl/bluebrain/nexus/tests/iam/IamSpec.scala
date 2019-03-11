@@ -148,7 +148,8 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       "resources/write",
       "schemas/write",
       "views/query",
-      "views/write"
+      "views/write",
+      "storages/write"
     )
 
     "clear permissions" in {

@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.Uri
 import ch.epfl.bluebrain.nexus.tests.config.AppConfig._
 import com.typesafe.config.Config
 import pureconfig.ConvertHelpers._
+import pureconfig.generic.auto._
 import pureconfig.{ConfigConvert, loadConfigOrThrow}
 
 /**

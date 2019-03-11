@@ -2,19 +2,14 @@ package ch.epfl.bluebrain.nexus.tests.kg
 
 import java.util.regex.Pattern.quote
 
-import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, MediaRanges, Multipart, StatusCodes, HttpRequest => Req}
-import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
+import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
-
-import scala.collection.immutable.Seq
 
 class ResourcesSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
 
@@ -277,147 +272,33 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
   }
 
-  "uploading an attachment" should {
-
-    "upload attachment with JSON" in {
-      val multipartForm =
-        Multipart
-          .FormData(
-            Multipart.FormData.BodyPart
-              .Strict("file",
-                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment.json")),
-                      Map("filename" -> "attachment.json")))
-          .toEntity()
-
-      cl(Req(PUT, s"$kgBase/files/$id1/attachment.json", headersUserAcceptJson, multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "fetch attachment" in {
-      val expectedContent = contentOf("/kg/resources/attachment.json")
-      cl(Req(GET, s"$kgBase/files/$id1/attachment:attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
-    }
-
-    "fetch gzipped attachment" in {
-      val expectedContent = contentOf("/kg/resources/attachment.json")
-      val requestHeaders  = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
-      cl(Req(GET, s"$kgBase/files/$id1/attachment:attachment.json", requestHeaders))
-        .mapByteString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
-        }
-    }
-
-    "update attachment with JSON" in {
-      val multipartForm =
-        Multipart
-          .FormData(
-            Multipart.FormData.BodyPart
-              .Strict("file",
-                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment2.json")),
-                      Map("filename" -> "attachment.json")))
-          .toEntity()
-
-      cl(Req(PUT, s"$kgBase/files/$id1/attachment.json?rev=1", headersUserAcceptJson, multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-    }
-
-    "fetch updated attachment" in {
-
-      val expectedContent = contentOf("/kg/resources/attachment2.json")
-      cl(Req(GET, s"$kgBase/files/$id1/attachment:attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
-    }
-
-    "fetch previous revision of attachment" in {
-
-      val expectedContent = contentOf("/kg/resources/attachment.json")
-      cl(
-        Req(GET, s"$kgBase/files/$id1/attachment:attachment.json?rev=1", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
-    }
-
-    "upload second attachment" in {
-      val multipartForm =
-        Multipart
-          .FormData(
-            Multipart.FormData.BodyPart
-              .Strict("file",
-                      HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes),
-                      Map("filename" -> "attachment2")))
-          .toEntity()
-
-      cl(
-        Req(PUT, s"$kgBase/files/$id1/attachment2", headersUserAcceptJson, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "fetch second attachment" in {
-
-      val expectedContent = contentOf("/kg/resources/attachment2")
-      cl(Req(GET, s"$kgBase/files/$id1/attachment:attachment2", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment2"
-          content shouldEqual expectedContent
-        }
-    }
-
-    "delete the attachment" in {
-      cl(Req(DELETE, s"$kgBase/files/$id1/attachment:attachment.json?rev=2", headersUserAcceptJson))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-
-    }
-
-    "fetch attachment metadata" in {
-
-      val expected = jsonContentOf(
-        "/kg/resources/attachment-metadata.json",
-        Map(
-          quote("{kgBase}")  -> s"$kgBase",
-          quote("{projId}")  -> s"$id1",
-          quote("{project}") -> s"$adminBase/projects/$id1",
-          quote("{iamBase}") -> config.iam.uri.toString(),
-          quote("{realm}")   -> config.iam.testRealm,
-          quote("{user}")    -> config.iam.userSub
-        )
-      )
-      val requestHeaders = headersUserAcceptJson
-      cl(Req(GET, s"$kgBase/files/$id1/attachment:attachment.json", requestHeaders))
-        .mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_updatedAt") shouldEqual expected
-        }
-    }
-
-  }
-
   "listing resources" should {
+
+    "list default resources" in {
+      val mapping = Map(
+        quote("{kgBase}")        -> kgBase.toString(),
+        quote("{project-label}") -> id1,
+        quote("{project}")       -> s"$adminBase/projects/$id1",
+        quote("{iamBase}")       -> config.iam.uri.toString(),
+        quote("{realm}")         -> config.iam.testRealm,
+        quote("{user}")          -> config.iam.userSub
+      )
+      val resources = List(
+        "resolvers" -> jsonContentOf("/kg/listings/default-resolver.json", mapping),
+        "views"     -> jsonContentOf("/kg/listings/default-view.json", mapping),
+        "storages"  -> jsonContentOf("/kg/listings/default-storage.json", mapping)
+      )
+      forAll(resources) {
+        case (segment, expected) =>
+          eventually {
+            cl(Req(GET, s"$kgBase/$segment/$id1", headersUserAcceptJson)).mapJson { (json, result) =>
+              result.status shouldEqual StatusCodes.OK
+              removeSearchMetadata(json) shouldEqual expected
+            }
+          }
+      }
+    }
+
     "add more resource to the project" in {
 
       forAll(2 to 5) { resourceId =>
@@ -442,7 +323,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
           quote("{user}")      -> config.iam.userSub
-        ),
+        )
       )
       eventually {
         cl(Req(GET, s"$kgBase/resources/$id1/test-schema", headersUserAcceptJson)).mapJson { (json, result) =>

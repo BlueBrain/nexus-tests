@@ -7,8 +7,6 @@ import java.util.regex.Pattern
 import ammonite.ops._
 import ch.epfl.bluebrain.nexus.commons.test.Randomness._
 import ch.epfl.bluebrain.nexus.perf.data.generation.types.Data.LocalData
-import ch.epfl.bluebrain.nexus.service.http.UriOps._
-import ch.epfl.bluebrain.nexus.service.http.{Path => Addr}
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -37,7 +35,7 @@ class ResourcesGenerator(templates: Stream[LocalData], ids: TrieMap[String, Atom
   private def generate(times: Int, data: LocalData, map: mutable.Map[String, String]): Stream[LocalData] = {
     (1 to times).toStream.map { _ =>
       val instanceId = ids.getOrElseUpdate(data.schema.toString, new AtomicLong).incrementAndGet
-      val newId      = data.schema.append(Addr(s"ids/$instanceId")).toString
+      val newId      = data.schema.toString + s"/ids/$instanceId"
       map.update(data.id, newId)
       data.copy(id = newId, payload = replace(data.payload, data.id, newId))
     }
@@ -70,7 +68,7 @@ class ResourcesGenerator(templates: Stream[LocalData], ids: TrieMap[String, Atom
   }
 
   private def numOfDuplicates(path: Path, factor: Int): Int = {
-    (path / up).name match {
+    (path / up).baseName match {
       case "trace"           => factor * 4
       case "tracegeneration" => factor * 2
       case _                 => factor

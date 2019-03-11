@@ -77,18 +77,18 @@ object Data extends DataNeighbours {
       *
       * @param path the path in the filesystem of the instance
       */
-    final def apply(path: Path with Readable)(implicit s: Settings): Data = {
+    final def apply(path: Path)(implicit s: Settings): Data = {
       val payload = read(path)
       parse(payload).toOption
         .flatMap(json =>
           relationships(json).map {
             case (local, neighbors) =>
-              val schemaName = (path / up).name
+              val schemaName = (path / up).baseName
               s.schemasMap
                 .get(schemaName)
                 .map { schema =>
-                  val proj = (path / up / up).name
-                  val org  = (path / up / up / up).name
+                  val proj = (path / up / up).baseName
+                  val org  = (path / up / up / up).baseName
                   LocalData(local, json.noSpaces, path, neighbors, org, proj, schema)
                 }
                 .getOrElse(FailedDataSchemaMap(path, schemaName))

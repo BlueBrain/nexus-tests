@@ -12,6 +12,7 @@ import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient
+import ch.epfl.bluebrain.nexus.commons.http.HttpClient._
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
@@ -150,7 +151,7 @@ class BaseSpec
   private implicit val ec: ExecutionContextExecutor = system.dispatcher
   private implicit val mt: ActorMaterializer        = ActorMaterializer()
 
-  private[tests] implicit val cl: UntypedHttpClient[Future] = HttpClient.akkaHttpClient
+  private[tests] implicit val cl: UntypedHttpClient[Future] = HttpClient.untyped[Future]
 
   private[tests] implicit def toPath(str: String): AkkaPath = AkkaPath(str)
 
