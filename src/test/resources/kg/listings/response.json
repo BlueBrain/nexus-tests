@@ -8,7 +8,7 @@
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/1",
       "@type": "https://bluebrain.github.io/nexus/vocabulary/TestResource",
-      "_self": "{resources}/test-schema/test-resource:1",
+      "_self": "{resources}/https%3A%2F%2Fdev.nexus.test.com%2Ftest-schema/https%3A%2F%2Fdev.nexus.test.com%2Fsimplified-resource%2F1",
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 4,
@@ -19,7 +19,7 @@
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/2",
       "@type": "https://bluebrain.github.io/nexus/vocabulary/TestResource",
-      "_self": "{resources}/test-schema/test-resource:2",
+      "_self": "{resources}/https%3A%2F%2Fdev.nexus.test.com%2Ftest-schema/https%3A%2F%2Fdev.nexus.test.com%2Fsimplified-resource%2F2",
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,
@@ -30,7 +30,7 @@
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/3",
       "@type": "https://bluebrain.github.io/nexus/vocabulary/TestResource",
-      "_self": "{resources}/test-schema/test-resource:3",
+      "_self": "{resources}/https%3A%2F%2Fdev.nexus.test.com%2Ftest-schema/https%3A%2F%2Fdev.nexus.test.com%2Fsimplified-resource%2F3",
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,
@@ -41,7 +41,7 @@
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/4",
       "@type": "https://bluebrain.github.io/nexus/vocabulary/TestResource",
-      "_self": "{resources}/test-schema/test-resource:4",
+      "_self": "{resources}/https%3A%2F%2Fdev.nexus.test.com%2Ftest-schema/https%3A%2F%2Fdev.nexus.test.com%2Fsimplified-resource%2F4",
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,
@@ -52,7 +52,7 @@
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/5",
       "@type": "https://bluebrain.github.io/nexus/vocabulary/TestResource",
-      "_self": "{resources}/test-schema/test-resource:5",
+      "_self": "{resources}/https%3A%2F%2Fdev.nexus.test.com%2Ftest-schema/https%3A%2F%2Fdev.nexus.test.com%2Fsimplified-resource%2F5",
       "_constrainedBy": "https://dev.nexus.test.com/test-schema",
       "_project": "{project}",
       "_rev": 1,

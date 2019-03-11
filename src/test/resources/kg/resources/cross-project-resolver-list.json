@@ -11,7 +11,7 @@
         "https://bluebrain.github.io/nexus/vocabulary/Resolver",
         "https://bluebrain.github.io/nexus/vocabulary/InProject"
       ],
-      "_self": "{kgBase}/resolvers/{projId}/nxv:defaultInProject",
+      "_self": "{kgBase}/resolvers/{projId}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultInProject",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
       "_project": "{project}",
       "_rev": 1,
@@ -25,7 +25,7 @@
         "https://bluebrain.github.io/nexus/vocabulary/CrossProject",
         "https://bluebrain.github.io/nexus/vocabulary/Resolver"
       ],
-      "_self": "{kgBase}/resolvers/{projId}/example-id",
+      "_self": "{kgBase}/resolvers/{projId}/http%3A%2F%2Fexample.com%2Fid",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
       "_project": "{project}",
       "_rev": 2,

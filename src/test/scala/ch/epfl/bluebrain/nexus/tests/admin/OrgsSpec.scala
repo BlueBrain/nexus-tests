@@ -5,14 +5,13 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.http.CirceSyntax
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, OptionValues}
 
-class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually with CirceSyntax {
+class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually {
 
   "creating an organization" should {
 
@@ -64,7 +63,8 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
           "resources/write",
           "schemas/write",
           "views/write",
-          "views/query"
+          "views/query",
+          "storages/write"
         )
 
       }

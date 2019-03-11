@@ -81,6 +81,12 @@
       "_filename": "attachment.json",
       "_mediaType": "application/json"
     },
+    "_storage": {
+      "@type": "DiskStorage",
+      "_storageId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
+      "default": true,
+      "volume": "/opt/binaries"
+    },
     "_projectUuid": "{projectUuid}",
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
   },
@@ -96,6 +102,12 @@
       },
       "_filename": "attachment.json",
       "_mediaType": "application/json"
+    },
+    "_storage": {
+      "@type": "DiskStorage",
+      "_storageId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
+      "default": true,
+      "volume": "/opt/binaries"
     },
     "_projectUuid": "{projectUuid}",
     "_rev": 2,

@@ -136,8 +136,8 @@ class EventsSpec
 
       val projectEvents: Seq[ServerSentEvent] =
         EventSource(s"$kgBase/events/$id", send, initialLastEventId = Some(timestamp.toString))
-        //drop resolver and view events
-          .drop(3)
+        //drop resolver, views and storage events
+          .drop(4)
           .take(6)
           .runWith(Sink.seq)
           .futureValue
@@ -173,7 +173,7 @@ class EventsSpec
 
       val events: Seq[ServerSentEvent] =
         EventSource(s"$kgBase/events", send, initialLastEventId = Some(timestamp.toString))
-          .drop(3)
+          .drop(4)
           .take(6)
           .runWith(Sink.seq)
           .futureValue

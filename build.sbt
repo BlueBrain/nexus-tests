@@ -27,21 +27,20 @@ scalafmt: {
 import org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings
 
 // Dependency versions
-val ammoniteVersion   = "1.2.1"
-val akkaVersion       = "2.5.17"
-val akkaHttpVersion   = "10.1.5"
-val alpakkaVersion    = "1.0-M2"
+val ammoniteVersion   = "1.6.4"
+val akkaVersion       = "2.5.21"
+val akkaHttpVersion   = "10.1.7"
+val alpakkaVersion    = "1.0-M3"
 val catsVersion       = "1.4.0"
 val circeVersion      = "0.10.0"
 val mockitoVersion    = "2.22.0"
-val pureconfigVersion = "0.9.2"
-val scalaTestVersion  = "3.0.5"
-val gatlingVersion    = "3.0.0"
+val pureconfigVersion = "0.10.2"
+val scalaTestVersion  = "3.0.6"
+val gatlingVersion    = "3.0.3"
 val uuidGenVersion    = "3.1.5"
 
 // Nexus dependency versions
-val commonsVersion = "0.10.31"
-val serviceVersion = "0.10.17"
+val commonsVersion = "0.11.1"
 
 // Dependency modules
 lazy val akkaHttpCore    = "com.typesafe.akka"     %% "akka-http-core"          % akkaHttpVersion
@@ -55,9 +54,8 @@ lazy val alpakkaSSE      = "com.lightbend.akka"    %% "akka-stream-alpakka-sse" 
 lazy val uuidGen         = "com.fasterxml.uuid"    % "java-uuid-generator"      % uuidGenVersion
 
 // Nexus dependency modules
-lazy val commonsHttp = "ch.epfl.bluebrain.nexus" %% "commons-http" % commonsVersion
+lazy val commonsCore = "ch.epfl.bluebrain.nexus" %% "commons-core" % commonsVersion
 lazy val commonsTest = "ch.epfl.bluebrain.nexus" %% "commons-test" % commonsVersion
-lazy val serviceHttp = "ch.epfl.bluebrain.nexus" %% "service-http" % serviceVersion
 
 // Performance tests
 lazy val gatling       = "io.gatling"            % "gatling-test-framework"    % gatlingVersion
@@ -77,11 +75,9 @@ lazy val root = project
       akkaHttpCore,
       akkaStream,
       pureconfig,
-      commonsTest,
-      serviceHttp,
+      commonsCore,
       ammoniteOps,
       akkaHttpTestKit % Test,
-      commonsHttp     % Test,
       commonsTest     % Test,
       scalaTest       % Test,
       slf4j           % Test,

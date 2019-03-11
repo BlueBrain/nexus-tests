@@ -5,7 +5,6 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.http.CirceSyntax
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
@@ -14,7 +13,7 @@ import org.scalatest.concurrent.Eventually
 
 import scala.collection.immutable
 
-class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with CirceSyntax {
+class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
 
   private def validateProject(response: Json, payload: Json) = {
     response.getString("base") shouldEqual payload.getString("base")
@@ -118,7 +117,8 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           "resources/write",
           "schemas/write",
           "views/write",
-          "views/query"
+          "views/query",
+          "storages/write"
         )
       }
     }
