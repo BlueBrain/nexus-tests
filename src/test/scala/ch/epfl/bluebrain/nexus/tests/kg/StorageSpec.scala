@@ -11,7 +11,8 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, MediaRanges, Multipar
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
+import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
 
@@ -25,7 +26,23 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "creating projects" should {
 
-    "add necessary permissions for user" in {
+    "add necessary permissions for custom storage" in {
+      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+        result.status shouldEqual StatusCodes.OK
+        if (permissions.permissions.contains("some-read") && permissions.permissions.contains("some-write"))
+          succeed
+        else {
+          val body = jsonContentOf("/iam/permissions/append.json",
+                                   Map(
+                                     quote("{perms}") -> List("some-read", "some-write").mkString("\",\"")
+                                   )).toEntity
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
+        }
+      }
+    }
+
+    "add necessary ACLs for user" in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
@@ -48,13 +65,66 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "creating a storage" should {
 
-    "create a DiskStorage" in {
-
+    "succeed" in {
       val payload = jsonContentOf("/kg/storages/disk.json")
-
       eventually {
         cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mystorage", headersUserAcceptJson))
+        .mapJson { (json, result) =>
+          val expected = jsonContentOf(
+            "/kg/storages/disk-response.json",
+            Map(
+              quote("{kgBase}")  -> s"$kgBase",
+              quote("{id}")      -> "nxv:mystorage",
+              quote("{project}") -> fullId,
+              quote("{read}")    -> "resources/read",
+              quote("{write}")   -> "files/write",
+              quote("{iamBase}") -> config.iam.uri.toString(),
+              quote("{user}")    -> config.iam.userSub
+            )
+          )
+          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          result.status shouldEqual StatusCodes.OK
+        }
+
+      val payload2 = jsonContentOf("/kg/storages/disk-perms.json")
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload2.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mystorage2", headersUserAcceptJson))
+        .mapJson { (json, result) =>
+          val expected = jsonContentOf(
+            "/kg/storages/disk-response.json",
+            Map(
+              quote("{kgBase}")  -> s"$kgBase",
+              quote("{id}")      -> "nxv:mystorage2",
+              quote("{project}") -> fullId,
+              quote("{read}")    -> "some-read",
+              quote("{write}")   -> "some-write",
+              quote("{iamBase}") -> config.iam.uri.toString(),
+              quote("{user}")    -> config.iam.userSub
+            )
+          )
+          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          result.status shouldEqual StatusCodes.OK
+        }
+    }
+
+    "fail creating a DiskStorage on a wrong volume" in {
+      val volume  = "/" + genString()
+      val payload = jsonContentOf("/kg/storages/disk.json") deepMerge Json.obj("volume" -> Json.fromString(volume))
+
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+          .mapJson { (json, result) =>
+            json shouldEqual jsonContentOf("/kg/storages/error.json", Map(quote("{volume}") -> volume))
+            result.status shouldEqual StatusCodes.BadRequest
+          }
       }
     }
   }
@@ -138,7 +208,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "upload second attachment to created storage" in {
+    "upload second attachment to created storage" in eventually {
       val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
@@ -198,9 +268,47 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           json.removeFields("_createdAt", "_updatedAt") shouldEqual expected
         }
     }
+
+    "fail to upload file against a storage with custom permissions" in eventually {
+      val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
+
+      cl(
+        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
+          .removeHeader("Content-Type"))
+        .mapResp(_.status shouldEqual StatusCodes.Forbidden)
+    }
+
+    "add ACLs for custom storage" in {
+      forAll(List("some-read", "some-write")) { perm =>
+        val json = jsonContentOf(
+          "/iam/add.json",
+          replSub + (quote("{perms}") -> perm)
+        ).toEntity
+        cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+          result.status shouldEqual StatusCodes.OK
+          val rev = acls._results.head._rev
+          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        }
+      }
+
+    }
+
+    "upload file against a storage with custom permissions" in eventually {
+      val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
+
+      cl(
+        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
+          .removeHeader("Content-Type"))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
   }
 
   "deprecating a storage" should {
+
     "deprecate a DiskStorage" in {
       eventually {
         cl(Req(DELETE, s"$kgBase/storages/$fullId/nxv:mystorage?rev=1", headersUserAcceptJson))

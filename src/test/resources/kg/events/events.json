@@ -85,7 +85,9 @@
       "@type": "DiskStorage",
       "_storageId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
       "default": true,
-      "volume": "/opt/binaries"
+      "readPermission": "resources/read",
+      "volume": "/opt/binaries",
+      "writePermission": "files/write"
     },
     "_projectUuid": "{projectUuid}",
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
@@ -107,7 +109,9 @@
       "@type": "DiskStorage",
       "_storageId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
       "default": true,
-      "volume": "/opt/binaries"
+      "readPermission": "resources/read",
+      "volume": "/opt/binaries",
+      "writePermission": "files/write"
     },
     "_projectUuid": "{projectUuid}",
     "_rev": 2,
