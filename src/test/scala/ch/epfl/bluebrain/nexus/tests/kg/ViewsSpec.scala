@@ -8,6 +8,7 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
+import ch.epfl.bluebrain.nexus.tests.kg.types.ViewStatistics
 import io.circe.Json
 import org.scalatest.{CancelAfterFailure, Inspectors}
 import org.scalatest.concurrent.Eventually
@@ -134,6 +135,34 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
+    "fetch statistics for testView" in {
+      cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testView/statistics", headersUserAcceptJson))
+        .mapDecoded[ViewStatistics] { (stats, result) =>
+          result.status shouldEqual StatusCodes.OK
+          stats.delayInSeconds shouldEqual 0
+          stats.remainingEvents shouldEqual 0
+          stats.lastEventDateTime shouldEqual stats.lastEventDateTime
+          stats.totalEvents shouldEqual 11
+          stats.processedEvents shouldEqual 11
+          stats.evaluatedEvents shouldEqual 6
+          stats.discardedEvents shouldEqual 5
+        }
+    }
+
+    "fetch statistics for defaultElasticSearchIndex" in {
+      cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultElasticSearchIndex/statistics", headersUserAcceptJson))
+        .mapDecoded[ViewStatistics] { (stats, result) =>
+          result.status shouldEqual StatusCodes.OK
+          stats.delayInSeconds shouldEqual 0
+          stats.remainingEvents shouldEqual 0
+          stats.lastEventDateTime shouldEqual stats.lastEventDateTime
+          stats.totalEvents shouldEqual 11
+          stats.processedEvents shouldEqual 11
+          stats.evaluatedEvents shouldEqual 11
+          stats.discardedEvents shouldEqual 0
+        }
+    }
+
     "search instances in SPARQL endpoint" in {
       val query =
         """
@@ -156,5 +185,19 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           }
       }
     }
+    "fetch statistics for defaultSparqlIndex" in {
+      cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/statistics", headersUserAcceptJson))
+        .mapDecoded[ViewStatistics] { (stats, result) =>
+          result.status shouldEqual StatusCodes.OK
+          stats.delayInSeconds shouldEqual 0
+          stats.remainingEvents shouldEqual 0
+          stats.lastEventDateTime shouldEqual stats.lastEventDateTime
+          stats.totalEvents shouldEqual 11
+          stats.processedEvents shouldEqual 11
+          stats.evaluatedEvents shouldEqual 11
+          stats.discardedEvents shouldEqual 0
+        }
+    }
+
   }
 }
