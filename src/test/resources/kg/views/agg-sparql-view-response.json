@@ -1,0 +1,30 @@
+{
+  "@id": "{id}",
+  "@context": [
+    "https://bluebrain.github.io/nexus/contexts/view.json",
+    "https://bluebrain.github.io/nexus/contexts/resource.json"
+  ],
+  "@type": [
+    "AggregateSparqlView",
+    "Alpha",
+    "View"
+  ],
+  "views": [
+    {
+      "project": "{project1}",
+      "viewId": "nxv:defaultSparqlIndex"
+    },
+    {
+      "project": "{project2}",
+      "viewId": "nxv:defaultSparqlIndex"
+    }
+  ],
+  "_uuid": "{uuid}",
+  "_self": "{resources}",
+  "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
+  "_project": "{project-parent}",
+  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
+  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}",
+  "_rev": 1,
+  "_deprecated": false
+}
