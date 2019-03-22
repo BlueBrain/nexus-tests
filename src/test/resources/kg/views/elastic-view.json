@@ -1,7 +1,6 @@
 {
   "@type": [
     "nxv:ElasticSearchView",
-    "nxv:Alpha",
     "nxv:View"
   ],
   "resourceSchemas": [
