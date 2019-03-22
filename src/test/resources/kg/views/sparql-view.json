@@ -1,0 +1,10 @@
+{
+  "@type": [
+    "SparqlView"
+  ],
+  "resourceSchemas": [
+    "https://bluebrain.github.io/nexus/schemas/unconstrained.json"
+  ],
+  "resourceTag": "one",
+  "includeMetadata": false
+}

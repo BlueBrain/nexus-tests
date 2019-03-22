@@ -59,6 +59,30 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
+    "create an Sparql view that index tags" in eventually {
+      val payload = jsonContentOf("/kg/views/sparql-view.json")
+      cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testSparqlView", headersUserAcceptJson, payload.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
+    "get the created SparqlView" in eventually {
+      cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testSparqlView", headersUserAcceptJson))
+        .mapJson {
+          case (json, _) =>
+            val uuid = json.hcursor.get[String]("_uuid").right.value
+            val expectedMap = Map(
+              quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testSparqlView",
+              quote("{resources}")      -> s"$kgBase/views/$fullId/test-resource:testSparqlView",
+              quote("{project-parent}") -> s"$adminBase/projects/$fullId",
+              quote("{iamBase}")        -> config.iam.uri.toString(),
+              quote("{user}")           -> config.iam.userSub,
+              quote("{uuid}")           -> uuid
+            )
+            val expected = jsonContentOf("/kg/views/sparql-view-response.json", expectedMap)
+            json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+        }
+    }
+
     "create an AggregateSparqlView" in {
 
       val payload = jsonContentOf("/kg/views/agg-sparql-view.json",
@@ -81,7 +105,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "get an AggregateElasticSearchView" in eventually {
+    "get the created AggregateElasticSearchView" in eventually {
       cl(Req(GET, s"$kgBase/views/$fullId2/test-resource:testAggEsView", headersUserAcceptJson))
         .mapJson {
           case (json, _) =>
@@ -161,7 +185,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     "wait until in project view is indexed" in {
       eventually {
         cl(Req(GET, s"$kgBase/views/$fullId", headersUserAcceptJson)).mapJson { (json, result) =>
-          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 3
+          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 4
           result.status shouldEqual StatusCodes.OK
         }
       }
@@ -254,10 +278,10 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           stats.delayInSeconds shouldEqual 0
           stats.remainingEvents shouldEqual 0
           stats.lastEventDateTime shouldEqual stats.lastEventDateTime
-          stats.totalEvents shouldEqual 11
-          stats.processedEvents shouldEqual 11
+          stats.totalEvents shouldEqual 12
+          stats.processedEvents shouldEqual 12
           stats.evaluatedEvents shouldEqual 6
-          stats.discardedEvents shouldEqual 5
+          stats.discardedEvents shouldEqual 6
         }
     }
 
@@ -268,9 +292,9 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           stats.delayInSeconds shouldEqual 0
           stats.remainingEvents shouldEqual 0
           stats.lastEventDateTime shouldEqual stats.lastEventDateTime
-          stats.totalEvents shouldEqual 11
-          stats.processedEvents shouldEqual 11
-          stats.evaluatedEvents shouldEqual 11
+          stats.totalEvents shouldEqual 12
+          stats.processedEvents shouldEqual 12
+          stats.evaluatedEvents shouldEqual 12
           stats.discardedEvents shouldEqual 0
         }
     }
@@ -342,10 +366,51 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           stats.delayInSeconds shouldEqual 0
           stats.remainingEvents shouldEqual 0
           stats.lastEventDateTime shouldEqual stats.lastEventDateTime
-          stats.totalEvents shouldEqual 11
-          stats.processedEvents shouldEqual 11
-          stats.evaluatedEvents shouldEqual 11
+          stats.totalEvents shouldEqual 12
+          stats.processedEvents shouldEqual 12
+          stats.evaluatedEvents shouldEqual 12
           stats.discardedEvents shouldEqual 0
+        }
+    }
+
+    "search instances in SPARQL endpoint in project 1 with custom SparqlView" in eventually {
+      cl(
+        Req(POST,
+            s"$kgBase/views/$fullId/test-resource:testSparqlView/sparql",
+            headersUserAcceptJson,
+            HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
+        .mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json shouldEqual jsonContentOf("/kg/views/sparql-search-response-empty.json")
+        }
+    }
+
+    "tag resources resource" in {
+
+      forAll(1 to 5) { i =>
+        val payload      = jsonContentOf(s"/kg/views/instances/instance$i.json")
+        val id           = payload.asObject.value("@id").value.asString.value
+        val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
+        cl(
+          Req(
+            POST,
+            s"$kgBase/resources/$fullId/resource/patchedcell:$unprefixedId/tags?rev=1",
+            headersUserAcceptJson,
+            Json.obj("rev" -> Json.fromLong(1L), "tag" -> Json.fromString("one")).toEntity
+          ))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+    }
+
+    "search instances in SPARQL endpoint in project 1 with custom SparqlView after tags added" in eventually {
+      cl(
+        Req(POST,
+            s"$kgBase/views/$fullId/test-resource:testSparqlView/sparql",
+            headersUserAcceptJson,
+            HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
+        .mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json shouldEqual jsonContentOf("/kg/views/sparql-search-response.json")
         }
     }
 

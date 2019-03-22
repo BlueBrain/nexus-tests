@@ -9,7 +9,6 @@
       "@id": "https://bluebrain.github.io/nexus/vocabulary/defaultElasticSearchIndex",
       "@type": [
         "https://bluebrain.github.io/nexus/vocabulary/ElasticSearchView",
-        "https://bluebrain.github.io/nexus/vocabulary/Alpha",
         "https://bluebrain.github.io/nexus/vocabulary/View"
       ],
       "_self": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultElasticSearchIndex",

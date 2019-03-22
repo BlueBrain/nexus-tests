@@ -1,7 +1,6 @@
 {
   "@type": [
-    "AggregateSparqlView",
-    "Alpha"
+    "AggregateSparqlView"
   ],
   "views": [
     {

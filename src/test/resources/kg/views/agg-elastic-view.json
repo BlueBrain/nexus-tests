@@ -1,7 +1,6 @@
 {
   "@type": [
-    "AggregateElasticSearchView",
-    "Alpha"
+    "AggregateElasticSearchView"
   ],
   "views": [
     {
