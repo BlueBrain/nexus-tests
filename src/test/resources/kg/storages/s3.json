@@ -1,0 +1,5 @@
+{
+  "@id": "https://bluebrain.github.io/nexus/vocabulary/mys3storage",
+  "@type": "S3Storage",
+  "default": false
+}

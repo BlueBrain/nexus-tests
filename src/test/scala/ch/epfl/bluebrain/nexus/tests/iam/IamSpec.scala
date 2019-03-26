@@ -1,4 +1,5 @@
 package ch.epfl.bluebrain.nexus.tests.iam
+
 import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
@@ -336,7 +337,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     "list permissions on /*/*" in {
       cl(Req(GET, s"$iamBase/acls/*/*", headersUserAcceptJson)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
-        acls._total shouldEqual 4
+        acls._total should be >= 4L
         val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
         acls._results
           .find(_._path == s"/$orgPath1/$projectPath1")
