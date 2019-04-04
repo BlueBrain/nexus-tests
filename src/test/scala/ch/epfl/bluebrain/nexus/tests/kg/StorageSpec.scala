@@ -15,18 +15,9 @@ import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
-import software.amazon.awssdk.auth.credentials.{
-  AnonymousCredentialsProvider,
-  AwsBasicCredentials,
-  StaticCredentialsProvider
-}
+import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{
-  CreateBucketRequest,
-  DeleteBucketRequest,
-  DeleteObjectRequest,
-  ListObjectsRequest
-}
+import software.amazon.awssdk.services.s3.model._
 
 import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._

@@ -11,6 +11,8 @@
 target/
 
 # IDE
+.bloop
+.metals
 .settings
 .idea
 *.iml
