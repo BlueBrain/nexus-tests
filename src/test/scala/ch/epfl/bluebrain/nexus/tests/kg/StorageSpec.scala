@@ -159,11 +159,15 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
 
     "succeed creating an S3Storage" in {
-      val payload = jsonContentOf("/kg/storages/s3.json") deepMerge Json.obj(
-        "bucket"    -> Json.fromString(bucket),
-        "endpoint"  -> Json.fromString(s3Config.endpoint.toString),
-        "accessKey" -> Json.fromString(s3Config.accessKey.get),
-        "secretKey" -> Json.fromString(s3Config.secretKey.get)
+      val payload = jsonContentOf(
+        "/kg/storages/s3.json",
+        Map(
+          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storage",
+          quote("{bucket}")    -> bucket,
+          quote("{endpoint}")  -> s3Config.endpoint.toString,
+          quote("{accessKey}") -> s3Config.accessKey.get,
+          quote("{secretKey}") -> s3Config.secretKey.get
+        )
       )
 
       eventually {
@@ -204,13 +208,17 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
         }
 
-      val payload2 = jsonContentOf("/kg/storages/s3.json") deepMerge Json.obj(
-        "@id"             -> Json.fromString("https://bluebrain.github.io/nexus/vocabulary/mys3storage2"),
-        "bucket"          -> Json.fromString(bucket),
-        "endpoint"        -> Json.fromString(s3Config.endpoint.toString),
+      val payload2 = jsonContentOf(
+        "/kg/storages/s3.json",
+        Map(
+          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storage2",
+          quote("{bucket}")    -> bucket,
+          quote("{endpoint}")  -> s3Config.endpoint.toString,
+          quote("{accessKey}") -> s3Config.accessKey.get,
+          quote("{secretKey}") -> s3Config.secretKey.get
+        )
+      ) deepMerge Json.obj(
         "region"          -> Json.fromString("not-important"),
-        "accessKey"       -> Json.fromString(s3Config.accessKey.get),
-        "secretKey"       -> Json.fromString(s3Config.secretKey.get),
         "readPermission"  -> Json.fromString("s3/read"),
         "writePermission" -> Json.fromString("s3/write")
       )
@@ -255,11 +263,15 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
 
     "fail creating an S3Storage with an invalid bucket" in {
-      val payload = jsonContentOf("/kg/storages/s3.json") deepMerge Json.obj(
-        "bucket"    -> Json.fromString("foobar"),
-        "endpoint"  -> Json.fromString(s3Config.endpoint.toString),
-        "accessKey" -> Json.fromString(s3Config.accessKey.get),
-        "secretKey" -> Json.fromString(s3Config.secretKey.get)
+      val payload = jsonContentOf(
+        "/kg/storages/s3.json",
+        Map(
+          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storage",
+          quote("{bucket}")    -> "foobar",
+          quote("{endpoint}")  -> s3Config.endpoint.toString,
+          quote("{accessKey}") -> s3Config.accessKey.get,
+          quote("{secretKey}") -> s3Config.secretKey.get
+        )
       )
 
       eventually {
