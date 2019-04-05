@@ -1,4 +1,5 @@
 package ch.epfl.bluebrain.nexus.tests.iam.types
+
 import io.circe.Decoder
 import io.circe.generic.extras.Configuration
 import io.circe.generic.extras.semiauto.deriveDecoder

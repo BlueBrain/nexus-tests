@@ -15,14 +15,43 @@ import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
+import software.amazon.awssdk.auth.credentials._
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model._
 
 import scala.collection.immutable.Seq
+import scala.collection.JavaConverters._
 
 class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
 
-  val orgId  = genId()
-  val projId = genId()
-  val fullId = s"$orgId/$projId"
+  private val orgId  = genId()
+  private val projId = genId()
+  private val fullId = s"$orgId/$projId"
+  private val bucket = genId()
+
+  private val credentialsProvider = (s3Config.accessKey, s3Config.secretKey) match {
+    case (Some(ak), Some(sk)) => StaticCredentialsProvider.create(AwsBasicCredentials.create(ak, sk))
+    case _                    => AnonymousCredentialsProvider.create()
+  }
+
+  private val s3Client = S3Client.builder
+    .endpointOverride(s3Config.endpointURI)
+    .credentialsProvider(credentialsProvider)
+    .build
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    val _ = s3Client.createBucket(CreateBucketRequest.builder.bucket(bucket).build)
+  }
+
+  override def afterAll(): Unit = {
+    val objects = s3Client.listObjects(ListObjectsRequest.builder.bucket(bucket).build)
+    objects.contents.asScala.foreach { obj =>
+      s3Client.deleteObject(DeleteObjectRequest.builder.bucket(bucket).key(obj.key).build)
+    }
+    s3Client.deleteBucket(DeleteBucketRequest.builder.bucket(bucket).build)
+    super.afterAll()
+  }
 
   "creating projects" should {
 
@@ -65,7 +94,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "creating a storage" should {
 
-    "succeed" in {
+    "succeed creating a DiskStorage" in {
       val payload = jsonContentOf("/kg/storages/disk.json")
       eventually {
         cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
@@ -90,6 +119,20 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
         }
 
+      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+        result.status shouldEqual StatusCodes.OK
+        if (!Set("disk/read", "disk/write").subsetOf(permissions.permissions)) {
+          val body = jsonContentOf("/iam/permissions/append.json",
+                                   Map(
+                                     quote("{perms}") -> """disk/read", "disk/write"""
+                                   )).toEntity
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
+        } else {
+          succeed
+        }
+      }
+
       val payload2 = jsonContentOf("/kg/storages/disk-perms.json")
       eventually {
         cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload2.toEntity))
@@ -104,12 +147,103 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{kgBase}")  -> s"$kgBase",
               quote("{id}")      -> "nxv:mystorage2",
               quote("{project}") -> fullId,
-              quote("{read}")    -> "some-read",
-              quote("{write}")   -> "some-write",
+              quote("{read}")    -> "disk/read",
+              quote("{write}")   -> "disk/write",
               quote("{iamBase}") -> config.iam.uri.toString(),
               quote("{user}")    -> config.iam.userSub
             )
           )
+          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          result.status shouldEqual StatusCodes.OK
+        }
+    }
+
+    "succeed creating an S3Storage" in {
+      val payload = jsonContentOf(
+        "/kg/storages/s3.json",
+        Map(
+          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storage",
+          quote("{bucket}")    -> bucket,
+          quote("{endpoint}")  -> s3Config.endpoint.toString,
+          quote("{accessKey}") -> s3Config.accessKey.get,
+          quote("{secretKey}") -> s3Config.secretKey.get
+        )
+      )
+
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+
+      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+        result.status shouldEqual StatusCodes.OK
+        if (!Set("s3/read", "s3/write").subsetOf(permissions.permissions)) {
+          val body = jsonContentOf("/iam/permissions/append.json",
+                                   Map(
+                                     quote("{perms}") -> """s3/read", "s3/write"""
+                                   )).toEntity
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
+        } else {
+          succeed
+        }
+      }
+
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mys3storage", headersUserAcceptJson))
+        .mapJson { (json, result) =>
+          val expected = jsonContentOf(
+            "/kg/storages/s3-response.json",
+            Map(
+              quote("{kgBase}")  -> s"$kgBase",
+              quote("{id}")      -> "nxv:mys3storage",
+              quote("{project}") -> fullId,
+              quote("{bucket}")  -> bucket,
+              quote("{read}")    -> "resources/read",
+              quote("{write}")   -> "files/write",
+              quote("{iamBase}") -> config.iam.uri.toString(),
+              quote("{user}")    -> config.iam.userSub
+            )
+          )
+          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          result.status shouldEqual StatusCodes.OK
+        }
+
+      val payload2 = jsonContentOf(
+        "/kg/storages/s3.json",
+        Map(
+          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storage2",
+          quote("{bucket}")    -> bucket,
+          quote("{endpoint}")  -> s3Config.endpoint.toString,
+          quote("{accessKey}") -> s3Config.accessKey.get,
+          quote("{secretKey}") -> s3Config.secretKey.get
+        )
+      ) deepMerge Json.obj(
+        "region"          -> Json.fromString("not-important"),
+        "readPermission"  -> Json.fromString("s3/read"),
+        "writePermission" -> Json.fromString("s3/write")
+      )
+
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload2.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mys3storage2", headersUserAcceptJson))
+        .mapJson { (json, result) =>
+          val expected = jsonContentOf(
+            "/kg/storages/s3-response.json",
+            Map(
+              quote("{kgBase}")  -> s"$kgBase",
+              quote("{id}")      -> "nxv:mys3storage2",
+              quote("{project}") -> fullId,
+              quote("{bucket}")  -> bucket,
+              quote("{read}")    -> "s3/read",
+              quote("{write}")   -> "s3/write",
+              quote("{iamBase}") -> config.iam.uri.toString(),
+              quote("{user}")    -> config.iam.userSub
+            )
+          ).deepMerge(Json.obj("region" -> Json.fromString("not-important")))
+
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
@@ -127,9 +261,201 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           }
       }
     }
+
+    "fail creating an S3Storage with an invalid bucket" in {
+      val payload = jsonContentOf(
+        "/kg/storages/s3.json",
+        Map(
+          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storage",
+          quote("{bucket}")    -> "foobar",
+          quote("{endpoint}")  -> s3Config.endpoint.toString,
+          quote("{accessKey}") -> s3Config.accessKey.get,
+          quote("{secretKey}") -> s3Config.secretKey.get
+        )
+      )
+
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+          .mapJson { (json, result) =>
+            json shouldEqual jsonContentOf("/kg/storages/s3-error.json")
+            result.status shouldEqual StatusCodes.BadRequest
+          }
+      }
+    }
   }
 
-  "uploading an attachment against a storage" should {
+  "uploading an attachment against the S3 storage" should {
+
+    "upload attachment with JSON" in eventually {
+      val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment.json"))
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment.json"))).toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage",
+            headersUserAcceptJson,
+            multipartForm))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
+    "fetch attachment" in {
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+    }
+
+    "fetch gzipped attachment" in {
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      val requestHeaders  = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
+      cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
+        .mapByteString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
+        }
+    }
+
+    "update attachment with JSON" in {
+      val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment2.json"))
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment.json"))).toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage&rev=1",
+            headersUserAcceptJson,
+            multipartForm))
+        .mapResp(_.status shouldEqual StatusCodes.OK)
+    }
+
+    "fetch updated attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment2.json")
+      cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+    }
+
+    "fetch previous revision of attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      cl(
+        Req(GET,
+            s"$kgBase/files/$fullId/attachment:s3attachment.json?rev=1",
+            headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+    }
+
+    "upload second attachment to created storage" in eventually {
+      val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment2"))).toEntity()
+
+      cl(
+        Req(PUT, s"$kgBase/files/$fullId/s3attachment2?storage=nxv:mys3storage", headersUserAcceptJson, multipartForm)
+          .removeHeader("Content-Type"))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
+    "fetch second attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment2")
+      cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment2", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment2"
+          content shouldEqual expectedContent
+        }
+    }
+
+    "delete the attachment" in {
+      cl(Req(DELETE, s"$kgBase/files/$fullId/attachment:s3attachment.json?rev=2", headersUserAcceptJson))
+        .mapResp(_.status shouldEqual StatusCodes.OK)
+    }
+
+    "fetch attachment metadata" in {
+
+      val expected = jsonContentOf(
+        "/kg/resources/attachment-metadata.json",
+        Map(
+          quote("{filename}")  -> "s3attachment.json",
+          quote("{kgBase}")    -> s"$kgBase",
+          quote("{storageId}") -> "nxv:mys3storage",
+          quote("{projId}")    -> s"$fullId",
+          quote("{project}")   -> s"$adminBase/projects/$fullId",
+          quote("{iamBase}")   -> config.iam.uri.toString(),
+          quote("{realm}")     -> config.iam.testRealm,
+          quote("{user}")      -> config.iam.userSub
+        )
+      )
+      val requestHeaders = headersUserAcceptJson
+      cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
+        .mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json.removeFields("_createdAt", "_updatedAt") shouldEqual expected
+        }
+    }
+
+    "fail to upload file against a storage with custom permissions" in eventually {
+      val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment2"))).toEntity()
+
+      cl(
+        Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headersUserAcceptJson, multipartForm)
+          .removeHeader("Content-Type"))
+        .mapResp(_.status shouldEqual StatusCodes.Forbidden)
+    }
+
+    "add ACLs for custom storage" in {
+      forAll(List("s3/read", "s3/write")) { perm =>
+        val json = jsonContentOf(
+          "/iam/add.json",
+          replSub + (quote("{perms}") -> perm)
+        ).toEntity
+        cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+          result.status shouldEqual StatusCodes.OK
+          val rev = acls._results.head._rev
+          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        }
+      }
+    }
+
+    "upload file against a storage with custom permissions" in eventually {
+      val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment2"))).toEntity()
+
+      cl(
+        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mys3storage2", headersUserAcceptJson, multipartForm)
+          .removeHeader("Content-Type"))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+  }
+
+  "uploading an attachment against the default storage" should {
 
     "upload attachment with JSON" in eventually {
       val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment.json"))
@@ -252,6 +578,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val expected = jsonContentOf(
         "/kg/resources/attachment-metadata.json",
         Map(
+          quote("{filename}")  -> "attachment.json",
           quote("{kgBase}")    -> s"$kgBase",
           quote("{storageId}") -> "nxv:diskStorageDefault",
           quote("{projId}")    -> s"$fullId",
@@ -281,7 +608,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
 
     "add ACLs for custom storage" in {
-      forAll(List("some-read", "some-write")) { perm =>
+      forAll(List("disk/read", "disk/write")) { perm =>
         val json = jsonContentOf(
           "/iam/add.json",
           replSub + (quote("{perms}") -> perm)
@@ -301,7 +628,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/attachment4?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }

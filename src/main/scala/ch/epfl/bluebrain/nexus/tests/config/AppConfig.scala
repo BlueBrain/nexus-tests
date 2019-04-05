@@ -1,5 +1,7 @@
 package ch.epfl.bluebrain.nexus.tests.config
 
+import java.net.URI
+
 import akka.http.scaladsl.model.Uri
 import ch.epfl.bluebrain.nexus.tests.config.AppConfig._
 
@@ -13,8 +15,14 @@ import scala.concurrent.duration.FiniteDuration
   * @param admin      admin connection settings
   * @param iam        IAM connection settings
   * @param prefixes   the collection of prefixes used throughout the service
+  * @param s3         the S3 storage backend settings
   */
-final case class AppConfig(http: HttpConfig, kg: KgConfig, admin: AdminConfig, iam: IamConfig, prefixes: PrefixesConfig)
+final case class AppConfig(http: HttpConfig,
+                           kg: KgConfig,
+                           admin: AdminConfig,
+                           iam: IamConfig,
+                           prefixes: PrefixesConfig,
+                           s3: S3Config)
 
 object AppConfig {
 
@@ -38,4 +46,7 @@ object AppConfig {
                                   distributionContext: Uri,
                                   errorContext: Uri)
 
+  final case class S3Config(endpoint: Uri, accessKey: Option[String], secretKey: Option[String]) {
+    val endpointURI: URI = new URI(endpoint.toString)
+  }
 }

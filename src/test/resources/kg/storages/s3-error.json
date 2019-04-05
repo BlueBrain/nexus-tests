@@ -1,0 +1,7 @@
+{
+  "@context": "https://bluebrain.github.io/nexus/contexts/error.json",
+  "@type": "InvalidResourceFormat",
+  "details": "Error accessing S3 bucket 'foobar': The specified bucket does not exist",
+  "reason": "Resource 'https://bluebrain.github.io/nexus/vocabulary/mys3storage' has an invalid format.",
+  "ref": "https://bluebrain.github.io/nexus/vocabulary/mys3storage"
+}

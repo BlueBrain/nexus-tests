@@ -54,6 +54,7 @@ class BaseSpec
   private[tests] val adminBase                    = config.admin.uri
   private[tests] val iamBase                      = config.iam.uri
   private[tests] val kgBase                       = config.kg.uri
+  private[tests] val s3Config                     = config.s3
   private[tests] val replSub                      = Map(quote("{sub}") -> config.iam.userSub)
 
   override def beforeAll(): Unit = {

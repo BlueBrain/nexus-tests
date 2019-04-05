@@ -3,6 +3,6 @@
   "@type": "DiskStorage",
   "volume": "/tmp",
   "default": false,
-  "readPermission": "some-read",
-  "writePermission": "some-write"
+  "readPermission": "disk/read",
+  "writePermission": "disk/write"
 }

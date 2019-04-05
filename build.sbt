@@ -38,20 +38,22 @@ val pureconfigVersion = "0.10.2"
 val scalaTestVersion  = "3.0.6"
 val gatlingVersion    = "3.0.3"
 val uuidGenVersion    = "3.1.5"
+val awsSdkVersion     = "2.5.10"
 
 // Nexus dependency versions
 val commonsVersion = "0.11.1"
 
 // Dependency modules
-lazy val akkaHttpCore    = "com.typesafe.akka"     %% "akka-http-core"          % akkaHttpVersion
-lazy val akkaHttpTestKit = "com.typesafe.akka"     %% "akka-http-testkit"       % akkaHttpVersion
-lazy val akkaStream      = "com.typesafe.akka"     %% "akka-stream"             % akkaVersion
-lazy val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"            % akkaVersion
-lazy val pureconfig      = "com.github.pureconfig" %% "pureconfig"              % pureconfigVersion
-lazy val scalaTest       = "org.scalatest"         %% "scalatest"               % scalaTestVersion
-lazy val slf4j           = "com.typesafe.akka"     %% "akka-slf4j"              % akkaVersion
-lazy val alpakkaSSE      = "com.lightbend.akka"    %% "akka-stream-alpakka-sse" % alpakkaVersion
-lazy val uuidGen         = "com.fasterxml.uuid"    % "java-uuid-generator"      % uuidGenVersion
+lazy val akkaHttpCore    = "com.typesafe.akka"      %% "akka-http-core"          % akkaHttpVersion
+lazy val akkaHttpTestKit = "com.typesafe.akka"      %% "akka-http-testkit"       % akkaHttpVersion
+lazy val akkaStream      = "com.typesafe.akka"      %% "akka-stream"             % akkaVersion
+lazy val akkaTestKit     = "com.typesafe.akka"      %% "akka-testkit"            % akkaVersion
+lazy val pureconfig      = "com.github.pureconfig"  %% "pureconfig"              % pureconfigVersion
+lazy val scalaTest       = "org.scalatest"          %% "scalatest"               % scalaTestVersion
+lazy val slf4j           = "com.typesafe.akka"      %% "akka-slf4j"              % akkaVersion
+lazy val alpakkaSSE      = "com.lightbend.akka"     %% "akka-stream-alpakka-sse" % alpakkaVersion
+lazy val uuidGen         = "com.fasterxml.uuid"     % "java-uuid-generator"      % uuidGenVersion
+lazy val awsSdk          = "software.amazon.awssdk" % "s3"                       % awsSdkVersion
 
 // Nexus dependency modules
 lazy val commonsCore = "ch.epfl.bluebrain.nexus" %% "commons-core" % commonsVersion
@@ -78,6 +80,7 @@ lazy val root = project
       commonsCore,
       ammoniteOps,
       akkaHttpTestKit % Test,
+      awsSdk          % Test,
       commonsTest     % Test,
       scalaTest       % Test,
       slf4j           % Test,
