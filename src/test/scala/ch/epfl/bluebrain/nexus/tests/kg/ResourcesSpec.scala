@@ -100,6 +100,12 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         .mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
 
+    "fail to create a cross-project-resolver for proj2 if identities are missing" in {
+
+      cl(Req(POST, s"$kgBase/resolvers/$id2", headersUserAcceptJson, resolverPayload.removeField("identities").toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.BadRequest)
+    }
+
     "create a cross-project-resolver for proj2" in {
 
       cl(Req(POST, s"$kgBase/resolvers/$id2", headersUserAcceptJson, resolverPayload.toEntity))

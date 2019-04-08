@@ -1,6 +1,12 @@
 {
-  "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
-  "@id": "{kgBase}/resources/{projId}/_/{filename}",
+  "@context": [
+    {
+      "@base": "{kgBase}/resources/{projId}/_/",
+      "@vocab": "http://dev.nexus.ocp.bbp.epfl.ch/v1/vocabs/{projId}/"
+    },
+    "https://bluebrain.github.io/nexus/contexts/resource.json"
+  ],
+  "@id": "{filename}",
   "@type": "File",
   "_storageId" : "{storageId}",
   "_bytes": 52,

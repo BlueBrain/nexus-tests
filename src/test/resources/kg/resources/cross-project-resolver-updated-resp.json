@@ -16,6 +16,7 @@
   ],
   "identities": [
     {
+      "@id": "{iamBase}/realms/nexusdev/users/{user}",
       "@type": "User",
       "realm": "nexusdev",
       "subject": "{user}"

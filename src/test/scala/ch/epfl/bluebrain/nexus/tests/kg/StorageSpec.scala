@@ -16,6 +16,7 @@ import io.circe.Json
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
 import software.amazon.awssdk.auth.credentials._
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 
@@ -37,6 +38,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
   private val s3Client = S3Client.builder
     .endpointOverride(s3Config.endpointURI)
     .credentialsProvider(credentialsProvider)
+    .region(Region.US_EAST_1)
     .build
 
   override def beforeAll(): Unit = {
