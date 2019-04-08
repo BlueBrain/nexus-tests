@@ -102,7 +102,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
     "fail to create a cross-project-resolver for proj2 if identities are missing" in {
 
-      cl(Req(POST, s"$kgBase/resolvers/$id2", headersUserAcceptJson, resolverPayload.removeField("identities").toEntity))
+      cl(
+        Req(POST, s"$kgBase/resolvers/$id2", headersUserAcceptJson, resolverPayload.removeField("identities").toEntity))
         .mapResp(_.status shouldEqual StatusCodes.BadRequest)
     }
 
