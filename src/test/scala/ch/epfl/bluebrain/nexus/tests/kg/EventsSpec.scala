@@ -213,7 +213,7 @@ class EventsSpec
   private def send(request: Req): Future[HttpResponse] =
     http.singleRequest(request.addHeader(Authorization(credUser))).map { resp =>
       if (!resp.status.isSuccess())
-        println(s"HTTP response when performing SSE request: status = '${resp.status}'")
+        println(s"HTTP response when performing SSE request: status = '${resp.status}' ; req = ${request.uri}")
       resp
     }
 }
