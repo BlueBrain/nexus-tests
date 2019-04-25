@@ -1,5 +1,6 @@
 package ch.epfl.bluebrain.nexus.tests.kg
 
+import java.net.URLEncoder
 import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
@@ -53,6 +54,21 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
+    "creating a schema with property shape" in {
+      val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-prop-shape.json")
+
+      cl(Req(POST, s"$kgBase/schemas/$id1", headersUserAcceptJson, schemaPayload.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
+    "creating a schema that imports the property shape schema" in {
+      val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-imports.json")
+
+      eventually {
+        cl(Req(POST, s"$kgBase/schemas/$id1", headersUserAcceptJson, schemaPayload.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+    }
   }
 
   "creating a resource" should {
@@ -61,10 +77,17 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         jsonContentOf("/kg/resources/simple-resource.json",
                       Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1"))
 
-      eventually {
-        cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUserAcceptJson, payload.toEntity))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
-      }
+      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUserAcceptJson, payload.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+
+      val id2 = URLEncoder.encode("https://dev.nexus.test.com/test-schema-imports", "UTF-8")
+
+      val payload2 =
+        jsonContentOf("/kg/resources/simple-resource.json",
+                      Map(quote("{priority}") -> "5", quote("{resourceId}") -> "10"))
+
+      cl(Req(PUT, s"$kgBase/resources/$id1/${id2}/test-resource:10", headersUserAcceptJson, payload2.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "fetch the payload" in {
