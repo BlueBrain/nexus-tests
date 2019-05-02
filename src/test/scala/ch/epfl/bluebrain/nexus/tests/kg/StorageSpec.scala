@@ -14,7 +14,7 @@ import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, Inspectors}
+import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
@@ -23,7 +23,7 @@ import software.amazon.awssdk.services.s3.model._
 import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
 
-class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
+class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
 
   private val orgId  = genId()
   private val projId = genId()
@@ -416,7 +416,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_updatedAt") shouldEqual expected
+          json.hcursor.get[String]("_location").right.value should startWith("http://minio.dev.nexus.ocp.bbp.epfl.ch")
+          json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
     }
 
