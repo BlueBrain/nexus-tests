@@ -149,8 +149,9 @@ class EventsSpec
                                                                         "Deprecated",
                                                                         "FileCreated",
                                                                         "FileUpdated")
+      val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
 
-      removeInstants(Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)) shouldEqual jsonContentOf(
+      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
         "/kg/events/events.json",
         Map(
           quote("{resources}")   -> s"$kgBase/resources/$id",
@@ -185,7 +186,8 @@ class EventsSpec
                                                                    "Deprecated",
                                                                    "FileCreated",
                                                                    "FileUpdated")
-        removeInstants(Json.arr(events.map(e => parse(e.getData()).right.value): _*)) shouldEqual jsonContentOf(
+        val result = Json.arr(events.map(e => parse(e.getData()).right.value): _*)
+        removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
           "/kg/events/events.json",
           Map(
             quote("{resources}")   -> s"$kgBase/resources/$id",
@@ -206,6 +208,23 @@ class EventsSpec
           _.map(
             _.removeFields("_instant", "_updatedAt")
           )
+        )
+      )
+      .top
+      .value
+
+  private def removeLocation(json: Json): Json =
+    json.hcursor
+      .withFocus(
+        _.mapArray(
+          _.map { json =>
+            json.hcursor.downField("_attributes").focus match {
+              case Some(attr) =>
+                json.removeField("_attributes") deepMerge
+                  Json.obj("_attributes" -> attr.removeField("_location"))
+              case None => json
+            }
+          }
         )
       )
       .top
