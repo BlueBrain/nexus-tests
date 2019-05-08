@@ -28,8 +28,6 @@ final case class AppConfig(http: HttpConfig,
 
 object AppConfig {
 
-  final case class StorageConfig(s3: S3Config)
-
   final case class HttpConfig(patienceConfig: FiniteDuration)
 
   final case class KgConfig(uri: Uri)
