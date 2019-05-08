@@ -160,6 +160,94 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
+    "succeed creating an ExternalDiskStorage" in {
+      val payload = jsonContentOf(
+        "/kg/storages/external-disk.json",
+        Map(
+          quote("{endpoint}") -> config.external.endpoint.toString,
+          quote("{cred}")     -> config.external.credentials,
+          quote("{read}")     -> "resources/read",
+          quote("{write}")    -> "files/write",
+          quote("{folder}")   -> "testproject",
+          quote("{id}")       -> "myexternalstorage"
+        )
+      )
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage", headersUserAcceptJson))
+        .mapJson { (json, result) =>
+          val expected = jsonContentOf(
+            "/kg/storages/external-disk-response.json",
+            Map(
+              quote("{endpoint}") -> config.external.endpoint.toString,
+              quote("{folder}")   -> "testproject",
+              quote("{kgBase}")   -> s"$kgBase",
+              quote("{id}")       -> "nxv:myexternalstorage",
+              quote("{project}")  -> fullId,
+              quote("{read}")     -> "resources/read",
+              quote("{write}")    -> "files/write",
+              quote("{iamBase}")  -> config.iam.uri.toString(),
+              quote("{user}")     -> config.iam.userSub
+            )
+          )
+          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          result.status shouldEqual StatusCodes.OK
+        }
+
+      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+        result.status shouldEqual StatusCodes.OK
+        if (!Set("disk/extread", "disk/extwrite").subsetOf(permissions.permissions)) {
+          val body = jsonContentOf("/iam/permissions/append.json",
+                                   Map(
+                                     quote("{perms}") -> """disk/extread", "disk/extwrite"""
+                                   )).toEntity
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
+        } else {
+          succeed
+        }
+      }
+
+      val payload2 = jsonContentOf(
+        "/kg/storages/external-disk.json",
+        Map(
+          quote("{endpoint}") -> config.external.endpoint.toString,
+          quote("{cred}")     -> config.external.credentials,
+          quote("{read}")     -> "disk/extread",
+          quote("{write}")    -> "disk/extwrite",
+          quote("{folder}")   -> "testproject",
+          quote("{id}")       -> "myexternalstorage2"
+        )
+      )
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload2.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage2", headersUserAcceptJson))
+        .mapJson { (json, result) =>
+          val expected = jsonContentOf(
+            "/kg/storages/external-disk-response.json",
+            Map(
+              quote("{endpoint}") -> config.external.endpoint.toString,
+              quote("{folder}")   -> "testproject",
+              quote("{kgBase}")   -> s"$kgBase",
+              quote("{id}")       -> "nxv:myexternalstorage2",
+              quote("{project}")  -> fullId,
+              quote("{read}")     -> "disk/extread",
+              quote("{write}")    -> "disk/extwrite",
+              quote("{iamBase}")  -> config.iam.uri.toString(),
+              quote("{user}")     -> config.iam.userSub
+            )
+          )
+          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          result.status shouldEqual StatusCodes.OK
+        }
+    }
+
     "succeed creating an S3Storage" in {
       val payload = jsonContentOf(
         "/kg/storages/s3.json",
@@ -282,6 +370,25 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             json shouldEqual jsonContentOf("/kg/storages/s3-error.json")
             result.status shouldEqual StatusCodes.BadRequest
           }
+      }
+    }
+
+    "fail creating an ExternalDiskStorage without folder" in {
+      val payload = jsonContentOf(
+        "/kg/storages/external-disk.json",
+        Map(
+          quote("{endpoint}") -> config.external.endpoint.toString,
+          quote("{cred}")     -> config.external.credentials,
+          quote("{read}")     -> "resources/read",
+          quote("{write}")    -> "files/write",
+          quote("{folder}")   -> "testproject",
+          quote("{id}")       -> "myexternalstorage"
+        )
+      ).removeField("folder")
+
+      eventually {
+        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.BadRequest)
       }
     }
   }
@@ -452,7 +559,180 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mys3storage2", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headersUserAcceptJson, multipartForm)
+          .removeHeader("Content-Type"))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+  }
+
+  "uploading an attachment against the ExternalDisk storage" should {
+
+    "upload attachment with JSON" in eventually {
+      val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment.json"))
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage",
+            headersUserAcceptJson,
+            multipartForm))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
+    "fetch attachment" in {
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result
+            .header[`Content-Disposition`]
+            .value
+            .params
+            .get("filename")
+            .value shouldEqual "UTF-8''extattachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+    }
+
+    "fetch gzipped attachment" in {
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      val requestHeaders  = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
+      cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", requestHeaders))
+        .mapByteString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result
+            .header[`Content-Disposition`]
+            .value
+            .params
+            .get("filename")
+            .value shouldEqual "UTF-8''extattachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
+        }
+    }
+
+    "update attachment with JSON" in {
+      val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment2.json"))
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage&rev=1",
+            headersUserAcceptJson,
+            multipartForm))
+        .mapResp(_.status shouldEqual StatusCodes.OK)
+    }
+
+    "fetch updated attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment2.json")
+      cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result
+            .header[`Content-Disposition`]
+            .value
+            .params
+            .get("filename")
+            .value shouldEqual "UTF-8''extattachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+    }
+
+    "fetch previous revision of attachment" in {
+
+      val expectedContent = contentOf("/kg/resources/attachment.json")
+      cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json?rev=1", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
+        .mapString { (content, result) =>
+          result.status shouldEqual StatusCodes.OK
+          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+          result
+            .header[`Content-Disposition`]
+            .value
+            .params
+            .get("filename")
+            .value shouldEqual "UTF-8''extattachment.json"
+          result.header[`Content-Type`].value.value shouldEqual "application/json"
+          content shouldEqual expectedContent
+        }
+    }
+
+    "delete the attachment" in {
+      cl(Req(DELETE, s"$kgBase/files/$fullId/extattachment.json?rev=2", headersUserAcceptJson))
+        .mapResp(_.status shouldEqual StatusCodes.OK)
+    }
+
+    "fetch attachment metadata" in {
+
+      val expected = jsonContentOf(
+        "/kg/resources/attachment-metadata.json",
+        Map(
+          quote("{filename}")  -> "extattachment.json",
+          quote("{kgBase}")    -> s"$kgBase",
+          quote("{storageId}") -> "nxv:myexternalstorage",
+          quote("{projId}")    -> s"$fullId",
+          quote("{project}")   -> s"$adminBase/projects/$fullId",
+          quote("{iamBase}")   -> config.iam.uri.toString(),
+          quote("{realm}")     -> config.iam.testRealm,
+          quote("{user}")      -> config.iam.userSub
+        )
+      )
+      val requestHeaders = headersUserAcceptJson
+      cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", requestHeaders))
+        .mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json.hcursor.get[String]("_location").right.value should startWith(
+            "file:///gpfs/bbp.cscs.ch/data/project/testproject")
+          json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected
+        }
+    }
+
+    "fail to upload file against a storage with custom permissions" in eventually {
+      val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2",
+            headersUserAcceptJson,
+            multipartForm)
+          .removeHeader("Content-Type"))
+        .mapResp(_.status shouldEqual StatusCodes.Forbidden)
+    }
+
+    "add ACLs for custom storage" in {
+      forAll(List("disk/extread", "disk/extwrite")) { perm =>
+        val json = jsonContentOf(
+          "/iam/add.json",
+          replSub + (quote("{perms}") -> perm)
+        ).toEntity
+        cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+          result.status shouldEqual StatusCodes.OK
+          val rev = acls._results.head._rev
+          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        }
+      }
+    }
+
+    "upload file against a storage with custom permissions" in eventually {
+      val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/resources/attachment2").getBytes)
+      val multipartForm =
+        FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
+
+      cl(
+        Req(PUT,
+            s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2",
+            headersUserAcceptJson,
+            multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
@@ -605,7 +885,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/attachment6?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
