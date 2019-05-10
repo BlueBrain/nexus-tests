@@ -407,7 +407,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         "mediaType" -> Json.fromString("image/png")
       )
 
-      cl(Req(PUT, s"$kgBase/files/$fullId/logo.png?storage=nxv:mys3storage", headersUserAcceptJson, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/files/$fullId/logo.png?storage=nxv:mys3storage", headersJsonUser, payload.toEntity))
         .mapJson { (json, resp) =>
           resp.status shouldEqual StatusCodes.Created
           json.removeFields("_createdAt", "_updatedAt") shouldEqual
@@ -432,11 +432,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         "mediaType" -> Json.fromString("image/png")
       )
 
-      cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/nonexistent.png?storage=nxv:mys3storage",
-            headersUserAcceptJson,
-            payload.toEntity))
+      cl(Req(PUT, s"$kgBase/files/$fullId/nonexistent.png?storage=nxv:mys3storage", headersJsonUser, payload.toEntity))
         .mapJson { (json, resp) =>
           resp.status shouldEqual StatusCodes.BadGateway
           json shouldEqual jsonContentOf("/kg/files/linking-notfound.json",
@@ -789,7 +785,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         "mediaType" -> Json.fromString("image/png")
       )
 
-      cl(Req(PUT, s"$kgBase/files/$fullId/linking.png", headersUserAcceptJson, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/files/$fullId/linking.png", headersJsonUser, payload.toEntity))
         .mapJson { (json, resp) =>
           resp.status shouldEqual StatusCodes.BadRequest
           json shouldEqual jsonContentOf("/kg/files/linking-notsupported.json")

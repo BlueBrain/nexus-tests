@@ -5,6 +5,8 @@ import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
+import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
+import akka.stream.scaladsl.{Sink, Source}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
@@ -351,10 +353,66 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         }
       }
     }
+
+    "return 400 when using both from and after" in {
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10&after=%5B%22test%22%5D", headersJsonUser)).mapJson {
+        (json, result) =>
+          result.status shouldEqual StatusCodes.BadRequest
+          json shouldEqual jsonContentOf("/kg/listings/from-and-after-error.json")
+      }
+    }
+
+    "return 400 when from is bigger than limit" in {
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10001", headersJsonUser)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.BadRequest
+        json shouldEqual jsonContentOf("/kg/listings/from-over-limit-error.json")
+      }
+    }
+
+    "list responses using after" in {
+
+      val um = implicitly[FromEntityUnmarshaller[Json]]
+      val result = Source
+        .unfoldAsync(s"$kgBase/resources/$id1/test-schema?size=2") { searchUrl =>
+          cl(Req(GET, searchUrl, headersJsonUser))
+            .flatMap(res => um(res.entity))
+            .map(json =>
+              getNext(json).map { next =>
+                (next, getResults(json))
+            })
+        }
+        .mapConcat[Json](_.to[collection.immutable.Seq])
+        .runWith(Sink.seq)
+        .futureValue
+
+      val expected = getResults(
+        jsonContentOf(
+          "/kg/listings/response.json",
+          Map(
+            quote("{resources}") -> s"$kgBase/resources/$id1",
+            quote("{project}")   -> s"$adminBase/projects/$id1",
+            quote("{iamBase}")   -> config.iam.uri.toString(),
+            quote("{realm}")     -> config.iam.testRealm,
+            quote("{user}")      -> config.iam.userSub
+          )
+        ))
+
+      result shouldEqual expected
+    }
   }
 
+  def getNext(json: Json): Option[String] = json.asObject.flatMap(_("_next")).flatMap(_.asString)
+
+  def getResults(json: Json): Seq[Json] =
+    removeSearchMetadata(json).asObject
+      .flatMap(_("_results"))
+      .flatMap(_.asArray)
+      .getOrElse(Seq.empty)
+
   def removeSearchMetadata(json: Json): Json =
-    json.hcursor
+    json
+      .removeField("_next")
+      .hcursor
       .downField("_results")
       .withFocus(
         _.mapArray(
