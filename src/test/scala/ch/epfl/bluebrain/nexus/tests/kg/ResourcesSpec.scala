@@ -36,11 +36,11 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
 
     "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUserAcceptJson, orgReqEntity(orgId)))
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$id1", headersUserAcceptJson, kgProjectReqEntity(name = id1)))
+      cl(Req(PUT, s"$adminBase/projects/$id1", headersJsonUser, kgProjectReqEntity(name = id1)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$id2", headersUserAcceptJson, kgProjectReqEntity(name = id2)))
+      cl(Req(PUT, s"$adminBase/projects/$id2", headersJsonUser, kgProjectReqEntity(name = id2)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
@@ -50,14 +50,14 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
       eventually {
-        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersUserAcceptJson, schemaPayload.toEntity))
+        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersJsonUser, schemaPayload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
     "creating a schema with property shape" in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-prop-shape.json")
 
-      cl(Req(POST, s"$kgBase/schemas/$id1", headersUserAcceptJson, schemaPayload.toEntity))
+      cl(Req(POST, s"$kgBase/schemas/$id1", headersJsonUser, schemaPayload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -65,7 +65,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-imports.json")
 
       eventually {
-        cl(Req(POST, s"$kgBase/schemas/$id1", headersUserAcceptJson, schemaPayload.toEntity))
+        cl(Req(POST, s"$kgBase/schemas/$id1", headersJsonUser, schemaPayload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
@@ -77,7 +77,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         jsonContentOf("/kg/resources/simple-resource.json",
                       Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1"))
 
-      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUserAcceptJson, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
       val id2 = URLEncoder.encode("https://dev.nexus.test.com/test-schema-imports", "UTF-8")
@@ -86,27 +86,26 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         jsonContentOf("/kg/resources/simple-resource.json",
                       Map(quote("{priority}") -> "5", quote("{resourceId}") -> "10"))
 
-      cl(Req(PUT, s"$kgBase/resources/$id1/${id2}/test-resource:10", headersUserAcceptJson, payload2.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$id1/${id2}/test-resource:10", headersJsonUser, payload2.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "fetch the payload" in {
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersUserAcceptJson)).mapJson {
-        (json, result) =>
-          val expected = jsonContentOf(
-            "/kg/resources/simple-resource-response.json",
-            Map(
-              quote("{priority}")  -> "5",
-              quote("{rev}")       -> "1",
-              quote("{resources}") -> s"$kgBase/resources/$id1",
-              quote("{project}")   -> s"$adminBase/projects/$id1",
-              quote("{iamBase}")   -> config.iam.uri.toString(),
-              quote("{realm}")     -> config.iam.testRealm,
-              quote("{user}")      -> config.iam.userSub
-            )
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersJsonUser)).mapJson { (json, result) =>
+        val expected = jsonContentOf(
+          "/kg/resources/simple-resource-response.json",
+          Map(
+            quote("{priority}")  -> "5",
+            quote("{rev}")       -> "1",
+            quote("{resources}") -> s"$kgBase/resources/$id1",
+            quote("{project}")   -> s"$adminBase/projects/$id1",
+            quote("{iamBase}")   -> config.iam.uri.toString(),
+            quote("{realm}")     -> config.iam.testRealm,
+            quote("{user}")      -> config.iam.userSub
           )
-          result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+        )
+        result.status shouldEqual StatusCodes.OK
+        json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
       }
     }
   }
@@ -119,27 +118,26 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
-      cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUserAcceptJson, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
 
     "fail to create a cross-project-resolver for proj2 if identities are missing" in {
 
-      cl(
-        Req(POST, s"$kgBase/resolvers/$id2", headersUserAcceptJson, resolverPayload.removeField("identities").toEntity))
+      cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.removeField("identities").toEntity))
         .mapResp(_.status shouldEqual StatusCodes.BadRequest)
     }
 
     "create a cross-project-resolver for proj2" in {
 
-      cl(Req(POST, s"$kgBase/resolvers/$id2", headersUserAcceptJson, resolverPayload.toEntity))
+      cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "update a cross-project-resolver for proj2" in {
       val updated = resolverPayload deepMerge Json.obj("priority" -> Json.fromInt(20))
       eventually {
-        cl(Req(PUT, s"$kgBase/resolvers/$id2/example-id?rev=1", headersUserAcceptJson, updated.toEntity))
+        cl(Req(PUT, s"$kgBase/resolvers/$id2/example-id?rev=1", headersJsonUser, updated.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
@@ -157,7 +155,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             quote("{user}")           -> config.iam.userSub
           )
         )
-      cl(Req(GET, s"$kgBase/resolvers/$id2/example-id", headersUserAcceptJson)).mapJson { (json, result) =>
+      cl(Req(GET, s"$kgBase/resolvers/$id2/example-id", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
       }
@@ -176,7 +174,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         )
       )
       eventually {
-        cl(Req(GET, s"$kgBase/resolvers/$id2", headersUserAcceptJson)).mapJson { (json, result) =>
+        cl(Req(GET, s"$kgBase/resolvers/$id2", headersJsonUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           removeSearchMetadata(json) shouldEqual expected
         }
@@ -188,7 +186,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
       eventually {
-        cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersUserAcceptJson, payload.toEntity))
+        cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersJsonUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
@@ -200,7 +198,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
-      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersUserAcceptJson, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
     "fetch the update" in {
@@ -217,7 +215,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         )
       )
       forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
-        cl(Req(GET, s"$base/test-resource:1", headersUserAcceptJson)).mapJson { (json, result) =>
+        cl(Req(GET, s"$base/test-resource:1", headersJsonUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
         }
@@ -238,7 +236,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         )
       )
       forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
-        cl(Req(GET, s"$base/test-resource:1?rev=1", headersUserAcceptJson)).mapJson { (json, result) =>
+        cl(Req(GET, s"$base/test-resource:1?rev=1", headersJsonUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
         }
@@ -252,13 +250,9 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       val tag1 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1"))
       val tag2 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.1", quote("{rev}") -> "2"))
 
-      cl(
-        Req(POST,
-            s"$kgBase/resources/$id1/test-schema/test-resource:1/tags?rev=2",
-            headersUserAcceptJson,
-            tag1.toEntity))
+      cl(Req(POST, s"$kgBase/resources/$id1/test-schema/test-resource:1/tags?rev=2", headersJsonUser, tag1.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(POST, s"$kgBase/resources/$id1/_/test-resource:1/tags?rev=3", headersUserAcceptJson, tag2.toEntity))
+      cl(Req(POST, s"$kgBase/resources/$id1/_/test-resource:1/tags?rev=3", headersJsonUser, tag2.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -276,7 +270,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{user}")      -> config.iam.userSub
         )
       )
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersUserAcceptJson)).mapJson {
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersJsonUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag1)
@@ -294,10 +288,9 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{user}")      -> config.iam.userSub
         )
       )
-      cl(Req(GET, s"$kgBase/resources/$id1/_/test-resource:1?tag=v1.0.0", headersUserAcceptJson)).mapJson {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
+      cl(Req(GET, s"$kgBase/resources/$id1/_/test-resource:1?tag=v1.0.0", headersJsonUser)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
       }
     }
   }
@@ -321,7 +314,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       forAll(resources) {
         case (segment, expected) =>
           eventually {
-            cl(Req(GET, s"$kgBase/$segment/$id1", headersUserAcceptJson)).mapJson { (json, result) =>
+            cl(Req(GET, s"$kgBase/$segment/$id1", headersJsonUser)).mapJson { (json, result) =>
               result.status shouldEqual StatusCodes.OK
               removeSearchMetadata(json) shouldEqual expected
             }
@@ -334,11 +327,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       forAll(2 to 5) { resourceId =>
         val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                     Map(quote("{priority}") -> "3", quote("{resourceId}") -> s"$resourceId"))
-        cl(
-          Req(PUT,
-              s"$kgBase/resources/$id1/test-schema/test-resource:$resourceId",
-              headersUserAcceptJson,
-              payload.toEntity))
+        cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:$resourceId", headersJsonUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
@@ -356,7 +345,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         )
       )
       eventually {
-        cl(Req(GET, s"$kgBase/resources/$id1/test-schema", headersUserAcceptJson)).mapJson { (json, result) =>
+        cl(Req(GET, s"$kgBase/resources/$id1/test-schema", headersJsonUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           removeSearchMetadata(json) shouldEqual expected
         }

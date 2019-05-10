@@ -35,17 +35,34 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     }
 
     "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUserAcceptJson, orgReqEntity(orgId)))
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$fullId", headersUserAcceptJson, kgProjectReqEntity(name = fullId)))
+      cl(Req(PUT, s"$adminBase/projects/$fullId", headersJsonUser, kgProjectReqEntity(name = fullId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
-      cl(Req(PUT, s"$adminBase/projects/$fullId2", headersUserAcceptJson, kgProjectReqEntity(name = fullId)))
+      cl(Req(PUT, s"$adminBase/projects/$fullId2", headersJsonUser, kgProjectReqEntity(name = fullId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
 
   "creating the view" should {
+
+    "create a context" in {
+      val payload = jsonContentOf("/kg/views/context.json")
+      forAll(List(fullId, fullId2)) { project =>
+        cl(Req(PUT, s"$kgBase/resources/$project/resource/test-resource:context", headersJsonUser, payload.toEntity))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
+      }
+    }
+
+    "wait until in project resolver is created" in {
+      eventually {
+        cl(Req(GET, s"$kgBase/resolvers/$fullId", headersJsonUser)).mapJson { (json, result) =>
+          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 1
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
+    }
 
     "create an ElasticSearch view" in {
 
@@ -53,7 +70,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
       forAll(List(fullId, fullId2)) { project =>
         eventually {
-          cl(Req(PUT, s"$kgBase/views/$project/test-resource:testView", headersUserAcceptJson, payload.toEntity))
+          cl(Req(PUT, s"$kgBase/views/$project/test-resource:testView", headersJsonUser, payload.toEntity))
             .mapResp(_.status shouldEqual StatusCodes.Created)
         }
       }
@@ -61,12 +78,12 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
     "create an Sparql view that index tags" in eventually {
       val payload = jsonContentOf("/kg/views/sparql-view.json")
-      cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testSparqlView", headersUserAcceptJson, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/views/$fullId/test-resource:testSparqlView", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "get the created SparqlView" in eventually {
-      cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testSparqlView", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testSparqlView", headersJsonUser))
         .mapJson {
           case (json, _) =>
             val uuid = json.hcursor.get[String]("_uuid").right.value
@@ -89,7 +106,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
                                   Map(quote("{project1}") -> fullId, quote("{project2}") -> fullId2))
 
       eventually {
-        cl(Req(PUT, s"$kgBase/views/$fullId2/test-resource:testAggView", headersUserAcceptJson, payload.toEntity))
+        cl(Req(PUT, s"$kgBase/views/$fullId2/test-resource:testAggView", headersJsonUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
@@ -100,13 +117,13 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
                                   Map(quote("{project1}") -> fullId, quote("{project2}") -> fullId2))
 
       eventually {
-        cl(Req(PUT, s"$kgBase/views/$fullId2/test-resource:testAggEsView", headersUserAcceptJson, payload.toEntity))
+        cl(Req(PUT, s"$kgBase/views/$fullId2/test-resource:testAggEsView", headersJsonUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
 
     "get the created AggregateElasticSearchView" in eventually {
-      cl(Req(GET, s"$kgBase/views/$fullId2/test-resource:testAggEsView", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/views/$fullId2/test-resource:testAggEsView", headersJsonUser))
         .mapJson {
           case (json, _) =>
             val uuid = json.hcursor.get[String]("_uuid").right.value
@@ -126,7 +143,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     }
 
     "get an AggregateSparqlView" in eventually {
-      cl(Req(GET, s"$kgBase/views/$fullId2/test-resource:testAggView", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/views/$fullId2/test-resource:testAggView", headersJsonUser))
         .mapJson {
           case (json, _) =>
             val uuid = json.hcursor.get[String]("_uuid").right.value
@@ -145,30 +162,9 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         }
     }
 
-    "create a context" in {
-      val payload = jsonContentOf("/kg/views/context.json")
-      forAll(List(fullId, fullId2)) { project =>
-        cl(
-          Req(PUT,
-              s"$kgBase/resources/$project/resource/test-resource:context",
-              headersUserAcceptJson,
-              payload.toEntity))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
-      }
-
-    }
-
-    "wait until in project resolver is created" in {
-      eventually {
-        cl(Req(GET, s"$kgBase/resolvers/$fullId", headersUserAcceptJson)).mapJson { (json, result) =>
-          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 1
-          result.status shouldEqual StatusCodes.OK
-        }
-      }
-    }
     "post instances" in {
 
-      forAll(1 to 7) { i =>
+      forAll(1 to 8) { i =>
         val payload      = jsonContentOf(s"/kg/views/instances/instance$i.json")
         val id           = payload.asObject.value("@id").value.asString.value
         val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
@@ -176,7 +172,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         cl(
           Req(PUT,
               s"$kgBase/resources/$projectId/resource/patchedcell:$unprefixedId",
-              headersUserAcceptJson,
+              headersJsonUser,
               payload.removeField("@id").toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
@@ -184,7 +180,16 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
     "wait until in project view is indexed" in {
       eventually {
-        cl(Req(GET, s"$kgBase/views/$fullId", headersUserAcceptJson)).mapJson { (json, result) =>
+        cl(Req(GET, s"$kgBase/views/$fullId", headersJsonUser)).mapJson { (json, result) =>
+          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 4
+          result.status shouldEqual StatusCodes.OK
+        }
+      }
+    }
+
+    "wait until all instances are indexed in default view of project 2" in {
+      eventually {
+        cl(Req(GET, s"$kgBase/resources/$fullId2/resource", headersJsonUser)).mapJson { (json, result) =>
           json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 4
           result.status shouldEqual StatusCodes.OK
         }
@@ -195,51 +200,47 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
       val query = Json.obj("query" -> Json.obj("other" -> Json.obj()))
 
-      cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersUserAcceptJson, query.toEntity))
+      cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, query.toEntity))
         .mapJson { (json, result) =>
           json shouldEqual jsonContentOf("/kg/views/elastic-error.json")
           result.status shouldEqual StatusCodes.BadRequest
         }
     }
 
-    val sortedMatchAll = Json.obj(
-      "query" -> Json.obj(
-        "term" -> Json.obj(
-          "@type" -> Json.fromString("Cell")
-        )),
-      "sort" -> Json.arr(
-        Json.obj(
-          "name.raw" -> Json.obj(
-            "order" -> Json.fromString("asc")
-          ))
-      )
-    )
+    val sort = Json.obj("sort" -> Json.arr(Json.obj("name.raw" -> Json.obj("order" -> Json.fromString("asc")))))
+
+    val sortedMatchCells =
+      Json.obj("query" -> Json.obj("term" -> Json.obj("@type" -> Json.fromString("Cell")))) deepMerge sort
+
+    val matchAll = Json.obj("query" -> Json.obj("match_all" -> Json.obj())) deepMerge sort
 
     "search instances on project 1" in eventually {
-      cl(
-        Req(POST,
-            s"$kgBase/views/$fullId/test-resource:testView/_search",
-            headersUserAcceptJson,
-            sortedMatchAll.toEntity))
+      cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, sortedMatchCells.toEntity))
         .mapJson { (json, result) =>
           val index = json.getJson("hits").getArray("hits").head.getString("_index")
           result.status shouldEqual StatusCodes.OK
           json.removeField("took") shouldEqual jsonContentOf("/kg/views/es-search-response.json",
                                                              Map(quote("{index}") -> index))
+          cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
+            .mapJson { (json2, _) =>
+              json2.removeField("took") shouldEqual json.removeField("took")
+            }
         }
     }
 
     "search instances on project 2" in eventually {
       cl(
-        Req(POST,
-            s"$kgBase/views/$fullId2/test-resource:testView/_search",
-            headersUserAcceptJson,
-            sortedMatchAll.toEntity))
+        Req(POST, s"$kgBase/views/$fullId2/test-resource:testView/_search", headersJsonUser, sortedMatchCells.toEntity))
         .mapJson { (json, result) =>
           val index = json.getJson("hits").getArray("hits").head.getString("_index")
           result.status shouldEqual StatusCodes.OK
           json.removeField("took") shouldEqual jsonContentOf("/kg/views/es-search-response-2.json",
                                                              Map(quote("{index}") -> index))
+
+          cl(Req(POST, s"$kgBase/views/$fullId2/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
+            .mapJson { (json2, _) =>
+              json2.removeField("took") shouldEqual json.removeField("took")
+            }
         }
     }
 
@@ -247,8 +248,8 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(
         Req(POST,
             s"$kgBase/views/$fullId2/test-resource:testAggEsView/_search",
-            headersUserAcceptJson,
-            sortedMatchAll.toEntity))
+            headersJsonUser,
+            sortedMatchCells.toEntity))
         .mapJson { (json, result) =>
           val indexes   = json.getJson("hits").getArray("hits").map(_.hcursor.get[String]("_index").right.value)
           val toReplace = indexes.zipWithIndex.map { case (value, i) => quote(s"{index${i + 1}}") -> value }.toMap
@@ -262,7 +263,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         Req(POST,
             s"$kgBase/views/$fullId2/test-resource:testAggEsView/_search",
             Seq[HttpHeader](Accept(MediaTypes.`application/json`)),
-            sortedMatchAll.toEntity))
+            sortedMatchCells.toEntity))
         .mapJson { (json, result) =>
           val index = json.getJson("hits").getArray("hits").head.getString("_index")
           result.status shouldEqual StatusCodes.OK
@@ -272,7 +273,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     }
 
     "fetch statistics for testView" in {
-      cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testView/statistics", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testView/statistics", headersJsonUser))
         .mapDecoded[ViewStatistics] { (stats, result) =>
           result.status shouldEqual StatusCodes.OK
           stats.delayInSeconds shouldEqual 0
@@ -286,7 +287,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     }
 
     "fetch statistics for defaultElasticSearchIndex" in {
-      cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultElasticSearchIndex/statistics", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultElasticSearchIndex/statistics", headersJsonUser))
         .mapDecoded[ViewStatistics] { (stats, result) =>
           result.status shouldEqual StatusCodes.OK
           stats.delayInSeconds shouldEqual 0
@@ -313,7 +314,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(
         Req(POST,
             s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/sparql",
-            headersUserAcceptJson,
+            headersJsonUser,
             HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -325,7 +326,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(
         Req(POST,
             s"$kgBase/views/$fullId2/nxv:defaultSparqlIndex/sparql",
-            headersUserAcceptJson,
+            headersJsonUser,
             HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -337,7 +338,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(
         Req(POST,
             s"$kgBase/views/$fullId2/test-resource:testAggView/sparql",
-            headersUserAcceptJson,
+            headersJsonUser,
             HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -360,7 +361,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     }
 
     "fetch statistics for defaultSparqlIndex" in {
-      cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/statistics", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/statistics", headersJsonUser))
         .mapDecoded[ViewStatistics] { (stats, result) =>
           result.status shouldEqual StatusCodes.OK
           stats.delayInSeconds shouldEqual 0
@@ -377,7 +378,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(
         Req(POST,
             s"$kgBase/views/$fullId/test-resource:testSparqlView/sparql",
-            headersUserAcceptJson,
+            headersJsonUser,
             HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -395,7 +396,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           Req(
             POST,
             s"$kgBase/resources/$fullId/resource/patchedcell:$unprefixedId/tags?rev=1",
-            headersUserAcceptJson,
+            headersJsonUser,
             Json.obj("rev" -> Json.fromLong(1L), "tag" -> Json.fromString("one")).toEntity
           ))
           .mapResp(_.status shouldEqual StatusCodes.Created)
@@ -406,7 +407,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(
         Req(POST,
             s"$kgBase/views/$fullId/test-resource:testSparqlView/sparql",
-            headersUserAcceptJson,
+            headersJsonUser,
             HttpEntity(RdfMediaTypes.`application/sparql-query`, query)))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -414,5 +415,52 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         }
     }
 
+    "remove @type on a resource" in {
+
+      val payload      = jsonContentOf("/kg/views/instances/instance1.json").removeField("@type")
+      val id           = payload.asObject.value("@id").value.asString.value
+      val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
+      cl(
+        Req(PUT,
+            s"$kgBase/resources/$fullId/_/patchedcell:$unprefixedId?rev=2",
+            headersJsonUser,
+            payload.removeField("@id").toEntity)).mapResp(_.status shouldEqual StatusCodes.OK)
+    }
+
+    "search instances on project 1 after removed @type" in eventually {
+      cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, sortedMatchCells.toEntity))
+        .mapJson { (json, result) =>
+          val index = json.getJson("hits").getArray("hits").head.getString("_index")
+          result.status shouldEqual StatusCodes.OK
+          json.removeField("took") shouldEqual jsonContentOf("/kg/views/es-search-response-no-type.json",
+                                                             Map(quote("{index}") -> index))
+          cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
+            .mapJson { (json2, _) =>
+              json2.removeField("took") shouldEqual json.removeField("took")
+            }
+        }
+    }
+
+    "deprecate a resource" in {
+      val payload      = jsonContentOf("/kg/views/instances/instance2.json").removeField("@type")
+      val id           = payload.asObject.value("@id").value.asString.value
+      val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
+      cl(Req(DELETE, s"$kgBase/resources/$fullId/_/patchedcell:$unprefixedId?rev=2", headersJsonUser))
+        .mapResp(_.status shouldEqual StatusCodes.OK)
+    }
+
+    "search instances on project 1 after deprecated" in eventually {
+      cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, sortedMatchCells.toEntity))
+        .mapJson { (json, result) =>
+          val index = json.getJson("hits").getArray("hits").head.getString("_index")
+          result.status shouldEqual StatusCodes.OK
+          json.removeField("took") shouldEqual jsonContentOf("/kg/views/es-search-response-no-deprecated.json",
+                                                             Map(quote("{index}") -> index))
+          cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
+            .mapJson { (json2, _) =>
+              json2.removeField("took") shouldEqual json.removeField("took")
+            }
+        }
+    }
   }
 }
