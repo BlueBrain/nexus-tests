@@ -45,7 +45,7 @@ class BaseSpec
   private[tests] val credGroup                     = HttpCredentials.createOAuth2BearerToken(config.iam.groupToken)
   private[tests] val credUser                      = HttpCredentials.createOAuth2BearerToken(config.iam.userToken)
   private[tests] val headersGroup: Seq[HttpHeader] = Seq(Authorization(credGroup))
-  private[tests] val headersUserAcceptJson: Seq[HttpHeader] =
+  private[tests] val headerUser: Seq[HttpHeader] =
     Seq(Authorization(credUser), Accept(MediaTypes.`application/json`))
   private[tests] val headersUser: Seq[HttpHeader] = Seq(Authorization(credUser))
   private[tests] val errorCtx                     = Map(quote("{error-context}") -> config.prefixes.errorContext.toString)

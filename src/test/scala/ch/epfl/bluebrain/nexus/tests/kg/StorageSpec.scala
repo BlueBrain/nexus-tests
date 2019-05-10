@@ -87,9 +87,9 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
 
     "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersUserAcceptJson, orgReqEntity(orgId)))
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headerUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$fullId", headersUserAcceptJson, kgProjectReqEntity(name = fullId)))
+      cl(Req(PUT, s"$adminBase/projects/$fullId", headerUser, kgProjectReqEntity(name = fullId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
@@ -99,11 +99,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     "succeed creating a DiskStorage" in {
       val payload = jsonContentOf("/kg/storages/disk.json")
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
-      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mystorage", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mystorage", headerUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
             "/kg/storages/disk-response.json",
@@ -137,11 +137,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       val payload2 = jsonContentOf("/kg/storages/disk-perms.json")
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload2.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload2.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
-      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mystorage2", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mystorage2", headerUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
             "/kg/storages/disk-response.json",
@@ -173,11 +173,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         )
       )
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
-      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage", headerUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
             "/kg/storages/external-disk-response.json",
@@ -223,11 +223,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         )
       )
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload2.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload2.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
-      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage2", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage2", headerUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
             "/kg/storages/external-disk-response.json",
@@ -261,7 +261,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       )
 
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
@@ -279,7 +279,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
       }
 
-      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mys3storage", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mys3storage", headerUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
             "/kg/storages/s3-response.json",
@@ -314,11 +314,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       )
 
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload2.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload2.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
-      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mys3storage2", headersUserAcceptJson))
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:mys3storage2", headerUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
             "/kg/storages/s3-response.json",
@@ -344,7 +344,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val payload = jsonContentOf("/kg/storages/disk.json") deepMerge Json.obj("volume" -> Json.fromString(volume))
 
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload.toEntity))
           .mapJson { (json, result) =>
             json shouldEqual jsonContentOf("/kg/storages/error.json", Map(quote("{volume}") -> volume))
             result.status shouldEqual StatusCodes.BadRequest
@@ -365,7 +365,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       )
 
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload.toEntity))
           .mapJson { (json, result) =>
             json shouldEqual jsonContentOf("/kg/storages/s3-error.json")
             result.status shouldEqual StatusCodes.BadRequest
@@ -387,7 +387,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).removeField("folder")
 
       eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersUserAcceptJson, payload.toEntity))
+        cl(Req(POST, s"$kgBase/storages/$fullId", headerUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.BadRequest)
       }
     }
@@ -400,11 +400,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment.json"))).toEntity()
 
-      cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage",
-            headersUserAcceptJson,
-            multipartForm))
+      cl(Req(PUT, s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage", headerUser, multipartForm))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -439,11 +435,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment.json"))).toEntity()
 
-      cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage&rev=1",
-            headersUserAcceptJson,
-            multipartForm))
+      cl(Req(PUT, s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage&rev=1", headerUser, multipartForm))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
@@ -482,7 +474,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/s3attachment2?storage=nxv:mys3storage", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/s3attachment2?storage=nxv:mys3storage", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
@@ -500,7 +492,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
 
     "delete the attachment" in {
-      cl(Req(DELETE, s"$kgBase/files/$fullId/attachment:s3attachment.json?rev=2", headersUserAcceptJson))
+      cl(Req(DELETE, s"$kgBase/files/$fullId/attachment:s3attachment.json?rev=2", headerUser))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
@@ -519,7 +511,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{user}")      -> config.iam.userSub
         )
       )
-      val requestHeaders = headersUserAcceptJson
+      val requestHeaders = headerUser
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -534,7 +526,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
@@ -559,7 +551,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
@@ -572,11 +564,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
 
-      cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage",
-            headersUserAcceptJson,
-            multipartForm))
+      cl(Req(PUT, s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage", headerUser, multipartForm))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -624,7 +612,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(
         Req(PUT,
             s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage&rev=1",
-            headersUserAcceptJson,
+            headerUser,
             multipartForm))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
@@ -666,7 +654,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
 
     "delete the attachment" in {
-      cl(Req(DELETE, s"$kgBase/files/$fullId/extattachment.json?rev=2", headersUserAcceptJson))
+      cl(Req(DELETE, s"$kgBase/files/$fullId/extattachment.json?rev=2", headerUser))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
@@ -685,7 +673,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{user}")      -> config.iam.userSub
         )
       )
-      val requestHeaders = headersUserAcceptJson
+      val requestHeaders = headerUser
       cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -701,10 +689,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
 
       cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2",
-            headersUserAcceptJson,
-            multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
@@ -729,10 +714,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
 
       cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2",
-            headersUserAcceptJson,
-            multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
@@ -745,7 +727,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment.json"))).toEntity()
 
-      cl(Req(PUT, s"$kgBase/files/$fullId/attachment.json", headersUserAcceptJson, multipartForm))
+      cl(Req(PUT, s"$kgBase/files/$fullId/attachment.json", headerUser, multipartForm))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -780,11 +762,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment.json"))).toEntity()
 
-      cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/attachment.json?storage=defaultStorage&rev=1",
-            headersUserAcceptJson,
-            multipartForm))
+      cl(Req(PUT, s"$kgBase/files/$fullId/attachment.json?storage=defaultStorage&rev=1", headerUser, multipartForm))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
@@ -823,7 +801,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment2?storage=nxv:mystorage", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/attachment2?storage=nxv:mystorage", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
@@ -834,7 +812,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(Multipart.FormData.BodyPart.Strict("file", entity, Map("filename" -> "attachment3"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:wrong-id", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:wrong-id", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
@@ -852,7 +830,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
 
     "delete the attachment" in {
-      cl(Req(DELETE, s"$kgBase/files/$fullId/attachment:attachment.json?rev=2", headersUserAcceptJson))
+      cl(Req(DELETE, s"$kgBase/files/$fullId/attachment:attachment.json?rev=2", headerUser))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
@@ -871,7 +849,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{user}")      -> config.iam.userSub
         )
       )
-      val requestHeaders = headersUserAcceptJson
+      val requestHeaders = headerUser
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -885,7 +863,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment6?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/attachment6?storage=nxv:mystorage2", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
@@ -911,7 +889,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment2"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment4?storage=nxv:mystorage2", headersUserAcceptJson, multipartForm)
+        Req(PUT, s"$kgBase/files/$fullId/attachment4?storage=nxv:mystorage2", headerUser, multipartForm)
           .removeHeader("Content-Type"))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
@@ -921,7 +899,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
     "deprecate a DiskStorage" in {
       eventually {
-        cl(Req(DELETE, s"$kgBase/storages/$fullId/nxv:mystorage?rev=1", headersUserAcceptJson))
+        cl(Req(DELETE, s"$kgBase/storages/$fullId/nxv:mystorage?rev=1", headerUser))
           .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
@@ -932,7 +910,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(Multipart.FormData.BodyPart.Strict("file", entity, Map("filename" -> "attachment3"))).toEntity()
       eventually {
         cl(
-          Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mystorage", headersUserAcceptJson, multipartForm)
+          Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mystorage", headerUser, multipartForm)
             .removeHeader("Content-Type"))
           .mapResp(_.status shouldEqual StatusCodes.NotFound)
       }
@@ -952,7 +930,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{user}")      -> config.iam.userSub
         )
       )
-      val requestHeaders = headersUserAcceptJson
+      val requestHeaders = headerUser
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment2", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK

@@ -1,4 +1,7 @@
 {
+  "@context": {
+    "@vocab": "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/"
+  },
   "@type": [
     "SparqlView"
   ],
@@ -6,5 +9,8 @@
     "https://bluebrain.github.io/nexus/schemas/unconstrained.json"
   ],
   "resourceTag": "one",
+  "resourceTypes": [
+    "https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/Cell"
+  ],
   "includeMetadata": false
 }
