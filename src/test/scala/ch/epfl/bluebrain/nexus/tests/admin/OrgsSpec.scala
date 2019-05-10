@@ -16,7 +16,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
   "creating an organization" should {
 
     "fail if the permissions are missing" in {
-      cl(Req(PUT, s"$adminBase/orgs/${genId()}", headerUser, Json.obj().toEntity)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/${genId()}", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
         json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
       }
@@ -38,14 +38,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     val id = genId()
 
     "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id", headerUser, orgReqEntity(id))).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
     }
 
     "check if permissions have been created for user" in {
-      cl(Req(GET, s"$iamBase/acls/$id", headerUser)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/$id", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl.head.permissions shouldEqual Set(
           "acls/read",
@@ -71,12 +71,12 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     "fail if organization already exists" in {
       val id = genId()
-      cl(Req(PUT, s"$adminBase/orgs/$id", headerUser, orgReqEntity(id))).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
 
-      cl(Req(PUT, s"$adminBase/orgs/$id", headerUser, orgReqEntity(id))).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
         json shouldEqual jsonContentOf("/admin/errors/org-already-exists.json", Map(quote("{orgId}") -> id))
       }
@@ -90,13 +90,13 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     val create = orgReqEntity(s"$id organization")
     "fail if the permissions are missing" in {
 
-      cl(Req(PUT, s"$adminBase/orgs/$id", headerUser, create)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
 
       cleanAcls
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
         json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
       }
@@ -114,14 +114,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     "succeed if organization exists" in {
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, s"$id organization", 1L, id)
       }
     }
 
     "return not found when fetching a non existing revision of an organizations" in {
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headerUser)).mapResp { result =>
+      cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headersJsonUser)).mapResp { result =>
         result.status shouldEqual StatusCodes.NotFound
       }
     }
@@ -143,7 +143,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     "return not found when fetching a non existing organization" in {
-      cl(Req(uri = s"$adminBase/orgs/$nonExistent", headers = headerUser)).mapResp { result =>
+      cl(Req(uri = s"$adminBase/orgs/$nonExistent", headers = headersJsonUser)).mapResp { result =>
         result.status shouldEqual StatusCodes.NotFound
       }
     }
@@ -166,7 +166,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     "create organization" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id", headerUser, create)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
@@ -174,7 +174,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     "fail if the permissions are missing" in {
       cleanAcls
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headerUser, create)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
         json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
       }
@@ -190,7 +190,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     "fail when wrong revision is provided" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=4", headerUser, create)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id?rev=4", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
         json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json", errorCtx)
       }
@@ -213,7 +213,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     "fail when organization does not exist" in {
-      cl(Req(PUT, s"$adminBase/orgs/$nonExistent?rev=1", headerUser, create)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$nonExistent?rev=1", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.NotFound
         json shouldEqual jsonContentOf("/admin/errors/not-exists.json", Map(quote("{orgId}") -> nonExistent))
       }
@@ -224,7 +224,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       val updatedName = s"$id organization update 1"
       val update      = orgReqEntity(updatedName)
 
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headerUser, update)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headersJsonUser, update)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 2L, "orgs", "Organization")
       }
@@ -232,31 +232,31 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       val updatedName2 = s"$id organization update 2"
       val update2      = orgReqEntity(updatedName2)
 
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=2", headerUser, update2)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id?rev=2", headersJsonUser, update2)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 3L, "orgs", "Organization")
 
       }
 
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3, id)
 
       }
 
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3L, id)
 
       }
 
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=2", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id?rev=2", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, updatedName, 2L, id)
 
       }
 
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, s"$id organization", 1L, id)
       }
@@ -281,7 +281,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     "create the organization" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id", headerUser, create)).mapJson { (json, result) =>
+      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
@@ -289,32 +289,32 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     "fail when wrong revision is provided" in {
 
-      cl(Req(DELETE, s"$adminBase/orgs/$id?rev=4", headerUser)).mapJson { (json, result) =>
+      cl(Req(DELETE, s"$adminBase/orgs/$id?rev=4", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
         json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json")
       }
     }
 
     "fail when revision is not provided" in {
-      cl(Req(DELETE, s"$adminBase/orgs/$id", headerUser)).mapJson { (json, result) =>
+      cl(Req(DELETE, s"$adminBase/orgs/$id", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.BadRequest
         json shouldEqual jsonContentOf("/admin/errors/rev-not-provided.json")
       }
     }
 
     "succeed if organization exists" in {
-      cl(Req(DELETE, s"$adminBase/orgs/$id?rev=1", headerUser)).mapJson { (json, result) =>
+      cl(Req(DELETE, s"$adminBase/orgs/$id?rev=1", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 2L, "orgs", "Organization", true)
       }
 
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, name, 2L, id, true)
 
       }
 
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headerUser)).mapJson { (json, result) =>
+      cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, name, 1L, id)
 

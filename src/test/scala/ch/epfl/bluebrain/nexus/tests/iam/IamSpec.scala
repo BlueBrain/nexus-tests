@@ -335,7 +335,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "list permissions on /*/*" in {
-      cl(Req(GET, s"$iamBase/acls/*/*", headerUser)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/*/*", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._total should be >= 4L
         val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
@@ -367,7 +367,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "list permissions on /orgpath1/*" in {
-      cl(Req(GET, s"$iamBase/acls/$orgPath1/*", headerUser)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/$orgPath1/*", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._total shouldEqual 2
         val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
@@ -388,7 +388,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "list permissions on /*/* with ancestors" in {
-      cl(Req(GET, s"$iamBase/acls/*/*?ancestors=true", headerUser)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/*/*?ancestors=true", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
         acls._results

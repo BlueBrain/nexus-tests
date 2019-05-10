@@ -51,20 +51,20 @@ class EventsSpec
     }
 
     "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headerUser, orgReqEntity(orgId)))
+      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$id", headerUser, kgProjectReqEntity(name = id)))
+      cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, kgProjectReqEntity(name = id)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "wait for default project events" in {
       eventually {
-        cl(Req(GET, s"$kgBase/views/$id/nxv:defaultElasticSearchIndex", headerUser))
+        cl(Req(GET, s"$kgBase/views/$id/nxv:defaultElasticSearchIndex", headersJsonUser))
           .mapResp(_.status shouldEqual StatusCodes.OK)
-        cl(Req(GET, s"$kgBase/views/$id/nxv:defaultSparqlIndex", headerUser))
+        cl(Req(GET, s"$kgBase/views/$id/nxv:defaultSparqlIndex", headersJsonUser))
           .mapResp(_.status shouldEqual StatusCodes.OK)
 
-        cl(Req(GET, s"$kgBase/resolvers/$id/nxv:defaultInProject", headerUser))
+        cl(Req(GET, s"$kgBase/resolvers/$id/nxv:defaultInProject", headersJsonUser))
           .mapResp(_.status shouldEqual StatusCodes.OK)
       }
 
@@ -79,23 +79,23 @@ class EventsSpec
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
-      cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1", headerUser, payload.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
       //Updated event
       val updatePayload = jsonContentOf("/kg/resources/simple-resource.json",
                                         Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1"))
-      cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1?rev=1", headerUser, updatePayload.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1?rev=1", headersJsonUser, updatePayload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.OK)
 
       //TagAdded event
       val tag1 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1"))
 
-      cl(Req(POST, s"$kgBase/resources/$id/_/test-resource:1/tags?rev=2", headerUser, tag1.toEntity))
+      cl(Req(POST, s"$kgBase/resources/$id/_/test-resource:1/tags?rev=2", headersJsonUser, tag1.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
       //Deprecated event
-      cl(Req(DELETE, s"$kgBase/resources/$id/_/test-resource:1?rev=3", headerUser, updatePayload.toEntity))
+      cl(Req(DELETE, s"$kgBase/resources/$id/_/test-resource:1?rev=3", headersJsonUser, updatePayload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.OK)
 
       //FileCreated event
@@ -108,7 +108,7 @@ class EventsSpec
                       Map("filename" -> "attachment.json")))
           .toEntity()
 
-      cl(Req(PUT, s"$kgBase/files/$id/attachment.json", headerUser, multipartForm))
+      cl(Req(PUT, s"$kgBase/files/$id/attachment.json", headersJsonUser, multipartForm))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
       //FileUpdated event
@@ -121,14 +121,14 @@ class EventsSpec
                       Map("filename" -> "attachment.json")))
           .toEntity()
 
-      cl(Req(PUT, s"$kgBase/files/$id/attachment.json?rev=1", headerUser, multipartFormUpdate))
+      cl(Req(PUT, s"$kgBase/files/$id/attachment.json?rev=1", headersJsonUser, multipartFormUpdate))
         .mapResp(_.status shouldEqual StatusCodes.OK)
 
     }
 
     "fetch project events" in {
 
-      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headerUser)).jsonValue.asObject
+      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
         .value
         .asString
@@ -165,7 +165,7 @@ class EventsSpec
     }
 
     "fetch global  events" in {
-      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headerUser)).jsonValue.asObject
+      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
         .value
         .asString
