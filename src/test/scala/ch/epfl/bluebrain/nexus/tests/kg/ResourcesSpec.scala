@@ -354,12 +354,27 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
+    "return 400 when using both from and after" in {
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10&after=%5B%22test%22%5D", headersJsonUser)).mapJson {
+        (json, result) =>
+          result.status shouldEqual StatusCodes.BadRequest
+          json shouldEqual jsonContentOf("/kg/listings/from-and-after-error.json")
+      }
+    }
+
+    "return 400 when from is bigger than limit" in {
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10001", headersJsonUser)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.BadRequest
+        json shouldEqual jsonContentOf("/kg/listings/from-over-limit-error.json")
+      }
+    }
+
     "list responses using after" in {
 
       val um = implicitly[FromEntityUnmarshaller[Json]]
       val result = Source
         .unfoldAsync(s"$kgBase/resources/$id1/test-schema?size=2") { searchUrl =>
-          cl(Req(GET, searchUrl, headersUserAcceptJson))
+          cl(Req(GET, searchUrl, headersJsonUser))
             .flatMap(res => um(res.entity))
             .map(json =>
               getNext(json).map { next =>
