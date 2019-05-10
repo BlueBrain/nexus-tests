@@ -417,7 +417,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
     "remove @type on a resource" in {
 
-      val payload      = jsonContentOf(s"/kg/views/instances/instance1.json").removeField("@type")
+      val payload      = jsonContentOf("/kg/views/instances/instance1.json").removeField("@type")
       val id           = payload.asObject.value("@id").value.asString.value
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
       cl(
@@ -442,7 +442,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
     }
 
     "deprecate a resource" in {
-      val payload      = jsonContentOf(s"/kg/views/instances/instance2.json").removeField("@type")
+      val payload      = jsonContentOf("/kg/views/instances/instance2.json").removeField("@type")
       val id           = payload.asObject.value("@id").value.asString.value
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
       cl(Req(DELETE, s"$kgBase/resources/$fullId/_/patchedcell:$unprefixedId?rev=2", headersJsonUser))
