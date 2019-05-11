@@ -104,7 +104,7 @@ class EventsSpec
           .FormData(
             Multipart.FormData.BodyPart
               .Strict("file",
-                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment.json")),
+                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment.json")),
                       Map("filename" -> "attachment.json")))
           .toEntity()
 
@@ -117,7 +117,7 @@ class EventsSpec
           .FormData(
             Multipart.FormData.BodyPart
               .Strict("file",
-                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/resources/attachment2.json")),
+                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment2.json")),
                       Map("filename" -> "attachment.json")))
           .toEntity()
 
