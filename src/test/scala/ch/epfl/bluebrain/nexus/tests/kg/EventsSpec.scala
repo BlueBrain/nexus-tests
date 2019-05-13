@@ -134,6 +134,12 @@ class EventsSpec
         .asString
         .value
 
+      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
+
       val projectEvents: Seq[ServerSentEvent] =
         EventSource(s"$kgBase/resources/$id/events", send, initialLastEventId = Some(timestamp.toString))
         //drop resolver, views and storage events
@@ -154,17 +160,25 @@ class EventsSpec
       removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
         "/kg/events/events.json",
         Map(
-          quote("{resources}")   -> s"$kgBase/resources/$id",
-          quote("{iamBase}")     -> config.iam.uri.toString(),
-          quote("{realm}")       -> config.iam.testRealm,
-          quote("{user}")        -> config.iam.userSub,
-          quote("{projectUuid}") -> projectUuid
+          quote("{resources}")        -> s"$kgBase/resources/$id",
+          quote("{iamBase}")          -> config.iam.uri.toString(),
+          quote("{realm}")            -> config.iam.testRealm,
+          quote("{user}")             -> config.iam.userSub,
+          quote("{projectUuid}")      -> projectUuid,
+          quote("{organizationUuid}") -> organizationUuid
         )
       )
 
     }
 
     "fetch global  events" in {
+
+      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
+
       val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
         .value
@@ -190,11 +204,12 @@ class EventsSpec
         removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
           "/kg/events/events.json",
           Map(
-            quote("{resources}")   -> s"$kgBase/resources/$id",
-            quote("{iamBase}")     -> config.iam.uri.toString(),
-            quote("{realm}")       -> config.iam.testRealm,
-            quote("{user}")        -> config.iam.userSub,
-            quote("{projectUuid}") -> projectUuid
+            quote("{resources}")        -> s"$kgBase/resources/$id",
+            quote("{iamBase}")          -> config.iam.uri.toString(),
+            quote("{realm}")            -> config.iam.testRealm,
+            quote("{user}")             -> config.iam.userSub,
+            quote("{projectUuid}")      -> projectUuid,
+            quote("{organizationUuid}") -> organizationUuid
           )
         )
       }

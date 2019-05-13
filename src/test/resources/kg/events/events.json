@@ -21,6 +21,7 @@
     ],
     "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/unconstrained.json",
     "_projectUuid": "{projectUuid}",
+    "_organizationUuid": "{organizationUuid}",
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
   },
   {
@@ -44,6 +45,7 @@
       "https://bluebrain.github.io/nexus/vocabulary/TestResource"
     ],
     "_projectUuid": "{projectUuid}",
+    "_organizationUuid": "{organizationUuid}",
     "_rev": 2,
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
   },
@@ -54,6 +56,7 @@
     "tag": "v1.0.0",
     "targetRev": 1,
     "_projectUuid": "{projectUuid}",
+    "_organizationUuid": "{organizationUuid}",
     "_rev": 3,
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
   },
@@ -65,6 +68,7 @@
       "https://bluebrain.github.io/nexus/vocabulary/TestResource"
     ],
     "_projectUuid": "{projectUuid}",
+    "_organizationUuid": "{organizationUuid}",
     "_rev": 4,
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
   },
@@ -90,6 +94,7 @@
       "writePermission": "files/write"
     },
     "_projectUuid": "{projectUuid}",
+    "_organizationUuid": "{organizationUuid}",
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
   },
   {
@@ -114,6 +119,7 @@
       "writePermission": "files/write"
     },
     "_projectUuid": "{projectUuid}",
+    "_organizationUuid": "{organizationUuid}",
     "_rev": 2,
     "_subject": "{iamBase}/realms/nexusdev/users/{user}"
   }
