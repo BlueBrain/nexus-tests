@@ -19,6 +19,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors, OptionValues}
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 class EventsSpec
     extends BaseSpec
@@ -31,8 +32,10 @@ class EventsSpec
   private val http = Http()
 
   val orgId     = genId()
+  val orgId2    = genId()
   val projId    = genId()
   val id        = s"$orgId/$projId"
+  val id2       = s"$orgId2/$projId"
   val timestamp = Generators.timeBasedGenerator().generate()
 
   "creating projects" should {
@@ -50,24 +53,35 @@ class EventsSpec
       }
     }
 
-    "succeed if payload is correct" in {
+    "succeed creating project 1 if payload is correct" in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
       cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, kgProjectReqEntity(name = id)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
+    "succeed creating project 2 if payload is correct" in {
+      cl(Req(PUT, s"$adminBase/orgs/$orgId2", headersJsonUser, orgReqEntity(orgId)))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+      cl(Req(PUT, s"$adminBase/projects/$id2", headersJsonUser, kgProjectReqEntity(name = id)))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
     "wait for default project events" in {
       eventually {
-        cl(Req(GET, s"$kgBase/views/$id/nxv:defaultElasticSearchIndex", headersJsonUser))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
-        cl(Req(GET, s"$kgBase/views/$id/nxv:defaultSparqlIndex", headersJsonUser))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
-
-        cl(Req(GET, s"$kgBase/resolvers/$id/nxv:defaultInProject", headersJsonUser))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
+        val endpoints = List(
+          s"$kgBase/views/$id/nxv:defaultElasticSearchIndex",
+          s"$kgBase/views/$id/nxv:defaultSparqlIndex",
+          s"$kgBase/resolvers/$id/nxv:defaultInProject",
+          s"$kgBase/views/$id2/nxv:defaultElasticSearchIndex",
+          s"$kgBase/views/$id2/nxv:defaultSparqlIndex",
+          s"$kgBase/resolvers/$id2/nxv:defaultInProject"
+        )
+        forAll(endpoints) { endopoint =>
+          cl(Req(GET, endopoint, headersJsonUser))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
+        }
       }
-
     }
   }
 
@@ -80,6 +94,9 @@ class EventsSpec
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
 
       cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1", headersJsonUser, payload.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+
+      cl(Req(PUT, s"$kgBase/resources/$id2/_/test-resource:1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
       //Updated event
@@ -126,7 +143,7 @@ class EventsSpec
 
     }
 
-    "fetch project events" in {
+    "fetch resource events filtered by project" in {
 
       val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
@@ -168,12 +185,100 @@ class EventsSpec
           quote("{organizationUuid}") -> organizationUuid
         )
       )
-
     }
 
-    "fetch global  events" in {
+    "fetch resource events filtered by organization 1" in {
+
+      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
 
       val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
+
+      val projectEvents: Seq[ServerSentEvent] =
+        EventSource(s"$kgBase/resources/$orgId/events", send, initialLastEventId = Some(timestamp.toString))
+        //drop resolver, views and storage events
+          .drop(4)
+          .take(6)
+          .runWith(Sink.seq)
+          .futureValue
+
+      projectEvents.size shouldEqual 6
+      projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created",
+                                                                        "Updated",
+                                                                        "TagAdded",
+                                                                        "Deprecated",
+                                                                        "FileCreated",
+                                                                        "FileUpdated")
+      val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
+
+      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
+        "/kg/events/events.json",
+        Map(
+          quote("{resources}")        -> s"$kgBase/resources/$id",
+          quote("{iamBase}")          -> config.iam.uri.toString(),
+          quote("{realm}")            -> config.iam.testRealm,
+          quote("{user}")             -> config.iam.userSub,
+          quote("{projectUuid}")      -> projectUuid,
+          quote("{organizationUuid}") -> organizationUuid
+        )
+      )
+    }
+
+    "fetch resource events filtered by organization 2" in {
+
+      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id2", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
+
+      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId2", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
+
+      val projectEvents: Seq[ServerSentEvent] =
+        EventSource(s"$kgBase/resources/$orgId2/events", send, initialLastEventId = Some(timestamp.toString))
+        //drop resolver, views and storage events
+          .drop(4)
+          .takeWithin(3 seconds)
+          .runWith(Sink.seq)
+          .futureValue
+
+      projectEvents.size shouldEqual 1
+      projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created")
+      val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
+
+      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
+        "/kg/events/events2.json",
+        Map(
+          quote("{resources}")        -> s"$kgBase/resources/$id",
+          quote("{iamBase}")          -> config.iam.uri.toString(),
+          quote("{realm}")            -> config.iam.testRealm,
+          quote("{user}")             -> config.iam.userSub,
+          quote("{projectUuid}")      -> projectUuid,
+          quote("{organizationUuid}") -> organizationUuid
+        )
+      )
+    }
+
+    "fetch global events" in {
+
+      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
+
+      val organization2Uuid = cl(Req(GET, s"$adminBase/orgs/$orgId2", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
         .value
         .asString
@@ -185,16 +290,23 @@ class EventsSpec
         .asString
         .value
 
+      val project2Uuid = cl(Req(GET, s"$adminBase/projects/$id2", headersJsonUser)).jsonValue.asObject
+        .value("_uuid")
+        .value
+        .asString
+        .value
+
       forAll(List(s"$kgBase/events", s"$kgBase/resources/events")) { address =>
         val events: Seq[ServerSentEvent] =
           EventSource(address, send, initialLastEventId = Some(timestamp.toString))
-            .drop(4)
-            .take(6)
+            .drop(8)
+            .take(7)
             .runWith(Sink.seq)
             .futureValue
 
-        events.size shouldEqual 6
+        events.size shouldEqual 7
         events.map(_.getEventType().get()).toList shouldEqual List("Created",
+                                                                   "Created",
                                                                    "Updated",
                                                                    "TagAdded",
                                                                    "Deprecated",
@@ -202,14 +314,16 @@ class EventsSpec
                                                                    "FileUpdated")
         val result = Json.arr(events.map(e => parse(e.getData()).right.value): _*)
         removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
-          "/kg/events/events.json",
+          "/kg/events/events-multi-project.json",
           Map(
-            quote("{resources}")        -> s"$kgBase/resources/$id",
-            quote("{iamBase}")          -> config.iam.uri.toString(),
-            quote("{realm}")            -> config.iam.testRealm,
-            quote("{user}")             -> config.iam.userSub,
-            quote("{projectUuid}")      -> projectUuid,
-            quote("{organizationUuid}") -> organizationUuid
+            quote("{resources}")         -> s"$kgBase/resources/$id",
+            quote("{iamBase}")           -> config.iam.uri.toString(),
+            quote("{realm}")             -> config.iam.testRealm,
+            quote("{user}")              -> config.iam.userSub,
+            quote("{projectUuid}")       -> projectUuid,
+            quote("{project2Uuid}")      -> project2Uuid,
+            quote("{organizationUuid}")  -> organizationUuid,
+            quote("{organization2Uuid}") -> organization2Uuid
           )
         )
       }
@@ -244,6 +358,7 @@ class EventsSpec
       )
       .top
       .value
+
   private def send(request: Req): Future[HttpResponse] =
     http.singleRequest(request.addHeader(Authorization(credUser))).map { resp =>
       if (!resp.status.isSuccess())
