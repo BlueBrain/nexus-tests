@@ -165,9 +165,9 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "succeed creating an ExternalDiskStorage" in {
+    "succeed creating a RemoteDiskStorage" in {
       val payload = jsonContentOf(
-        "/kg/storages/external-disk.json",
+        "/kg/storages/remote-disk.json",
         Map(
           quote("{endpoint}") -> config.external.endpoint.toString,
           quote("{cred}")     -> config.external.credentials,
@@ -185,7 +185,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage", headersJsonUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
-            "/kg/storages/external-disk-response.json",
+            "/kg/storages/remote-disk-response.json",
             Map(
               quote("{endpoint}") -> config.external.endpoint.toString,
               quote("{folder}")   -> "testproject",
@@ -217,7 +217,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
 
       val payload2 = jsonContentOf(
-        "/kg/storages/external-disk.json",
+        "/kg/storages/remote-disk.json",
         Map(
           quote("{endpoint}") -> config.external.endpoint.toString,
           quote("{cred}")     -> config.external.credentials,
@@ -235,7 +235,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage2", headersJsonUser))
         .mapJson { (json, result) =>
           val expected = jsonContentOf(
-            "/kg/storages/external-disk-response.json",
+            "/kg/storages/remote-disk-response.json",
             Map(
               quote("{endpoint}") -> config.external.endpoint.toString,
               quote("{folder}")   -> "testproject",
@@ -378,9 +378,9 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "fail creating an ExternalDiskStorage without folder" in {
+    "fail creating a RemoteDiskStorage without folder" in {
       val payload = jsonContentOf(
-        "/kg/storages/external-disk.json",
+        "/kg/storages/remote-disk.json",
         Map(
           quote("{endpoint}") -> config.external.endpoint.toString,
           quote("{cred}")     -> config.external.credentials,
@@ -414,12 +414,13 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             jsonContentOf(
               "/kg/files/linking-metadata.json",
               Map(
-                quote("{projId}")   -> fullId,
-                quote("{endpoint}") -> s3Config.endpoint.toString,
-                quote("{bucket}")   -> bucket,
-                quote("{key}")      -> logoKey,
-                quote("{kgBase}")   -> kgBase.toString,
-                quote("{iamBase}")  -> iamBase.toString
+                quote("{projId}")    -> fullId,
+                quote("{endpoint}")  -> s3Config.endpoint.toString,
+                quote("{bucket}")    -> bucket,
+                quote("{key}")       -> logoKey,
+                quote("{kgBase}")    -> kgBase.toString,
+                quote("{adminBase}") -> adminBase.toString,
+                quote("{iamBase}")   -> iamBase.toString
               )
             )
         }
@@ -464,7 +465,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fetch gzipped attachment" in {
+    "fetch gzipped attachment" in eventually {
       val expectedContent = contentOf("/kg/files/attachment.json")
       val requestHeaders  = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
@@ -641,7 +642,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fetch gzipped attachment" in {
+    "fetch gzipped attachment" in eventually {
       val expectedContent = contentOf("/kg/files/attachment.json")
       val requestHeaders  = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
       cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", requestHeaders))
@@ -813,7 +814,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fetch gzipped attachment" in {
+    "fetch gzipped attachment" in eventually {
       val expectedContent = contentOf("/kg/files/attachment.json")
       val requestHeaders  = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment.json", requestHeaders))
