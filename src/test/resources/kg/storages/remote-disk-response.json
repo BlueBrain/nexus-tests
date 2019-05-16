@@ -6,7 +6,7 @@
   "@id": "{id}",
   "@type": [
     "Storage",
-    "ExternalDiskStorage"
+    "RemoteDiskStorage"
   ],
   "default": false,
   "endpoint": "{endpoint}",

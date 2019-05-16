@@ -13,7 +13,7 @@
   "_mediaType": "image/png",
   "_self": "{kgBase}/files/{projId}/attachment:logo.png",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/file.json",
-  "_project": "{kgBase}/projects/{projId}",
+  "_project": "{adminBase}/projects/{projId}",
   "_rev": 1,
   "_deprecated": false,
   "_createdBy": "{iamBase}/realms/nexusdev/users/test",
