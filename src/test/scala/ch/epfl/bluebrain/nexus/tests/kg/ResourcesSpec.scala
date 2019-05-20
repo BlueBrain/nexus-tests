@@ -183,6 +183,26 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
+    s"fetches a resource in project '${id1}' through project '${id2}' resolvers" in {
+
+      cl(Req(GET, s"$kgBase/schemas/$id1/test-schema", headersJsonUser)).mapJson { (json, result1) =>
+        result1.status shouldEqual StatusCodes.OK
+        cl(Req(GET, s"$kgBase/resolvers/$id2/_/test-schema", headersJsonUser)).mapJson { (jsonResolved, result2) =>
+          result2.status shouldEqual StatusCodes.OK
+          jsonResolved should equalIgnoreArrayOrder(json)
+        }
+        cl(Req(GET, s"$kgBase/resolvers/$id2/example-id/test-schema", headersJsonUser)).mapJson {
+          (jsonResolved, result2) =>
+            result2.status shouldEqual StatusCodes.OK
+            jsonResolved should equalIgnoreArrayOrder(json)
+        }
+        cl(Req(GET, s"$kgBase/resolvers/$id2/example-id/test-schema-2", headersJsonUser))
+          .mapResp(_.status shouldEqual StatusCodes.NotFound)
+        cl(Req(GET, s"$kgBase/resolvers/$id2/_/test-schema-2", headersJsonUser))
+          .mapResp(_.status shouldEqual StatusCodes.NotFound)
+      }
+    }
+
     "resolve schema from the other project" in {
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
