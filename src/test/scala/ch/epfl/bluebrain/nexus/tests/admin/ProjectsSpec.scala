@@ -8,12 +8,12 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
-import org.scalatest.{CancelAfterFailure, Inspectors}
+import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
 import org.scalatest.concurrent.Eventually
 
 import scala.collection.immutable
 
-class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
+class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
 
   private def validateProject(response: Json, payload: Json) = {
     response.getString("base") shouldEqual payload.getString("base")
@@ -128,6 +128,19 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         result.status shouldEqual StatusCodes.OK
         validateProject(json, createJson)
         validateAdminResource(json, "Project", "projects", id, description, 1L, projId)
+      }
+    }
+
+    "fetch project by UUID" in {
+      cl(Req(GET, s"$adminBase/orgs/$orgId", headersGroup)).mapJson { (orgJson, _) =>
+        val orgUuid = orgJson.hcursor.get[String]("_uuid").right.value
+        cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (projJson, _) =>
+          val projectUuid = projJson.hcursor.get[String]("_uuid").right.value
+          cl(Req(GET, s"$adminBase/projects/$orgUuid/$projectUuid", headersUser)).mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json shouldEqual projJson
+          }
+        }
       }
     }
 
