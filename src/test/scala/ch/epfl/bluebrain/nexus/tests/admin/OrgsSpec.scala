@@ -9,9 +9,9 @@ import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, OptionValues}
+import org.scalatest.{CancelAfterFailure, EitherValues, OptionValues}
 
-class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually {
+class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually with EitherValues {
 
   "creating an organization" should {
 
@@ -117,6 +117,16 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, s"$id organization", 1L, id)
+      }
+    }
+
+    "fetch organization by UUID" in {
+      cl(Req(GET, s"$adminBase/orgs/$id", headersUser)).mapJson { (orgJson, _) =>
+        val orgUuid = orgJson.hcursor.get[String]("_uuid").right.value
+        cl(Req(GET, s"$adminBase/orgs/$orgUuid/", headersUser)).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.OK
+          json shouldEqual orgJson
+        }
       }
     }
 
