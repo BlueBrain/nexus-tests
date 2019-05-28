@@ -23,6 +23,8 @@
     }
   ],
   "priority": 20,
+  "_incoming": "{resources}/example-id/incoming",
+  "_outgoing": "{resources}/example-id/outgoing",
   "_self": "{resources}/example-id",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
   "_project": "{project-parent}",

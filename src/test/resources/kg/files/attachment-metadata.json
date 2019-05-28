@@ -16,6 +16,8 @@
   },
   "_filename": "{filename}",
   "_mediaType": "application/json",
+  "_incoming": "{kgBase}/files/{projId}/attachment:{filename}/incoming",
+  "_outgoing": "{kgBase}/files/{projId}/attachment:{filename}/outgoing",
   "_self": "{kgBase}/files/{projId}/attachment:{filename}",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/file.json",
   "_project": "{project}",

@@ -11,6 +11,8 @@
         "https://bluebrain.github.io/nexus/vocabulary/ElasticSearchView",
         "https://bluebrain.github.io/nexus/vocabulary/View"
       ],
+      "_incoming": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultElasticSearchIndex/incoming",
+      "_outgoing": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultElasticSearchIndex/outgoing",
       "_self": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultElasticSearchIndex",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
       "_project": "{project}",
@@ -25,6 +27,8 @@
         "https://bluebrain.github.io/nexus/vocabulary/View",
         "https://bluebrain.github.io/nexus/vocabulary/SparqlView"
       ],
+      "_incoming": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultSparqlIndex/incoming",
+      "_outgoing": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultSparqlIndex/outgoing",
       "_self": "{kgBase}/views/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultSparqlIndex",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
       "_project": "{project}",

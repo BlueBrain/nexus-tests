@@ -421,7 +421,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     }
   }
 
-  def getNext(json: Json): Option[String] = json.asObject.flatMap(_("_next")).flatMap(_.asString)
+  def getNext(json: Json): Option[String] =
+    json.asObject.flatMap(_("_next")).flatMap(_.asString)
 
   def getResults(json: Json): Seq[Json] =
     removeSearchMetadata(json).asObject
