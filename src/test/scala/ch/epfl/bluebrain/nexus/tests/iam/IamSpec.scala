@@ -56,7 +56,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
             Map(
               quote("{realm}")   -> config.iam.testRealm,
               quote("{iamBase}") -> config.iam.uri.toString,
-              quote("{rev}")        -> s"${rev + 1}",
+              quote("{rev}")     -> s"${rev + 1}",
               quote("{label}")   -> realmLabel
             )
           )
