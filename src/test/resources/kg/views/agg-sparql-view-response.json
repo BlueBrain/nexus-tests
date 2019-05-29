@@ -19,6 +19,8 @@
     }
   ],
   "_uuid": "{uuid}",
+  "_incoming": "{resources}/incoming",
+  "_outgoing": "{resources}/outgoing",
   "_self": "{resources}",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
   "_project": "{project-parent}",

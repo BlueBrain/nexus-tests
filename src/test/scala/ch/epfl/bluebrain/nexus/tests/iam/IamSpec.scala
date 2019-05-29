@@ -14,30 +14,37 @@ import org.scalatest.{CancelAfterFailure, Inspectors}
 class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Eventually with Randomness {
 
   "manage realms" should {
-    val realmLabel = genString(8)
+    val realmLabel = "internal"
+    var rev        = 1L
 
-    "create realm" in {
+    "fetch realm revision" in {
+      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersGroup))
+        .mapJson { (json, result) =>
+          rev = json.hcursor.get[Long]("_rev").getOrElse(rev)
+          result.status shouldEqual StatusCodes.OK
+        }
+    }
+
+    "re-create realm" in {
       val body =
         jsonContentOf("/iam/realms/create.json",
                       Map(
                         quote("{realm}") -> config.iam.testRealm
                       )).toEntity
 
-      cl(Req(PUT, s"$iamBase/realms/$realmLabel", headersGroup, body))
-        .mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.Created
+      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=$rev", headersGroup, body))
+        .mapJson { (json, _) =>
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> config.iam.testRealm,
               quote("{iamBase}")    -> config.iam.uri.toString,
               quote("{label}")      -> realmLabel,
-              quote("{rev}")        -> "1",
+              quote("{rev}")        -> s"${rev + 1}",
               quote("{deprecated}") -> "false"
             )
           )
         }
-
     }
 
     "fetch realm" in {
@@ -49,12 +56,13 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
             Map(
               quote("{realm}")   -> config.iam.testRealm,
               quote("{iamBase}") -> config.iam.uri.toString,
+              quote("{rev}")     -> s"${rev + 1}",
               quote("{label}")   -> realmLabel
             )
           )
         }
-
     }
+
     "update realm" in {
 
       val body =
@@ -62,7 +70,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
                       Map(
                         quote("{realm}") -> config.iam.testRealm
                       )).toEntity
-      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=1", headersGroup, body))
+      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=${rev + 1}", headersGroup, body))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
@@ -71,7 +79,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
               quote("{realm}")      -> config.iam.testRealm,
               quote("{iamBase}")    -> config.iam.uri.toString,
               quote("{label}")      -> realmLabel,
-              quote("{rev}")        -> "2",
+              quote("{rev}")        -> s"${rev + 2}",
               quote("{deprecated}") -> "false"
             )
           )
@@ -87,6 +95,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
             Map(
               quote("{realm}")   -> config.iam.testRealm,
               quote("{iamBase}") -> config.iam.uri.toString,
+              quote("{rev}")     -> s"${rev + 2}",
               quote("{label}")   -> realmLabel
             )
           )
@@ -95,7 +104,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "deprecate realm" in {
-      cl(Req(DELETE, s"$iamBase/realms/$realmLabel?rev=2", headersGroup))
+      cl(Req(DELETE, s"$iamBase/realms/$realmLabel?rev=${rev + 2}", headersGroup))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
@@ -104,7 +113,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
               quote("{realm}")      -> config.iam.testRealm,
               quote("{iamBase}")    -> config.iam.uri.toString,
               quote("{label}")      -> realmLabel,
-              quote("{rev}")        -> "3",
+              quote("{rev}")        -> s"${rev + 3}",
               quote("{deprecated}") -> "true"
             )
           )
@@ -119,6 +128,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
             Map(
               quote("{realm}")   -> config.iam.testRealm,
               quote("{iamBase}") -> config.iam.uri.toString,
+              quote("{rev}")     -> s"${rev + 3}",
               quote("{label}")   -> realmLabel
             )
           )

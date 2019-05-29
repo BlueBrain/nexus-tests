@@ -9,6 +9,6 @@
   "name": "Nexus Dev Updated",
   "openIdConfig": "{realm}/.well-known/openid-configuration",
   "_label": "{label}",
-  "_rev": 3,
+  "_rev": {rev},
   "_deprecated": true
 }

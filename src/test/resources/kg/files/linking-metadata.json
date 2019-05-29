@@ -11,6 +11,8 @@
   "_filename": "logo.png",
   "_location": "{endpoint}/{bucket}/{key}",
   "_mediaType": "image/png",
+  "_incoming": "{kgBase}/files/{projId}/attachment:logo.png/incoming",
+  "_outgoing": "{kgBase}/files/{projId}/attachment:logo.png/outgoing",
   "_self": "{kgBase}/files/{projId}/attachment:logo.png",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/file.json",
   "_project": "{adminBase}/projects/{projId}",

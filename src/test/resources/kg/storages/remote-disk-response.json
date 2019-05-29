@@ -15,6 +15,8 @@
   "readPermission": "{read}",
   "writePermission": "{write}",
   "_algorithm": "SHA-256",
+  "_incoming": "{kgBase}/storages/{project}/{id}/incoming",
+  "_outgoing": "{kgBase}/storages/{project}/{id}/outgoing",
   "_self": "{kgBase}/storages/{project}/{id}",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/storage.json",
   "_project": "http://dev.nexus.ocp.bbp.epfl.ch/v1/projects/{project}",

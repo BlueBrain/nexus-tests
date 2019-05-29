@@ -21,6 +21,6 @@
   "_tokenEndpoint": "{realm}/protocol/openid-connect/token",
   "_userInfoEndpoint": "{realm}/protocol/openid-connect/userinfo",
   "_endSessionEndpoint": "{realm}/protocol/openid-connect/logout",
-  "_rev": 1,
+  "_rev": {rev},
   "_deprecated": false
 }
