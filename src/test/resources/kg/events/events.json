@@ -22,7 +22,7 @@
     "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/unconstrained.json",
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
-    "_subject": "{iamBase}/realms/nexusdev/users/{user}"
+    "_subject": "{iamBase}/realms/internal/users/{user}"
   },
   {
     "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
@@ -47,7 +47,7 @@
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
     "_rev": 2,
-    "_subject": "{iamBase}/realms/nexusdev/users/{user}"
+    "_subject": "{iamBase}/realms/internal/users/{user}"
   },
   {
     "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
@@ -58,7 +58,7 @@
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
     "_rev": 3,
-    "_subject": "{iamBase}/realms/nexusdev/users/{user}"
+    "_subject": "{iamBase}/realms/internal/users/{user}"
   },
   {
     "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
@@ -70,7 +70,7 @@
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
     "_rev": 4,
-    "_subject": "{iamBase}/realms/nexusdev/users/{user}"
+    "_subject": "{iamBase}/realms/internal/users/{user}"
   },
   {
     "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
@@ -95,7 +95,7 @@
     },
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
-    "_subject": "{iamBase}/realms/nexusdev/users/{user}"
+    "_subject": "{iamBase}/realms/internal/users/{user}"
   },
   {
     "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
@@ -121,6 +121,6 @@
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
     "_rev": 2,
-    "_subject": "{iamBase}/realms/nexusdev/users/{user}"
+    "_subject": "{iamBase}/realms/internal/users/{user}"
   }
 ]

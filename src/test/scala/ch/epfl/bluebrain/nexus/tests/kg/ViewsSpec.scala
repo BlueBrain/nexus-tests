@@ -29,8 +29,9 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       val json      = jsonContentOf("/iam/add.json", replSub + (quote("{perms}")       -> "organizations/create")).toEntity
       val jsonAnnon = jsonContentOf("/iam/add_annon.json", replSub + (quote("{perms}") -> "views/query")).toEntity
 
-      cl(Req(PATCH, s"$iamBase/acls/$orgId", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PATCH, s"$iamBase/acls/$fullId2", headersGroup, jsonAnnon))
+      cl(Req(PATCH, s"$iamBase/acls/$orgId", headersServiceAccount, json))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+      cl(Req(PATCH, s"$iamBase/acls/$fullId2", headersServiceAccount, jsonAnnon))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -92,7 +93,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               quote("{resources}")      -> s"$kgBase/views/$fullId/test-resource:testSparqlView",
               quote("{project-parent}") -> s"$adminBase/projects/$fullId",
               quote("{iamBase}")        -> config.iam.uri.toString(),
-              quote("{user}")           -> config.iam.userSub,
+              quote("{user}")           -> config.iam.testUserSub,
               quote("{uuid}")           -> uuid
             )
             val expected = jsonContentOf("/kg/views/sparql-view-response.json", expectedMap)
@@ -134,7 +135,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               quote("{project1}")       -> fullId,
               quote("{project2}")       -> fullId2,
               quote("{iamBase}")        -> config.iam.uri.toString(),
-              quote("{user}")           -> config.iam.userSub,
+              quote("{user}")           -> config.iam.testUserSub,
               quote("{uuid}")           -> uuid
             )
             val expected = jsonContentOf("/kg/views/agg-elastic-view-response.json", expectedMap)
@@ -154,7 +155,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               quote("{project1}")       -> fullId,
               quote("{project2}")       -> fullId2,
               quote("{iamBase}")        -> config.iam.uri.toString(),
-              quote("{user}")           -> config.iam.userSub,
+              quote("{user}")           -> config.iam.testUserSub,
               quote("{uuid}")           -> uuid
             )
             val expected = jsonContentOf("/kg/views/agg-sparql-view-response.json", expectedMap)

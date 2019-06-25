@@ -18,6 +18,6 @@
   "_project": "{adminBase}/projects/{projId}",
   "_rev": 1,
   "_deprecated": false,
-  "_createdBy": "{iamBase}/realms/nexusdev/users/test",
-  "_updatedBy": "{iamBase}/realms/nexusdev/users/test"
+  "_createdBy": "{iamBase}/realms/internal/users/service-account-test",
+  "_updatedBy": "{iamBase}/realms/internal/users/service-account-test"
 }

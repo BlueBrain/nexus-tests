@@ -22,6 +22,6 @@
     "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/unconstrained.json",
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
-    "_subject": "{iamBase}/realms/nexusdev/users/{user}"
+    "_subject": "{iamBase}/realms/internal/users/{user}"
   }
 ]

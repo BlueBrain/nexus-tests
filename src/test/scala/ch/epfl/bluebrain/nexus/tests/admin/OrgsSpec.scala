@@ -27,11 +27,12 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.head._rev
 
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
@@ -108,7 +109,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         replSub + (quote("{perms}") -> "organizations/read")
       ).toEntity
 
-      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersGroup, json))
+      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersServiceAccount, json))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
     }
@@ -142,11 +143,11 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/read")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/$nonExistent", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/$nonExistent", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.headOption.map(_._rev).getOrElse(0)
 
-        cl(Req(PATCH, s"$iamBase/acls/$nonExistent?rev=$rev", headersGroup, json))
+        cl(Req(PATCH, s"$iamBase/acls/$nonExistent?rev=$rev", headersServiceAccount, json))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
@@ -170,7 +171,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         replSub + (quote("{perms}") -> "organizations/create")
       ).toEntity
 
-      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersGroup, json))
+      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersServiceAccount, json))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
     }
@@ -194,7 +195,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     "add orgs/write permissions for user" in {
       val json = jsonContentOf("/iam/add.json",
                                replSub + (quote("{perms}") -> "organizations/write\",\"organizations/read")).toEntity
-      cl(Req(PUT, s"$iamBase/acls/$id", headersGroup, json)).mapResp { result =>
+      cl(Req(PUT, s"$iamBase/acls/$id", headersServiceAccount, json)).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
     }
@@ -212,11 +213,11 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/write")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/$nonExistent", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/$nonExistent", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.headOption.map(_._rev).getOrElse(0)
 
-        cl(Req(PATCH, s"$iamBase/acls/$nonExistent?rev=$rev", headersGroup, json))
+        cl(Req(PATCH, s"$iamBase/acls/$nonExistent?rev=$rev", headersServiceAccount, json))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
@@ -285,7 +286,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
         replSub + (quote("{perms}") -> "organizations/create")
       ).toEntity
 
-      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersGroup, json))
+      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersServiceAccount, json))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
     }

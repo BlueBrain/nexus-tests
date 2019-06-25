@@ -6,7 +6,7 @@
   "@id": "{iamBase}/realms/{label}",
   "@type": "Realm",
   "logo": "http://nexus.example.com/logo.png",
-  "name": "Nexus Dev",
+  "name": "Nexus Test",
   "openIdConfig": "{realm}/.well-known/openid-configuration",
   "_label": "{label}",
   "_grantTypes": [

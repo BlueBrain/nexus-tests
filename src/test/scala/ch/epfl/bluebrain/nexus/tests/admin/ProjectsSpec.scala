@@ -39,10 +39,11 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.head._rev
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
@@ -76,7 +77,8 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         "/iam/add.json",
         replSub + (quote("{perms}") -> "projects/create")
       ).toEntity
-      cl(Req(PATCH, s"$iamBase/acls/$orgId", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.Created)
+      cl(Req(PATCH, s"$iamBase/acls/$orgId", headersServiceAccount, json))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
 
     }
 
@@ -132,7 +134,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     }
 
     "fetch project by UUID" in {
-      cl(Req(GET, s"$adminBase/orgs/$orgId", headersGroup)).mapJson { (orgJson, _) =>
+      cl(Req(GET, s"$adminBase/orgs/$orgId", headersServiceAccount)).mapJson { (orgJson, _) =>
         val orgUuid = orgJson.hcursor.get[String]("_uuid").right.value
         cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (projJson, _) =>
           val projectUuid = projJson.hcursor.get[String]("_uuid").right.value
@@ -262,11 +264,12 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create\",\"projects/read")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.head._rev
 
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
       }
 
     }
@@ -288,7 +291,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
               quote("{projId}")    -> id.split("/")(1),
               quote("{orgId}")     -> id.split("/")(0),
               quote("{iamBase}")   -> config.iam.uri.toString(),
-              quote("{user}")      -> config.iam.userSub
+              quote("{user}")      -> config.iam.testUserSub
             )
           )
         }: _*
@@ -357,7 +360,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       ).toEntity
 
       projectsToList.foreach { projectId =>
-        cl(Req(PATCH, s"$iamBase/acls/$projectId", headersGroup, json))
+        cl(Req(PATCH, s"$iamBase/acls/$projectId", headersServiceAccount, json))
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 

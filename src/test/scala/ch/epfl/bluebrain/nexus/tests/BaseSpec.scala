@@ -3,7 +3,7 @@ package ch.epfl.bluebrain.nexus.tests
 import java.util.regex.Pattern.quote
 
 import akka.http.javadsl.model.headers.HttpCredentials
-import akka.http.scaladsl.model.HttpMethods.PATCH
+import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.Uri.{Path => AkkaPath}
 import akka.http.scaladsl.model.headers.{Accept, Authorization}
 import akka.http.scaladsl.model.{RequestEntity, StatusCodes, HttpRequest => Req, _}
@@ -17,7 +17,7 @@ import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.config.Settings
-import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Group, User}
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, User}
 import com.typesafe.config.ConfigFactory
 import io.circe.parser._
 import io.circe.syntax._
@@ -41,10 +41,10 @@ class BaseSpec
     with Randomness
     with OptionValues {
 
-  private[tests] val config                        = new Settings(ConfigFactory.parseResources("test-app.conf").resolve()).appConfig
-  private[tests] val credGroup                     = HttpCredentials.createOAuth2BearerToken(config.iam.groupToken)
-  private[tests] val credUser                      = HttpCredentials.createOAuth2BearerToken(config.iam.userToken)
-  private[tests] val headersGroup: Seq[HttpHeader] = Seq(Authorization(credGroup))
+  private[tests] val config                                 = new Settings(ConfigFactory.parseResources("test-app.conf").resolve()).appConfig
+  private[tests] val credServiceAccount                     = HttpCredentials.createOAuth2BearerToken(config.iam.serviceAccountToken)
+  private[tests] val credUser                               = HttpCredentials.createOAuth2BearerToken(config.iam.testUserToken)
+  private[tests] val headersServiceAccount: Seq[HttpHeader] = Seq(Authorization(credServiceAccount))
   private[tests] val headersJsonUser: Seq[HttpHeader] =
     Seq(Authorization(credUser), Accept(MediaTypes.`application/json`))
   private[tests] val headersUser: Seq[HttpHeader] = Seq(Authorization(credUser))
@@ -55,24 +55,25 @@ class BaseSpec
   private[tests] val iamBase                      = config.iam.uri
   private[tests] val kgBase                       = config.kg.uri
   private[tests] val s3Config                     = config.s3
-  private[tests] val replSub                      = Map(quote("{sub}") -> config.iam.userSub)
+  private[tests] val replSub                      = Map(quote("{sub}") -> config.iam.testUserSub)
+  private[tests] val realmLabel                   = "internal"
 
   override def beforeAll(): Unit = {
     super.beforeAll()
     cleanAcls
-    val _ = ensureAdminPermissions
+    val _ = ensureRealmExists
   }
 
   def cleanAcls =
-    cl(Req(uri = s"$iamBase/acls/*/*?ancestors=true&self=false", headers = headersGroup)).mapDecoded[AclListing] {
-      (acls, result) =>
+    cl(Req(uri = s"$iamBase/acls/*/*?ancestors=true&self=false", headers = headersServiceAccount))
+      .mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
 
         val permissions = acls._results
           .map { acls =>
             val userAcls = acls.acl.filter {
-              case AclEntry(User(_, config.iam.userSub), _) => true
-              case _                                        => false
+              case AclEntry(User(`realmLabel`, config.iam.testUserSub), _) => true
+              case _                                                       => false
             }
             acls.copy(acl = userAcls)
           }
@@ -82,46 +83,33 @@ class BaseSpec
           val entity =
             jsonContentOf("/iam/subtract-permissions.json",
                           replSub + (quote("{perms}") -> acl.acl.head.permissions.mkString("\",\""))).toEntity
-          cl(Req(PATCH, s"$iamBase/acls${acl._path}?rev=${acl._rev}", headersGroup, entity))
+          cl(Req(PATCH, s"$iamBase/acls${acl._path}?rev=${acl._rev}", headersServiceAccount, entity))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         }
         result.status shouldEqual StatusCodes.OK
-    }
-
-  def ensureAdminPermissions =
-    cl(Req(uri = s"$iamBase/acls/", headers = headersGroup)).mapDecoded[AclListing] { (acls, result) =>
-      val requiredPermissions =
-        Set("acls/read",
-            "acls/write",
-            "permissions/read",
-            "permissions/write",
-            "realms/read",
-            "realms/write",
-            "organizations/read",
-            "projects/read",
-            "events/read")
-      val permissions = acls._results
-        .flatMap(_.acl)
-        .find {
-          case AclEntry(Group(_, "bbp-ou-nexus"), _) => true
-          case _                                     => false
-        }
-        .map(_.permissions)
-        .getOrElse(Set.empty)
-      val rev = acls._results.head._rev
-
-      if (!requiredPermissions.subsetOf(permissions)) {
-        val json = jsonContentOf("/iam/add-group.json",
-                                 Map(
-                                   quote("{perms}") -> requiredPermissions.mkString("\",\""),
-                                   quote("{group}") -> "bbp-ou-nexus"
-                                 ))
-        cl(Req(PATCH, s"$iamBase/acls/?rev=${rev}", headersGroup, json.toEntity)).mapResp(r =>
-          r.status should (equal(StatusCodes.Created) or equal(StatusCodes.OK)))
       }
 
-      result.status shouldEqual StatusCodes.OK
+  def ensureRealmExists = {
+    val body =
+      jsonContentOf("/iam/realms/create.json",
+                    Map(
+                      quote("{realm}") -> config.iam.testRealm
+                    )).toEntity
+
+    val rev = cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount, body)).jsonValue.hcursor
+      .downField("_rev")
+      .as[Int]
+      .toOption
+
+    rev match {
+      case Some(r) =>
+        cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=$r", headersServiceAccount, body))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
+      case None =>
+        cl(Req(PUT, s"$iamBase/realms/$realmLabel", headersServiceAccount, body))
+          .mapResp(_.status shouldEqual StatusCodes.Created)
     }
+  }
 
   def equalIgnoreArrayOrder(json: Json) = IgnoredArrayOrder(json)
 
@@ -262,10 +250,9 @@ class BaseSpec
       quote("{rev}")        -> rev.toString,
       quote("{iamBase}")    -> config.iam.uri.toString(),
       quote("{realm}")      -> config.iam.testRealm,
-      quote("{user}")       -> config.iam.userSub,
+      quote("{user}")       -> config.iam.testUserSub,
       quote("{adminBase}")  -> config.admin.uri.toString(),
       quote("{orgId}")      -> id,
-      quote("{user}")       -> config.iam.userSub,
       quote("{deprecated}") -> deprecated.toString()
     )
     jsonContentOf("/admin/response.json", resp)

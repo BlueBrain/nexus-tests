@@ -29,11 +29,12 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.head._rev
 
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
@@ -103,7 +104,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             quote("{project}")   -> s"$adminBase/projects/$id1",
             quote("{iamBase}")   -> config.iam.uri.toString(),
             quote("{realm}")     -> config.iam.testRealm,
-            quote("{user}")      -> config.iam.userSub
+            quote("{user}")      -> config.iam.testUserSub
           )
         )
         result.status shouldEqual StatusCodes.OK
@@ -115,7 +116,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   "cross-project resolvers" should {
     val resolverPayload =
       jsonContentOf("/kg/resources/cross-project-resolver.json",
-                    Map(quote("{project}") -> id1, quote("{user}") -> config.iam.userSub))
+                    Map(quote("{project}") -> id1, quote("{user}") -> config.iam.testUserSub))
     "fail if the schema doesn't exist in the project" in {
       val payload = jsonContentOf("/kg/resources/simple-resource.json",
                                   Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
@@ -154,7 +155,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             quote("{project-parent}") -> s"$adminBase/projects/$id2",
             quote("{iamBase}")        -> config.iam.uri.toString(),
             quote("{realm}")          -> config.iam.testRealm,
-            quote("{user}")           -> config.iam.userSub
+            quote("{user}")           -> config.iam.testUserSub
           )
         )
       cl(Req(GET, s"$kgBase/resolvers/$id2/example-id", headersJsonUser)).mapJson { (json, result) =>
@@ -172,7 +173,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{project}") -> s"$adminBase/projects/$id2",
           quote("{iamBase}") -> config.iam.uri.toString(),
           quote("{realm}")   -> config.iam.testRealm,
-          quote("{user}")    -> config.iam.userSub
+          quote("{user}")    -> config.iam.testUserSub
         )
       )
       eventually {
@@ -233,7 +234,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{project}")   -> s"$adminBase/projects/$id1",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
@@ -254,7 +255,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{project}")   -> s"$adminBase/projects/$id1",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
@@ -289,7 +290,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{project}")   -> s"$adminBase/projects/$id1",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersJsonUser)).mapJson {
@@ -307,7 +308,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{project}")   -> s"$adminBase/projects/$id1",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       cl(Req(GET, s"$kgBase/resources/$id1/_/test-resource:1?tag=v1.0.0", headersJsonUser)).mapJson { (json, result) =>
@@ -326,7 +327,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         quote("{project}")       -> s"$adminBase/projects/$id1",
         quote("{iamBase}")       -> config.iam.uri.toString(),
         quote("{realm}")         -> config.iam.testRealm,
-        quote("{user}")          -> config.iam.userSub
+        quote("{user}")          -> config.iam.testUserSub
       )
       val resources = List(
         "resolvers" -> jsonContentOf("/kg/listings/default-resolver.json", mapping),
@@ -363,7 +364,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           quote("{project}")   -> s"$adminBase/projects/$id1",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       eventually {
@@ -413,7 +414,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
             quote("{project}")   -> s"$adminBase/projects/$id1",
             quote("{iamBase}")   -> config.iam.uri.toString(),
             quote("{realm}")     -> config.iam.testRealm,
-            quote("{user}")      -> config.iam.userSub
+            quote("{user}")      -> config.iam.testUserSub
           )
         ))
 

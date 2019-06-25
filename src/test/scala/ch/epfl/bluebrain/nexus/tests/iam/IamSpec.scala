@@ -14,11 +14,11 @@ import org.scalatest.{CancelAfterFailure, Inspectors}
 class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Eventually with Randomness {
 
   "manage realms" should {
-    val realmLabel = "internal"
-    var rev        = 1L
+
+    var rev = 1L
 
     "fetch realm revision" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersGroup))
+      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
         .mapJson { (json, result) =>
           rev = json.hcursor.get[Long]("_rev").getOrElse(rev)
           result.status shouldEqual StatusCodes.OK
@@ -32,7 +32,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
                         quote("{realm}") -> config.iam.testRealm
                       )).toEntity
 
-      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=$rev", headersGroup, body))
+      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=$rev", headersServiceAccount, body))
         .mapJson { (json, _) =>
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/ref-response.json",
@@ -48,7 +48,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "fetch realm" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersGroup))
+      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
@@ -70,7 +70,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
                       Map(
                         quote("{realm}") -> config.iam.testRealm
                       )).toEntity
-      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=${rev + 1}", headersGroup, body))
+      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=${rev + 1}", headersServiceAccount, body))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
@@ -87,7 +87,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "fetch updated realm" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersGroup))
+      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
@@ -104,7 +104,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "deprecate realm" in {
-      cl(Req(DELETE, s"$iamBase/realms/$realmLabel?rev=${rev + 2}", headersGroup))
+      cl(Req(DELETE, s"$iamBase/realms/$realmLabel?rev=${rev + 2}", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
@@ -120,7 +120,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
         }
     }
     "fetch deprecated realm" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersGroup))
+      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
@@ -164,93 +164,93 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     )
 
     "clear permissions" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (permissions.permissions == minimumPermissions)
           succeed
         else
-          cl(Req(DELETE, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup))
+          cl(Req(DELETE, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount))
             .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
     "add permissions" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf("/iam/permissions/append.json",
                                  Map(
                                    quote("{perms}") -> List(permission1, permission2).mkString("\",\"")
                                  )).toEntity
-        cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+        cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
           .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
     "check added permissions" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual minimumPermissions + permission1 + permission2
       }
     }
 
     "subtract permissions" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf("/iam/permissions/subtract.json",
                                  Map(
                                    quote("{perms}") -> permission2
                                  )).toEntity
-        cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+        cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
           .mapResp(_.status shouldEqual StatusCodes.OK)
       }
 
     }
     "check subtracted permissions" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual minimumPermissions + permission1
       }
     }
 
     "replace permissions" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body =
           jsonContentOf("/iam/permissions/replace.json",
                         Map(
                           quote("{perms}") -> (minimumPermissions + permission1 + permission2).mkString("\",\"")
                         )).toEntity
-        cl(Req(PUT, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+        cl(Req(PUT, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
           .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
     "check replaced permissions" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual minimumPermissions + permission1 + permission2
       }
     }
 
     "reject subtracting minimal permission" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf("/iam/permissions/subtract.json",
                                  Map(
                                    quote("{perms}") -> minimumPermissions.head
                                  )).toEntity
-        cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+        cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
           .mapResp(_.status shouldEqual StatusCodes.BadRequest)
       }
     }
 
     "reject replacing minimal permission" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf("/iam/permissions/replace.json",
                                  Map(
                                    quote("{perms}") -> minimumPermissions.subsets(1).next().mkString("\",\"")
                                  )).toEntity
-        cl(Req(PUT, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+        cl(Req(PUT, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
           .mapResp(_.status shouldEqual StatusCodes.BadRequest)
       }
     }
@@ -263,24 +263,26 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     val projectPath2 = genString()
 
     "add permissions for user on /" in {
+      ensureRealmExists
       val json =
         jsonContentOf("/iam/add.json",
                       replSub + (quote("{perms}") -> """projects/create","projects/read","projects/write""")).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.head._rev
 
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
     "fetch permissions for user" in {
-      cl(Req(GET, s"$iamBase/acls/?self=false", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/?self=false", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl
           .find {
-            case AclEntry(User(_, config.iam.userSub), _) => true
-            case _                                        => false
+            case AclEntry(User(_, config.iam.`testUserSub`), _) => true
+            case _                                              => false
           }
           .value
           .permissions shouldEqual Set("projects/create", "projects/read", "projects/write")
@@ -288,7 +290,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     }
 
     "delete some permissions for user" in {
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapJson { (js, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapJson { (js, result) =>
         result.status shouldEqual StatusCodes.OK
         val acls = js
           .as[AclListing]
@@ -298,19 +300,19 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
         val rev = acls._results.head._rev
         val entity =
           jsonContentOf("/iam/subtract-permissions.json", replSub + (quote("{perms}") -> "projects/write")).toEntity
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, entity)).mapResp { result =>
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, entity)).mapResp { result =>
           result.status shouldEqual StatusCodes.OK
         }
       }
     }
 
     "check if permissions were removed" in {
-      cl(Req(GET, s"$iamBase/acls/?self=false", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/?self=false", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl
           .find {
-            case AclEntry(User(_, config.iam.userSub), _) => true
-            case _                                        => false
+            case AclEntry(User(`realmLabel`, config.iam.testUserSub), _) => true
+            case _                                                       => false
           }
           .value
           .permissions shouldEqual Set("projects/create", "projects/read")
@@ -322,10 +324,10 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
         jsonContentOf("/iam/add.json",
                       replSub + (quote("{perms}") -> """projects/create","projects/read","projects/write""")).toEntity
 
-      cl(Req(PUT, s"$iamBase/acls/$orgPath1", headersGroup, json)).mapResp { result =>
+      cl(Req(PUT, s"$iamBase/acls/$orgPath1", headersServiceAccount, json)).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
-      cl(Req(PUT, s"$iamBase/acls/$orgPath2", headersGroup, json)).mapResp { result =>
+      cl(Req(PUT, s"$iamBase/acls/$orgPath2", headersServiceAccount, json)).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
     }
@@ -334,13 +336,13 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       val body =
         jsonContentOf("/iam/add.json",
                       replSub + (quote("{perms}") -> """projects/create","projects/read","projects/write""")).toEntity
-      cl(Req(PATCH, s"$iamBase/acls/$orgPath1/$projectPath1", headersGroup, body))
+      cl(Req(PATCH, s"$iamBase/acls/$orgPath1/$projectPath1", headersServiceAccount, body))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PATCH, s"$iamBase/acls/$orgPath1/$projectPath2", headersGroup, body))
+      cl(Req(PATCH, s"$iamBase/acls/$orgPath1/$projectPath2", headersServiceAccount, body))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PATCH, s"$iamBase/acls/$orgPath2/$projectPath1", headersGroup, body))
+      cl(Req(PATCH, s"$iamBase/acls/$orgPath2/$projectPath1", headersServiceAccount, body))
         .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PATCH, s"$iamBase/acls/$orgPath2/$projectPath2", headersGroup, body))
+      cl(Req(PATCH, s"$iamBase/acls/$orgPath2/$projectPath2", headersServiceAccount, body))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -406,8 +408,8 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
           .value
           .acl
           .find {
-            case AclEntry(User("nexusdev", config.iam.userSub), _) => true
-            case _                                                 => false
+            case AclEntry(User(`realmLabel`, config.iam.testUserSub), _) => true
+            case _                                                       => false
           }
           .value
           .permissions shouldEqual Set("projects/create", "projects/read")

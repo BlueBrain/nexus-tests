@@ -24,8 +24,8 @@
   "_self": "{resources}",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
   "_project": "{project-parent}",
-  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
-  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}",
+  "_createdBy": "{iamBase}/realms/internal/users/{user}",
+  "_updatedBy": "{iamBase}/realms/internal/users/{user}",
   "_rev": 1,
   "_deprecated": false
 }
