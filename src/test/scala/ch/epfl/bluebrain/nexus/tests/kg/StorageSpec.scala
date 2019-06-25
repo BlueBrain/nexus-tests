@@ -473,7 +473,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -487,7 +488,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
         }
@@ -513,7 +515,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -529,7 +532,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -553,7 +557,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment2")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "s3attachment2")
           content shouldEqual expectedContent
         }
     }
@@ -824,7 +829,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -838,7 +844,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
         }
@@ -861,7 +868,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -877,7 +885,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -912,7 +921,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment2")
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+            "attachment2")
           content shouldEqual expectedContent
         }
     }
