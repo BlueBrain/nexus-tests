@@ -45,11 +45,12 @@ class EventsSpec
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create\",\"events/read")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.head._rev
 
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
@@ -73,13 +74,32 @@ class EventsSpec
           s"$kgBase/views/$id/nxv:defaultElasticSearchIndex",
           s"$kgBase/views/$id/nxv:defaultSparqlIndex",
           s"$kgBase/resolvers/$id/nxv:defaultInProject",
+          s"$kgBase/storages/$id/nxv:diskStorageDefault",
           s"$kgBase/views/$id2/nxv:defaultElasticSearchIndex",
           s"$kgBase/views/$id2/nxv:defaultSparqlIndex",
-          s"$kgBase/resolvers/$id2/nxv:defaultInProject"
+          s"$kgBase/resolvers/$id2/nxv:defaultInProject",
+          s"$kgBase/storages/$id2/nxv:diskStorageDefault"
         )
         forAll(endpoints) { endopoint =>
           cl(Req(GET, endopoint, headersJsonUser))
             .mapResp(_.status shouldEqual StatusCodes.OK)
+        }
+      }
+    }
+
+    "wait for storages to be indexed" in {
+      val endpoints = List(
+        s"$kgBase/storages/$id",
+        s"$kgBase/storages/$id2"
+      )
+
+      forAll(endpoints) { endpoint =>
+        eventually {
+          cl(Req(GET, endpoint, headersJsonUser))
+            .mapJson { (json, result) =>
+              result.status shouldEqual StatusCodes.OK
+              json.hcursor.downField("_total").as[Int].right.value shouldEqual 1
+            }
         }
       }
     }
@@ -180,7 +200,7 @@ class EventsSpec
           quote("{resources}")        -> s"$kgBase/resources/$id",
           quote("{iamBase}")          -> config.iam.uri.toString(),
           quote("{realm}")            -> config.iam.testRealm,
-          quote("{user}")             -> config.iam.userSub,
+          quote("{user}")             -> config.iam.testUserSub,
           quote("{projectUuid}")      -> projectUuid,
           quote("{organizationUuid}") -> organizationUuid
         )
@@ -224,7 +244,7 @@ class EventsSpec
           quote("{resources}")        -> s"$kgBase/resources/$id",
           quote("{iamBase}")          -> config.iam.uri.toString(),
           quote("{realm}")            -> config.iam.testRealm,
-          quote("{user}")             -> config.iam.userSub,
+          quote("{user}")             -> config.iam.testUserSub,
           quote("{projectUuid}")      -> projectUuid,
           quote("{organizationUuid}") -> organizationUuid
         )
@@ -263,7 +283,7 @@ class EventsSpec
           quote("{resources}")        -> s"$kgBase/resources/$id",
           quote("{iamBase}")          -> config.iam.uri.toString(),
           quote("{realm}")            -> config.iam.testRealm,
-          quote("{user}")             -> config.iam.userSub,
+          quote("{user}")             -> config.iam.testUserSub,
           quote("{projectUuid}")      -> projectUuid,
           quote("{organizationUuid}") -> organizationUuid
         )
@@ -319,7 +339,7 @@ class EventsSpec
             quote("{resources}")         -> s"$kgBase/resources/$id",
             quote("{iamBase}")           -> config.iam.uri.toString(),
             quote("{realm}")             -> config.iam.testRealm,
-            quote("{user}")              -> config.iam.userSub,
+            quote("{user}")              -> config.iam.testUserSub,
             quote("{projectUuid}")       -> projectUuid,
             quote("{project2Uuid}")      -> project2Uuid,
             quote("{organizationUuid}")  -> organizationUuid,

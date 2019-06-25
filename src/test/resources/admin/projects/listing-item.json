@@ -18,6 +18,6 @@
   "_organizationLabel": "{orgId}",
   "_rev": 1,
   "_deprecated": false,
-  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
-  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
+  "_createdBy": "{iamBase}/realms/internal/users/{user}",
+  "_updatedBy": "{iamBase}/realms/internal/users/{user}"
 }

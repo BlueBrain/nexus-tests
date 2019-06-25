@@ -36,9 +36,9 @@ object AppConfig {
 
   final case class IamConfig(uri: Uri,
                              testRealm: String,
-                             groupToken: String,
-                             userToken: String,
-                             userSub: String,
+                             serviceAccountToken: String,
+                             testUserToken: String,
+                             testUserSub: String,
                              coreContext: Uri)
 
   final case class ExternalStorageConfig(endpoint: Uri, credentials: String)

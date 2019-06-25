@@ -6,7 +6,7 @@
   "@id": "{iamBase}/realms/{label}",
   "@type": "Realm",
   "logo": "http://nexus.example.com/logo-updated.png",
-  "name": "Nexus Dev Updated",
+  "name": "Nexus Test Updated",
   "openIdConfig": "{realm}/.well-known/openid-configuration",
   "_label": "{label}",
   "_rev": {rev},

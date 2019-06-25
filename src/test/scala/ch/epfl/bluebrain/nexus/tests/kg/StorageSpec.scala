@@ -14,6 +14,8 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
 import io.circe.Json
+import org.apache.commons.codec.Charsets
+import org.apache.jena.ext.com.google.common.io.BaseEncoding
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
 import software.amazon.awssdk.auth.credentials._
@@ -63,7 +65,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
   "creating projects" should {
 
     "add necessary permissions for custom storage" in {
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (permissions.permissions.contains("some-read") && permissions.permissions.contains("some-write"))
           succeed
@@ -72,7 +74,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
                                    Map(
                                      quote("{perms}") -> List("some-read", "some-write").mkString("\",\"")
                                    )).toEntity
-          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         }
       }
@@ -83,11 +85,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
       ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val rev = acls._results.head._rev
 
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+          .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
@@ -119,21 +122,21 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{read}")    -> "resources/read",
               quote("{write}")   -> "files/write",
               quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.userSub
+              quote("{user}")    -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
 
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (!Set("disk/read", "disk/write").subsetOf(permissions.permissions)) {
           val body = jsonContentOf("/iam/permissions/append.json",
                                    Map(
                                      quote("{perms}") -> """disk/read", "disk/write"""
                                    )).toEntity
-          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         } else {
           succeed
@@ -157,7 +160,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{read}")    -> "disk/read",
               quote("{write}")   -> "disk/write",
               quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.userSub
+              quote("{user}")    -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -195,21 +198,21 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{read}")     -> "resources/read",
               quote("{write}")    -> "files/write",
               quote("{iamBase}")  -> config.iam.uri.toString(),
-              quote("{user}")     -> config.iam.userSub
+              quote("{user}")     -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
 
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (!Set("disk/extread", "disk/extwrite").subsetOf(permissions.permissions)) {
           val body = jsonContentOf("/iam/permissions/append.json",
                                    Map(
                                      quote("{perms}") -> """disk/extread", "disk/extwrite"""
                                    )).toEntity
-          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         } else {
           succeed
@@ -245,7 +248,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{read}")     -> "disk/extread",
               quote("{write}")    -> "disk/extwrite",
               quote("{iamBase}")  -> config.iam.uri.toString(),
-              quote("{user}")     -> config.iam.userSub
+              quote("{user}")     -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -270,14 +273,14 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
 
-      cl(Req(GET, s"$iamBase/permissions", headersGroup)).mapDecoded[Permissions] { (permissions, result) =>
+      cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (!Set("s3/read", "s3/write").subsetOf(permissions.permissions)) {
           val body = jsonContentOf("/iam/permissions/append.json",
                                    Map(
                                      quote("{perms}") -> """s3/read", "s3/write"""
                                    )).toEntity
-          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersGroup, body))
+          cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         } else {
           succeed
@@ -296,7 +299,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{read}")    -> "resources/read",
               quote("{write}")   -> "files/write",
               quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.userSub
+              quote("{user}")    -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -335,7 +338,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{read}")    -> "s3/read",
               quote("{write}")   -> "s3/write",
               quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.userSub
+              quote("{user}")    -> config.iam.testUserSub
             )
           ).deepMerge(Json.obj("region" -> Json.fromString("not-important")))
 
@@ -394,6 +397,17 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       eventually {
         cl(Req(POST, s"$kgBase/storages/$fullId", headersJsonUser, payload.toEntity))
           .mapResp(_.status shouldEqual StatusCodes.BadRequest)
+      }
+    }
+
+    "wait for storages to be indexed" in {
+
+      eventually {
+        cl(Req(GET, s"$kgBase/storages/$fullId", headersJsonUser))
+          .mapJson { (json, result) =>
+            result.status shouldEqual StatusCodes.OK
+            json.hcursor.downField("_total").as[Int].right.value shouldEqual 7
+          }
       }
     }
   }
@@ -459,7 +473,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -473,7 +487,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
         }
@@ -499,7 +513,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -515,7 +529,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -539,7 +553,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''s3attachment2"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("s3attachment2")
           content shouldEqual expectedContent
         }
     }
@@ -561,7 +575,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{project}")   -> s"$adminBase/projects/$fullId",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       val requestHeaders = headersJsonUser
@@ -590,10 +604,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           "/iam/add.json",
           replSub + (quote("{perms}") -> perm)
         ).toEntity
-        cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+        cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
           result.status shouldEqual StatusCodes.OK
           val rev = acls._results.head._rev
-          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
         }
       }
     }
@@ -636,7 +651,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             .value
             .params
             .get("filename")
-            .value shouldEqual "UTF-8''extattachment.json"
+            .value shouldEqual attachmentString("extattachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -655,7 +670,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             .value
             .params
             .get("filename")
-            .value shouldEqual "UTF-8''extattachment.json"
+            .value shouldEqual attachmentString("extattachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
         }
@@ -686,7 +701,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             .value
             .params
             .get("filename")
-            .value shouldEqual "UTF-8''extattachment.json"
+            .value shouldEqual attachmentString("extattachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -704,7 +719,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             .value
             .params
             .get("filename")
-            .value shouldEqual "UTF-8''extattachment.json"
+            .value shouldEqual attachmentString("extattachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -727,7 +742,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{project}")   -> s"$adminBase/projects/$fullId",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       val requestHeaders = headersJsonUser
@@ -757,10 +772,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           "/iam/add.json",
           replSub + (quote("{perms}") -> perm)
         ).toEntity
-        cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+        cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
           result.status shouldEqual StatusCodes.OK
           val rev = acls._results.head._rev
-          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
         }
       }
     }
@@ -808,7 +824,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -822,7 +838,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
         }
@@ -845,7 +861,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -861,7 +877,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment.json"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment.json")
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -896,7 +912,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapString { (content, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual "UTF-8''attachment2"
+          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString("attachment2")
           content shouldEqual expectedContent
         }
     }
@@ -918,7 +934,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{project}")   -> s"$adminBase/projects/$fullId",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       val requestHeaders = headersJsonUser
@@ -946,10 +962,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           "/iam/add.json",
           replSub + (quote("{perms}") -> perm)
         ).toEntity
-        cl(Req(GET, s"$iamBase/acls/", headersGroup)).mapDecoded[AclListing] { (acls, result) =>
+        cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
           result.status shouldEqual StatusCodes.OK
           val rev = acls._results.head._rev
-          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersGroup, json)).mapResp(_.status shouldEqual StatusCodes.OK)
+          cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
+            .mapResp(_.status shouldEqual StatusCodes.OK)
         }
       }
 
@@ -999,7 +1016,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{project}")   -> s"$adminBase/projects/$fullId",
           quote("{iamBase}")   -> config.iam.uri.toString(),
           quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.userSub
+          quote("{user}")      -> config.iam.testUserSub
         )
       )
       val requestHeaders = headersJsonUser
@@ -1010,4 +1027,10 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
   }
+
+  private def attachmentString(filename: String): String = {
+    val encodedFilename = BaseEncoding.base64().encode(filename.getBytes(Charsets.UTF_8))
+    s"=?UTF-8?B?$encodedFilename?="
+  }
+
 }

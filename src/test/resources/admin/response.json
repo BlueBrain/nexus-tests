@@ -7,6 +7,6 @@
   "@type" : "{@type}",
   "_rev" : {rev},
   "_deprecated" : {deprecated},
-  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
-  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
+  "_createdBy": "{iamBase}/realms/internal/users/{user}",
+  "_updatedBy": "{iamBase}/realms/internal/users/{user}"
 }

@@ -8,7 +8,7 @@
   "identities": [
     {
       "@type": "User",
-      "realm": "nexusdev",
+      "realm": "internal",
       "subject": "{user}"
     }
   ],

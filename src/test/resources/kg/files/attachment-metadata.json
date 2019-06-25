@@ -23,6 +23,6 @@
   "_project": "{project}",
   "_rev": 3,
   "_deprecated": true,
-  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
-  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}"
+  "_createdBy": "{iamBase}/realms/internal/users/{user}",
+  "_updatedBy": "{iamBase}/realms/internal/users/{user}"
 }

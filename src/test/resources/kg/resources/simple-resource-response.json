@@ -1,7 +1,6 @@
 {
   "@context": [
     {
-      "nxv": "https://bluebrain.github.io/nexus/vocabulary/",
       "other": "https://some.other.prefix.com/"
     },
     "https://bluebrain.github.io/nexus/contexts/resource.json"
@@ -18,8 +17,8 @@
   "_self" : "{resources}/test-schema/test-resource:1",
   "_project" : "{project}",
   "_constrainedBy": "https://dev.nexus.test.com/test-schema",
-  "_createdBy": "{iamBase}/realms/nexusdev/users/{user}",
-  "_updatedBy": "{iamBase}/realms/nexusdev/users/{user}",
+  "_createdBy": "{iamBase}/realms/internal/users/{user}",
+  "_updatedBy": "{iamBase}/realms/internal/users/{user}",
   "_rev": {rev},
   "_deprecated": false
 }
