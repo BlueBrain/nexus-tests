@@ -10,13 +10,14 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * Case class which aggregates the configuration parameters
   *
-  * @param http     http settings
-  * @param kg       kg connection settings
-  * @param admin    admin connection settings
-  * @param iam      IAM connection settings
-  * @param prefixes the collection of prefixes used throughout the service
-  * @param external external storage connection settings
-  * @param s3       the S3 storage backend settings
+  * @param http            http settings
+  * @param kg              kg connection settings
+  * @param admin           admin connection settings
+  * @param iam             IAM connection settings
+  * @param prefixes        the collection of prefixes used throughout the service
+  * @param external        external storage connection settings
+  * @param s3              the S3 storage backend settings
+  * @param storageFileSize the storage maxFilSize setting
   */
 final case class AppConfig(http: HttpConfig,
                            kg: KgConfig,
@@ -24,7 +25,8 @@ final case class AppConfig(http: HttpConfig,
                            iam: IamConfig,
                            prefixes: PrefixesConfig,
                            external: ExternalStorageConfig,
-                           s3: S3Config)
+                           s3: S3Config,
+                           storageFileSize: Long)
 
 object AppConfig {
 

@@ -9,6 +9,7 @@
     "DiskStorage"
   ],
   "default": false,
+  "maxFileSize" : {maxFileSize},
   "volume": "/tmp",
   "readPermission": "{read}",
   "writePermission": "{write}",

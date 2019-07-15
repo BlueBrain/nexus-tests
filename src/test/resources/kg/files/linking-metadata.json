@@ -2,7 +2,10 @@
   "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
   "@id": "{kgBase}/resources/{projId}/_/logo.png",
   "@type": "File",
-  "_storageId": "nxv:mys3storage",
+  "_storage": {
+    "@id": "nxv:mys3storage",
+    "_rev": 1
+  },
   "_bytes": 29625,
   "_digest": {
     "_value": "05bf442810213b9e5fecd5242eefeff1f3d207913861c96658c75ccf58997e87",

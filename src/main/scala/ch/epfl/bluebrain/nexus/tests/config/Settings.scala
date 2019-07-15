@@ -27,7 +27,8 @@ class Settings(config: Config) extends Extension {
     loadConfigOrThrow[IamConfig](config, "app.iam"),
     loadConfigOrThrow[PrefixesConfig](config, "app.prefixes"),
     loadConfigOrThrow[ExternalStorageConfig](config, "app.storage.external"),
-    loadConfigOrThrow[S3Config](config, "app.storage.s3")
+    loadConfigOrThrow[S3Config](config, "app.storage.s3"),
+    loadConfigOrThrow[Long](config, "app.storage.max-file-size")
   )
 
 }

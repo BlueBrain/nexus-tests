@@ -11,9 +11,9 @@
         "https://bluebrain.github.io/nexus/vocabulary/Storage",
         "https://bluebrain.github.io/nexus/vocabulary/DiskStorage"
       ],
-      "_incoming": "{kgBase}/storages/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdiskStorageDefault/incoming",
-      "_outgoing": "{kgBase}/storages/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdiskStorageDefault/outgoing",
-      "_self": "{kgBase}/storages/{project-label}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdiskStorageDefault",
+      "_incoming": "{kgBase}/storages/{project-label}/defaultStorage/incoming",
+      "_outgoing": "{kgBase}/storages/{project-label}/defaultStorage/outgoing",
+      "_self": "{kgBase}/storages/{project-label}/defaultStorage",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/storage.json",
       "_project": "{project}",
       "_rev": 1,
