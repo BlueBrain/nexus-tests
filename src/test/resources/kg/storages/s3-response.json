@@ -9,6 +9,7 @@
     "S3Storage"
   ],
   "default": false,
+  "maxFileSize" : {maxFileSize},
   "bucket": "{bucket}",
   "endpoint" : "http://minio.dev.nexus.ocp.bbp.epfl.ch",
   "readPermission": "{read}",

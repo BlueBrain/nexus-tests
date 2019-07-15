@@ -21,7 +21,7 @@
           "name": "ABC-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "ABC-MT-C1"
         ]
@@ -40,7 +40,7 @@
           "name": "C080301A2-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C080301A2-MT-C1"
         ]
@@ -59,7 +59,7 @@
           "name": "C161001B2-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C161001B2-MT-C1"
         ]
@@ -78,7 +78,7 @@
           "name": "C230402B-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C230402B-MT-C1"
         ]
@@ -97,7 +97,7 @@
           "name": "C240300A1-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C240300A1-MT-C1"
         ]
@@ -116,7 +116,7 @@
           "name": "C251001B2-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C251001B2-MT-C1"
         ]
@@ -135,13 +135,16 @@
           "name": "DEF-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "DEF-MT-C1"
         ]
       }
     ],
-    "total": 7
+    "total": {
+      "relation": "eq",
+      "value": 7
+    }
   },
   "timed_out": false
 }

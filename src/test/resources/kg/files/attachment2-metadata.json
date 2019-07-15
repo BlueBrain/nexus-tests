@@ -1,14 +1,11 @@
 {
-  "@context": [
-    {
-      "@base": "{kgBase}/resources/{projId}/_/",
-      "@vocab": "http://dev.nexus.ocp.bbp.epfl.ch/v1/vocabs/{projId}/"
-    },
-    "https://bluebrain.github.io/nexus/contexts/resource.json"
-  ],
-  "@id": "attachment2",
+  "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
+  "@id": "{kgBase}/resources/{projId}/_/attachment2",
   "@type": "File",
-  "_storageId" : "{storageId}",
+  "_storage": {
+    "@id": "{storageId}",
+    "_rev": 1
+  },
   "_bytes": 26,
   "_digest": {
     "_algorithm": "SHA-256",

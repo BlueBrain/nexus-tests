@@ -11,9 +11,9 @@
         "https://bluebrain.github.io/nexus/vocabulary/Resolver",
         "https://bluebrain.github.io/nexus/vocabulary/InProject"
       ],
-      "_incoming": "{kgBase}/resolvers/{projId}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultInProject/incoming",
-      "_outgoing": "{kgBase}/resolvers/{projId}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultInProject/outgoing",
-      "_self": "{kgBase}/resolvers/{projId}/https%3A%2F%2Fbluebrain.github.io%2Fnexus%2Fvocabulary%2FdefaultInProject",
+      "_incoming": "{kgBase}/resolvers/{projId}/defaultResolver/incoming",
+      "_outgoing": "{kgBase}/resolvers/{projId}/defaultResolver/outgoing",
+      "_self": "{kgBase}/resolvers/{projId}/defaultResolver",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
       "_project": "{project}",
       "_rev": 1,

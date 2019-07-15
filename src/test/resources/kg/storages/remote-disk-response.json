@@ -9,9 +9,9 @@
     "RemoteDiskStorage"
   ],
   "default": false,
+  "maxFileSize" : {maxFileSize},
   "endpoint": "{endpoint}",
   "folder": "{folder}",
-  "default": false,
   "readPermission": "{read}",
   "writePermission": "{write}",
   "_algorithm": "SHA-256",

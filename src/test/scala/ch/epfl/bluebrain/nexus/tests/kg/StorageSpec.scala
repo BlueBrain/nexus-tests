@@ -116,13 +116,14 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/disk-response.json",
             Map(
-              quote("{kgBase}")  -> s"$kgBase",
-              quote("{id}")      -> "nxv:mystorage",
-              quote("{project}") -> fullId,
-              quote("{read}")    -> "resources/read",
-              quote("{write}")   -> "files/write",
-              quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.testUserSub
+              quote("{kgBase}")      -> s"$kgBase",
+              quote("{id}")          -> "nxv:mystorage",
+              quote("{project}")     -> fullId,
+              quote("{read}")        -> "resources/read",
+              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{write}")       -> "files/write",
+              quote("{iamBase}")     -> config.iam.uri.toString(),
+              quote("{user}")        -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -154,13 +155,14 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/disk-response.json",
             Map(
-              quote("{kgBase}")  -> s"$kgBase",
-              quote("{id}")      -> "nxv:mystorage2",
-              quote("{project}") -> fullId,
-              quote("{read}")    -> "disk/read",
-              quote("{write}")   -> "disk/write",
-              quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.testUserSub
+              quote("{kgBase}")      -> s"$kgBase",
+              quote("{id}")          -> "nxv:mystorage2",
+              quote("{project}")     -> fullId,
+              quote("{read}")        -> "disk/read",
+              quote("{write}")       -> "disk/write",
+              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{iamBase}")     -> config.iam.uri.toString(),
+              quote("{user}")        -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -176,7 +178,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{cred}")     -> config.external.credentials,
           quote("{read}")     -> "resources/read",
           quote("{write}")    -> "files/write",
-          quote("{folder}")   -> "testproject",
+          quote("{folder}")   -> "nexustest",
           quote("{id}")       -> "myexternalstorage"
         )
       )
@@ -190,15 +192,16 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/remote-disk-response.json",
             Map(
-              quote("{endpoint}") -> config.external.endpoint.toString,
-              quote("{folder}")   -> "testproject",
-              quote("{kgBase}")   -> s"$kgBase",
-              quote("{id}")       -> "nxv:myexternalstorage",
-              quote("{project}")  -> fullId,
-              quote("{read}")     -> "resources/read",
-              quote("{write}")    -> "files/write",
-              quote("{iamBase}")  -> config.iam.uri.toString(),
-              quote("{user}")     -> config.iam.testUserSub
+              quote("{endpoint}")    -> config.external.endpoint.toString,
+              quote("{folder}")      -> "nexustest",
+              quote("{kgBase}")      -> s"$kgBase",
+              quote("{id}")          -> "nxv:myexternalstorage",
+              quote("{project}")     -> fullId,
+              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{read}")        -> "resources/read",
+              quote("{write}")       -> "files/write",
+              quote("{iamBase}")     -> config.iam.uri.toString(),
+              quote("{user}")        -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -226,7 +229,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{cred}")     -> config.external.credentials,
           quote("{read}")     -> "disk/extread",
           quote("{write}")    -> "disk/extwrite",
-          quote("{folder}")   -> "testproject",
+          quote("{folder}")   -> "nexustest",
           quote("{id}")       -> "myexternalstorage2"
         )
       )
@@ -240,15 +243,16 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/remote-disk-response.json",
             Map(
-              quote("{endpoint}") -> config.external.endpoint.toString,
-              quote("{folder}")   -> "testproject",
-              quote("{kgBase}")   -> s"$kgBase",
-              quote("{id}")       -> "nxv:myexternalstorage2",
-              quote("{project}")  -> fullId,
-              quote("{read}")     -> "disk/extread",
-              quote("{write}")    -> "disk/extwrite",
-              quote("{iamBase}")  -> config.iam.uri.toString(),
-              quote("{user}")     -> config.iam.testUserSub
+              quote("{endpoint}")    -> config.external.endpoint.toString,
+              quote("{folder}")      -> "nexustest",
+              quote("{kgBase}")      -> s"$kgBase",
+              quote("{id}")          -> "nxv:myexternalstorage2",
+              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{project}")     -> fullId,
+              quote("{read}")        -> "disk/extread",
+              quote("{write}")       -> "disk/extwrite",
+              quote("{iamBase}")     -> config.iam.uri.toString(),
+              quote("{user}")        -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -292,14 +296,15 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/s3-response.json",
             Map(
-              quote("{kgBase}")  -> s"$kgBase",
-              quote("{id}")      -> "nxv:mys3storage",
-              quote("{project}") -> fullId,
-              quote("{bucket}")  -> bucket,
-              quote("{read}")    -> "resources/read",
-              quote("{write}")   -> "files/write",
-              quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.testUserSub
+              quote("{kgBase}")      -> s"$kgBase",
+              quote("{id}")          -> "nxv:mys3storage",
+              quote("{project}")     -> fullId,
+              quote("{bucket}")      -> bucket,
+              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{read}")        -> "resources/read",
+              quote("{write}")       -> "files/write",
+              quote("{iamBase}")     -> config.iam.uri.toString(),
+              quote("{user}")        -> config.iam.testUserSub
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
@@ -331,14 +336,15 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/s3-response.json",
             Map(
-              quote("{kgBase}")  -> s"$kgBase",
-              quote("{id}")      -> "nxv:mys3storage2",
-              quote("{project}") -> fullId,
-              quote("{bucket}")  -> bucket,
-              quote("{read}")    -> "s3/read",
-              quote("{write}")   -> "s3/write",
-              quote("{iamBase}") -> config.iam.uri.toString(),
-              quote("{user}")    -> config.iam.testUserSub
+              quote("{kgBase}")      -> s"$kgBase",
+              quote("{id}")          -> "nxv:mys3storage2",
+              quote("{project}")     -> fullId,
+              quote("{bucket}")      -> bucket,
+              quote("{read}")        -> "s3/read",
+              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{write}")       -> "s3/write",
+              quote("{iamBase}")     -> config.iam.uri.toString(),
+              quote("{user}")        -> config.iam.testUserSub
             )
           ).deepMerge(Json.obj("region" -> Json.fromString("not-important")))
 
@@ -389,7 +395,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{cred}")     -> config.external.credentials,
           quote("{read}")     -> "resources/read",
           quote("{write}")    -> "files/write",
-          quote("{folder}")   -> "testproject",
+          quote("{folder}")   -> "nexustest",
           quote("{id}")       -> "myexternalstorage"
         )
       ).removeField("folder")
@@ -573,7 +579,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val expected = jsonContentOf(
         "/kg/files/attachment-metadata.json",
         Map(
-          quote("{filename}")  -> "s3attachment.json",
+          quote("{id}")        -> s"$kgBase/resources/$fullId/_/s3attachment.json",
+          quote("{filename}")  -> s"s3attachment.json",
           quote("{kgBase}")    -> s"$kgBase",
           quote("{storageId}") -> "nxv:mys3storage",
           quote("{projId}")    -> s"$fullId",
@@ -740,6 +747,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val expected = jsonContentOf(
         "/kg/files/attachment-metadata.json",
         Map(
+          quote("{id}")        -> s"$kgBase/resources/$fullId/_/extattachment.json",
           quote("{filename}")  -> "extattachment.json",
           quote("{kgBase}")    -> s"$kgBase",
           quote("{storageId}") -> "nxv:myexternalstorage",
@@ -755,7 +763,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.hcursor.get[String]("_location").right.value should startWith(
-            "file:///gpfs/bbp.cscs.ch/data/project/testproject")
+            "file:///gpfs/bbp.cscs.ch/data/project/nexustest")
           json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
     }
@@ -937,6 +945,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val expected = jsonContentOf(
         "/kg/files/attachment-metadata.json",
         Map(
+          quote("{id}")        -> s"$kgBase/resources/$fullId/_/attachment.json",
           quote("{filename}")  -> "attachment.json",
           quote("{kgBase}")    -> s"$kgBase",
           quote("{storageId}") -> "nxv:diskStorageDefault",

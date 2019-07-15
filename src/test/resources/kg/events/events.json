@@ -86,12 +86,9 @@
       "_mediaType": "application/json"
     },
     "_storage": {
-      "@type": "DiskStorage",
-      "_storageId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
-      "default": true,
-      "readPermission": "resources/read",
-      "volume": "/opt/binaries",
-      "writePermission": "files/write"
+      "@type": "DiskStorageReference",
+      "_resourceId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
+      "_rev": 1
     },
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",
@@ -111,12 +108,9 @@
       "_mediaType": "application/json"
     },
     "_storage": {
-      "@type": "DiskStorage",
-      "_storageId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
-      "default": true,
-      "readPermission": "resources/read",
-      "volume": "/opt/binaries",
-      "writePermission": "files/write"
+      "@type": "DiskStorageReference",
+      "_resourceId": "https://bluebrain.github.io/nexus/vocabulary/diskStorageDefault",
+      "_rev": 1
     },
     "_projectUuid": "{projectUuid}",
     "_organizationUuid": "{organizationUuid}",

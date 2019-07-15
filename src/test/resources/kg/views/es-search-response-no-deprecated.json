@@ -21,7 +21,7 @@
           "name": "C161001B2-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C161001B2-MT-C1"
         ]
@@ -40,7 +40,7 @@
           "name": "C230402B-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C230402B-MT-C1"
         ]
@@ -59,13 +59,16 @@
           "name": "C240300A1-MT-C1",
           "nxv:deprecated": false
         },
-        "_type": "doc",
+        "_type": "_doc",
         "sort": [
           "C240300A1-MT-C1"
         ]
       }
     ],
-    "total": 3
+    "total": {
+      "relation": "eq",
+      "value": 3
+    }
   },
   "timed_out": false
 }
