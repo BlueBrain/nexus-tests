@@ -489,7 +489,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     "fetch gzipped attachment" in eventually {
       val requestHeaders = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
-        .mapByteString { (content, result) =>
+        .mapByteString { (_, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
@@ -673,7 +673,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     "fetch gzipped attachment" in eventually {
       val requestHeaders = headersUser ++ Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
       cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", requestHeaders))
-        .mapByteString { (content, result) =>
+        .mapByteString { (_, result) =>
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
