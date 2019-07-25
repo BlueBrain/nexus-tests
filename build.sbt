@@ -27,21 +27,21 @@ scalafmt: {
 import org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings
 
 // Dependency versions
-val ammoniteVersion   = "1.6.4"
-val akkaVersion       = "2.5.22"
-val akkaHttpVersion   = "10.1.8"
-val alpakkaVersion    = "1.0-M3"
+val ammoniteVersion   = "1.6.9"
+val akkaVersion       = "2.5.23"
+val akkaHttpVersion   = "10.1.9"
+val alpakkaVersion    = "1.1.0"
 val catsVersion       = "1.4.0"
 val circeVersion      = "0.10.0"
 val mockitoVersion    = "2.22.0"
-val pureconfigVersion = "0.10.2"
-val scalaTestVersion  = "3.0.7"
-val gatlingVersion    = "3.0.3"
+val pureconfigVersion = "0.11.1"
+val scalaTestVersion  = "3.0.8"
+val gatlingVersion    = "3.2.0"
 val uuidGenVersion    = "3.2.0"
-val awsSdkVersion     = "2.5.39"
+val awsSdkVersion     = "2.7.11"
 
 // Nexus dependency versions
-val commonsVersion = "0.12.4"
+val commonsVersion = "0.17.1"
 
 // Dependency modules
 lazy val akkaHttpCore    = "com.typesafe.akka"      %% "akka-http-core"          % akkaHttpVersion
