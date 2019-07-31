@@ -60,7 +60,7 @@ oc scale statefulset admin --replicas=1
 oc wait pods/admin-0 --for condition=ready --namespace=bbp-nexus-dev --timeout=4m
 oc scale statefulset kg --replicas=1
 oc wait pods/kg-0 --for condition=ready --namespace=bbp-nexus-dev --timeout=4m
-until curl -s http://kg.dev.nexus.ocp.bbp.epfl.ch | jq | grep '"name": "kg"' &> /dev/null; do echo "Waiting until kg service is up"; sleep 3; done
+until curl -s http://kg.dev.nexus.ocp.bbp.epfl.ch | grep '"name":"kg"' &> /dev/null; do echo "Waiting until kg service is up"; sleep 2; done
 
 echo -e "${GREEN}Services are up and backed up with the following configuration: ${RESET}"
 echo "- Users authenticated in BBP or Github have full permissions on /"

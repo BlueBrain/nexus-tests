@@ -33,7 +33,8 @@ pipeline {
             post {
                 cleanup {
                     junit 'target/test-reports/TEST*.xml'
-                    sh(script: "bash ./scripts/initialize-dev/wipe-and-recreate.sh", returnStdout: true)
+                    sh './scripts/initialize-dev/wipe-and-recreate.sh > output.txt'
+                    sh 'cat output.txt'
                 }
             }
         }
