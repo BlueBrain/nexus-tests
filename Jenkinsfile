@@ -29,6 +29,7 @@ pipeline {
             steps {
                 checkout scm
                 sh 'sbt test'
+                sh(script: "bash ./scripts/initialize-dev/wipe-and-recreate.sh", returnStdout: true)
             }
             post {
                 always {
