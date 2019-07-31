@@ -31,10 +31,13 @@ pipeline {
                 sh 'sbt test'
             }
             post {
-                always {
+                cleanup {
                     junit 'target/test-reports/TEST*.xml'
+                    sh './scripts/initialize-dev/wipe-and-recreate.sh > output.txt'
+                    sh 'cat output.txt'
                 }
             }
         }
     }
 }
+
