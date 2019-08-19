@@ -60,8 +60,8 @@ oc scale statefulset admin --replicas=1
 oc wait pods/admin-0 --for condition=ready --namespace=bbp-nexus-dev --timeout=4m
 oc scale statefulset kg --replicas=1
 oc wait pods/kg-0 --for condition=ready --namespace=bbp-nexus-dev --timeout=4m
-oc rsync "${BASH_SOURCE%/*}/delete_files" cassandra-0:/tmp/
-oc rsh cassandra-0 bash /tmp/delete_files/delete_files.sh
+oc rsync "${BASH_SOURCE%/*}/delete_files" kg-0:/tmp/
+oc rsh kg-0 bash /tmp/delete_files/delete_files.sh
 until curl -s http://kg.dev.nexus.ocp.bbp.epfl.ch | grep '"name":"kg"' &> /dev/null; do echo "Waiting until kg service is up"; sleep 2; done
 
 echo -e "${GREEN}Services are up and backed up with the following configuration: ${RESET}"
