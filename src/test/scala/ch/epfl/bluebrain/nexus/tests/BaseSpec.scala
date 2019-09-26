@@ -12,19 +12,16 @@ import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient
-import ch.epfl.bluebrain.nexus.commons.http.HttpClient._
-import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
+import ch.epfl.bluebrain.nexus.commons.http.HttpClient.{UntypedHttpClient, _}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
+import ch.epfl.bluebrain.nexus.commons.test.{CirceEq, Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.config.Settings
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, User}
 import com.typesafe.config.ConfigFactory
 import io.circe.parser._
-import io.circe.syntax._
-import io.circe.{Decoder, Json, JsonObject}
+import io.circe.{Decoder, Json}
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.{MatchResult, Matcher}
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -39,7 +36,8 @@ class BaseSpec
     with ScalaFutures
     with Resources
     with Randomness
-    with OptionValues {
+    with OptionValues
+    with CirceEq {
 
   private[tests] val config                                 = new Settings(ConfigFactory.parseResources("test-app.conf").resolve()).appConfig
   private[tests] val credServiceAccount                     = HttpCredentials.createOAuth2BearerToken(config.iam.serviceAccountToken)
@@ -54,7 +52,7 @@ class BaseSpec
   private[tests] val adminBase                    = config.admin.uri
   private[tests] val iamBase                      = config.iam.uri
   private[tests] val kgBase                       = config.kg.uri
-  private[tests] val s3Config                     = config.s3
+  private[tests] val s3Config                     = config.storage.s3
   private[tests] val replSub                      = Map(quote("{sub}") -> config.iam.testUserSub)
   private[tests] val realmLabel                   = "internal"
 
@@ -81,8 +79,10 @@ class BaseSpec
 
         permissions.foreach { acl =>
           val entity =
-            jsonContentOf("/iam/subtract-permissions.json",
-                          replSub + (quote("{perms}") -> acl.acl.head.permissions.mkString("\",\""))).toEntity
+            jsonContentOf(
+              "/iam/subtract-permissions.json",
+              replSub + (quote("{perms}") -> acl.acl.head.permissions.mkString("\",\""))
+            ).toEntity
           cl(Req(PATCH, s"$iamBase/acls${acl._path}?rev=${acl._rev}", headersServiceAccount, entity))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         }
@@ -91,10 +91,12 @@ class BaseSpec
 
   def ensureRealmExists = {
     val body =
-      jsonContentOf("/iam/realms/create.json",
-                    Map(
-                      quote("{realm}") -> config.iam.testRealm
-                    )).toEntity
+      jsonContentOf(
+        "/iam/realms/create.json",
+        Map(
+          quote("{realm}") -> config.iam.testRealm
+        )
+      ).toEntity
 
     val rev = cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount, body)).jsonValue.hcursor
       .downField("_rev")
@@ -108,30 +110,6 @@ class BaseSpec
       case None =>
         cl(Req(PUT, s"$iamBase/realms/$realmLabel", headersServiceAccount, body))
           .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-  }
-
-  def equalIgnoreArrayOrder(json: Json) = IgnoredArrayOrder(json)
-
-  case class IgnoredArrayOrder(json: Json) extends Matcher[Json] {
-    private def sortKeys(value: Json): Json = {
-      def canonicalJson(json: Json): Json =
-        json.arrayOrObject[Json](json,
-                                 arr => Json.fromValues(arr.sortBy(_.hashCode()).map(canonicalJson)),
-                                 obj => sorted(obj).asJson)
-
-      def sorted(jObj: JsonObject): JsonObject =
-        JsonObject.fromIterable(jObj.toVector.sortBy(_._1).map { case (k, v) => k -> canonicalJson(v) })
-
-      canonicalJson(value)
-    }
-
-    override def apply(left: Json): MatchResult = {
-      val leftSorted  = sortKeys(left)
-      val rightSorted = sortKeys(json)
-      MatchResult(leftSorted == rightSorted,
-                  s"Both Json are not equal (ignoring array order)\n$leftSorted\ndid not equal\n$rightSorted",
-                  "")
     }
   }
 
@@ -183,8 +161,9 @@ class BaseSpec
     def mapString(body: (String, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[String]): Assertion =
       whenReady(value)(res => um(res.entity).map(s => body(s, res)).futureValue)
 
-    def mapByteString(body: (ByteString, HttpResponse) => Assertion)(
-        implicit um: FromEntityUnmarshaller[ByteString]): Assertion =
+    def mapByteString(
+        body: (ByteString, HttpResponse) => Assertion
+    )(implicit um: FromEntityUnmarshaller[ByteString]): Assertion =
       whenReady(value)(res => um(res.entity).map(s => body(s, res)).futureValue)
 
     def getJson[A](handler: Json => A)(implicit um: FromEntityUnmarshaller[Json]): A = {
@@ -213,17 +192,21 @@ class BaseSpec
   private[tests] def genId(length: Int = 15): String =
     genString(length = length, Vector.range('a', 'z') ++ Vector.range('0', '9'))
 
-  private[tests] def projectReqJson(path: String = "/admin/projects/create.json",
-                                    nxv: String = randomProjectPrefix,
-                                    person: String = randomProjectPrefix,
-                                    description: String = genString(),
-                                    base: String = s"${config.admin.uri.toString()}/${genString()}",
-                                    vocab: String = s"${config.admin.uri.toString()}/${genString()}"): Json = {
-    val rep = Map(quote("{nxv-prefix}") -> nxv,
-                  quote("{person-prefix}") -> person,
-                  quote("{description}")   -> description,
-                  quote("{base}")          -> base,
-                  quote("{vocab}")         -> vocab)
+  private[tests] def projectReqJson(
+      path: String = "/admin/projects/create.json",
+      nxv: String = randomProjectPrefix,
+      person: String = randomProjectPrefix,
+      description: String = genString(),
+      base: String = s"${config.admin.uri.toString()}/${genString()}",
+      vocab: String = s"${config.admin.uri.toString()}/${genString()}"
+  ): Json = {
+    val rep = Map(
+      quote("{nxv-prefix}")    -> nxv,
+      quote("{person-prefix}") -> person,
+      quote("{description}")   -> description,
+      quote("{base}")          -> base,
+      quote("{vocab}")         -> vocab
+    )
     jsonContentOf(path, rep)
   }
 
@@ -238,11 +221,13 @@ class BaseSpec
     jsonContentOf(path, rep).toEntity
   }
 
-  private[tests] def createRespJson(id: String,
-                                    rev: Long,
-                                    tpe: String = "projects",
-                                    `@type`: String = "Project",
-                                    deprecated: Boolean = false): Json = {
+  private[tests] def createRespJson(
+      id: String,
+      rev: Long,
+      tpe: String = "projects",
+      `@type`: String = "Project",
+      deprecated: Boolean = false
+  ): Json = {
     val resp = resourceCtx ++ Map(
       quote("{id}")         -> id,
       quote("{type}")       -> tpe,
@@ -258,14 +243,16 @@ class BaseSpec
     jsonContentOf("/admin/response.json", resp)
   }
 
-  private[tests] def validateAdminResource(json: Json,
-                                           tpe: String,
-                                           idPrefix: String,
-                                           id: String,
-                                           description: String,
-                                           rev: Long,
-                                           label: String,
-                                           deprecated: Boolean = false) = {
+  private[tests] def validateAdminResource(
+      json: Json,
+      tpe: String,
+      idPrefix: String,
+      id: String,
+      description: String,
+      rev: Long,
+      label: String,
+      deprecated: Boolean = false
+  ) = {
     json.getString("@id") shouldEqual s"${config.admin.uri.toString()}/$idPrefix/$id"
     json.getString("@type") shouldEqual tpe
     json.getString("_uuid") should fullyMatch regex """[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"""

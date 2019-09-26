@@ -110,8 +110,10 @@ class EventsSpec
     "add events to project" in {
 
       //Created event
-      val payload = jsonContentOf("/kg/resources/simple-resource.json",
-                                  Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1"))
+      val payload = jsonContentOf(
+        "/kg/resources/simple-resource.json",
+        Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
+      )
 
       cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
@@ -120,8 +122,10 @@ class EventsSpec
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
       //Updated event
-      val updatePayload = jsonContentOf("/kg/resources/simple-resource.json",
-                                        Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1"))
+      val updatePayload = jsonContentOf(
+        "/kg/resources/simple-resource.json",
+        Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
+      )
       cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1?rev=1", headersJsonUser, updatePayload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.OK)
 
@@ -140,9 +144,12 @@ class EventsSpec
         Multipart
           .FormData(
             Multipart.FormData.BodyPart
-              .Strict("file",
-                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment.json")),
-                      Map("filename" -> "attachment.json")))
+              .Strict(
+                "file",
+                HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment.json")),
+                Map("filename" -> "attachment.json")
+              )
+          )
           .toEntity()
 
       cl(Req(PUT, s"$kgBase/files/$id/attachment.json", headersJsonUser, multipartForm))
@@ -153,9 +160,12 @@ class EventsSpec
         Multipart
           .FormData(
             Multipart.FormData.BodyPart
-              .Strict("file",
-                      HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment2.json")),
-                      Map("filename" -> "attachment.json")))
+              .Strict(
+                "file",
+                HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment2.json")),
+                Map("filename" -> "attachment.json")
+              )
+          )
           .toEntity()
 
       cl(Req(PUT, s"$kgBase/files/$id/attachment.json?rev=1", headersJsonUser, multipartFormUpdate))
@@ -186,12 +196,9 @@ class EventsSpec
           .futureValue
 
       projectEvents.size shouldEqual 6
-      projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created",
-                                                                        "Updated",
-                                                                        "TagAdded",
-                                                                        "Deprecated",
-                                                                        "FileCreated",
-                                                                        "FileUpdated")
+      projectEvents
+        .map(_.getEventType().get())
+        .toList shouldEqual List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
       val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
 
       removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
@@ -230,12 +237,9 @@ class EventsSpec
           .futureValue
 
       projectEvents.size shouldEqual 6
-      projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created",
-                                                                        "Updated",
-                                                                        "TagAdded",
-                                                                        "Deprecated",
-                                                                        "FileCreated",
-                                                                        "FileUpdated")
+      projectEvents
+        .map(_.getEventType().get())
+        .toList shouldEqual List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
       val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
 
       removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
@@ -325,13 +329,15 @@ class EventsSpec
             .futureValue
 
         events.size shouldEqual 7
-        events.map(_.getEventType().get()).toList shouldEqual List("Created",
-                                                                   "Created",
-                                                                   "Updated",
-                                                                   "TagAdded",
-                                                                   "Deprecated",
-                                                                   "FileCreated",
-                                                                   "FileUpdated")
+        events.map(_.getEventType().get()).toList shouldEqual List(
+          "Created",
+          "Created",
+          "Updated",
+          "TagAdded",
+          "Deprecated",
+          "FileCreated",
+          "FileUpdated"
+        )
         val result = Json.arr(events.map(e => parse(e.getData()).right.value): _*)
         removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
           "/kg/events/events-multi-project.json",

@@ -22,9 +22,9 @@ object AclListing {
 
   private implicit val config: Configuration = Configuration.default.withDiscriminator("@type")
 
-  implicit val identityDecoder: Decoder[Identity]     = deriveDecoder[Identity]
-  implicit val aclEntryDecoder: Decoder[AclEntry]     = deriveDecoder[AclEntry]
-  implicit val aclDecoder: Decoder[Acl]               = deriveDecoder[Acl]
-  implicit val aclListingDecoder: Decoder[AclListing] = deriveDecoder[AclListing]
+  implicit val identityDecoder: Decoder[Identity]     = deriveConfiguredDecoder[Identity]
+  implicit val aclEntryDecoder: Decoder[AclEntry]     = deriveConfiguredDecoder[AclEntry]
+  implicit val aclDecoder: Decoder[Acl]               = deriveConfiguredDecoder[Acl]
+  implicit val aclListingDecoder: Decoder[AclListing] = deriveConfiguredDecoder[AclListing]
 
 }

@@ -64,7 +64,8 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
           "schemas/write",
           "views/write",
           "views/query",
-          "storages/write"
+          "storages/write",
+          "archives/write"
         )
 
       }
@@ -193,8 +194,10 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     "add orgs/write permissions for user" in {
-      val json = jsonContentOf("/iam/add.json",
-                               replSub + (quote("{perms}") -> "organizations/write\",\"organizations/read")).toEntity
+      val json = jsonContentOf(
+        "/iam/add.json",
+        replSub + (quote("{perms}") -> "organizations/write\",\"organizations/read")
+      ).toEntity
       cl(Req(PUT, s"$iamBase/acls/$id", headersServiceAccount, json)).mapResp { result =>
         result.status shouldEqual StatusCodes.Created
       }
