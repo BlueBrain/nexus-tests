@@ -13,9 +13,9 @@ import scala.concurrent.duration._
 
 class FullSimulationNoSchema extends BaseSimulation with Resources {
 
-  val journeyDuration = config.fullSimulationConfig.duration
+  val journeyDuration = config.fullSimulation.duration
 
-  val project = config.fullSimulationConfig.project
+  val project = config.fullSimulation.project
 
   val esQueries = jsonContentOf("/es-queries.json").hcursor
     .downField("queries")
@@ -35,7 +35,7 @@ class FullSimulationNoSchema extends BaseSimulation with Resources {
   val fetch = exec { session =>
     val rnd = ThreadLocalRandom
       .current()
-      .nextInt(config.fullSimulationConfig.maxResources) + 1
+      .nextInt(config.fullSimulation.maxResources) + 1
     val s = session("schema").as[String]
     session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
   }.exec(
@@ -46,7 +46,7 @@ class FullSimulationNoSchema extends BaseSimulation with Resources {
   val fetchAndUpdate = exec { session =>
     val rnd = ThreadLocalRandom
       .current()
-      .nextInt(config.fullSimulationConfig.maxResources) + 1
+      .nextInt(config.fullSimulation.maxResources) + 1
     val s = session("schema").as[String]
     session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
   }.exec(
@@ -74,7 +74,7 @@ class FullSimulationNoSchema extends BaseSimulation with Resources {
   val fetchAndGetByRevision = exec { session =>
     val rnd = ThreadLocalRandom
       .current()
-      .nextInt(config.fullSimulationConfig.maxResources) + 1
+      .nextInt(config.fullSimulation.maxResources) + 1
     val s = session("schema").as[String]
     session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
   }.exec(
@@ -112,21 +112,21 @@ class FullSimulationNoSchema extends BaseSimulation with Resources {
       val s = session("schema").as[String]
       session.set("encodedSchema", URLEncoder.encode(s, "UTF-8"))
     }
-    .tryMax(config.http.retries)(repeat(config.fullSimulationConfig.repeats)(
+    .tryMax(config.http.retries)(repeat(config.fullSimulation.repeats)(
       randomSwitch(
-        config.fullSimulationConfig.fetchPercentage                 -> fetch,
-        config.fullSimulationConfig.fetchAndUpdatePercentage        -> fetchAndUpdate,
-        config.fullSimulationConfig.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
-        config.fullSimulationConfig.blazegraphSearchPercentage      -> blazegraphSearch,
-        config.fullSimulationConfig.esSearchPercentage              -> esSearch
+        config.fullSimulation.fetchPercentage                 -> fetch,
+        config.fullSimulation.fetchAndUpdatePercentage        -> fetchAndUpdate,
+        config.fullSimulation.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
+        config.fullSimulation.blazegraphSearchPercentage      -> blazegraphSearch,
+        config.fullSimulation.esSearchPercentage              -> esSearch
       )
     ))
 
   setUp(
     scn
       .inject(
-        rampConcurrentUsers(0) to config.fullSimulationConfig.users during (1 minutes),
-        constantConcurrentUsers(config.fullSimulationConfig.users) during config.fullSimulationConfig.duration
+        rampConcurrentUsers(0) to config.fullSimulation.users during (1 minutes),
+        constantConcurrentUsers(config.fullSimulation.users) during config.fullSimulation.duration
       )
       .protocols(httpConf))
 }

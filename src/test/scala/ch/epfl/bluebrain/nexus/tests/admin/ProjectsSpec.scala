@@ -92,12 +92,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     "fail to create if project already exists" in {
       cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/project-already-exists.json",
-                                       Map(
-                                         quote("{projLabel}") -> projId,
-                                         quote("{orgId}")     -> orgId,
-                                         quote("{projId}")    -> id
-                                       ))
+        json shouldEqual jsonContentOf(
+          "/admin/errors/project-already-exists.json",
+          Map(
+            quote("{projLabel}") -> projId,
+            quote("{orgId}")     -> orgId,
+            quote("{projId}")    -> id
+          )
+        )
       }
     }
 
@@ -120,7 +122,8 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           "schemas/write",
           "views/write",
           "views/query",
-          "storages/write"
+          "storages/write",
+          "archives/write"
         )
       }
     }
@@ -157,12 +160,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       val baseRev2  = s"${config.admin.uri.toString()}/${genString()}/"
       val vocabRev2 = s"${config.admin.uri.toString()}/${genString()}/"
       val updateRev2Json =
-        projectReqJson("/admin/projects/update.json",
-                       "nxv",
-                       "person",
-                       description = descRev2,
-                       base = baseRev2,
-                       vocab = vocabRev2)
+        projectReqJson(
+          "/admin/projects/update.json",
+          "nxv",
+          "person",
+          description = descRev2,
+          base = baseRev2,
+          vocab = vocabRev2
+        )
       val updateRev2 = updateRev2Json.toEntity
       cl(Req(PUT, s"$adminBase/projects/$id?rev=1", headersJsonUser, updateRev2)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
@@ -174,12 +179,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       val vocabRev3 = s"${config.admin.uri.toString()}/${genString()}/"
 
       val updateRev3Json =
-        projectReqJson("/admin/projects/update.json",
-                       "nxv",
-                       "person",
-                       description = descRev3,
-                       base = baseRev3,
-                       vocab = vocabRev3)
+        projectReqJson(
+          "/admin/projects/update.json",
+          "nxv",
+          "person",
+          description = descRev3,
+          base = baseRev3,
+          vocab = vocabRev3
+        )
       val updateRev3 = updateRev3Json.toEntity
       updateRev2.dataBytes
       cl(Req(PUT, s"$adminBase/projects/$id?rev=2", headersJsonUser, updateRev3)).mapJson { (json, result) =>
@@ -311,16 +318,18 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
             PUT,
             s"$adminBase/projects/$id",
             headersJsonUser,
-            projectReqJson(nxv = s"nxv-$projId",
-                           person = s"person-$projId",
-                           description = projId,
-                           base = s"http:example.com/$projId/",
-                           vocab = s"http:example.com/$projId/vocab/").toEntity
-          ))
-          .mapJson { (json, result) =>
-            result.status shouldEqual StatusCodes.Created
-            json.removeMetadata() shouldEqual createRespJson(id, 1L)
-          }
+            projectReqJson(
+              nxv = s"nxv-$projId",
+              person = s"person-$projId",
+              description = projId,
+              base = s"http:example.com/$projId/",
+              vocab = s"http:example.com/$projId/vocab/"
+            ).toEntity
+          )
+        ).mapJson { (json, result) =>
+          result.status shouldEqual StatusCodes.Created
+          json.removeMetadata() shouldEqual createRespJson(id, 1L)
+        }
 
       }
     }
@@ -333,7 +342,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           Json.fromString("https://bluebrain.github.io/nexus/contexts/search.json")
         ),
         "_total"   -> Json.fromInt(projectIds.size),
-        "_results" -> projectListingResults(projectIds),
+        "_results" -> projectListingResults(projectIds)
       )
 
       cl(Req(uri = s"$adminBase/projects/$orgId", headers = headersJsonUser)).mapJson { (json, result) =>
@@ -352,7 +361,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           Json.fromString("https://bluebrain.github.io/nexus/contexts/search.json")
         ),
         "_total"   -> Json.fromInt(projectsToList.size),
-        "_results" -> projectListingResults(projectsToList),
+        "_results" -> projectListingResults(projectsToList)
       )
       val json = jsonContentOf(
         "/iam/add.json",

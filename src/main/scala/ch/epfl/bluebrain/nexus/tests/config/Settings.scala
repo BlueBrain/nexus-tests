@@ -2,11 +2,10 @@ package ch.epfl.bluebrain.nexus.tests.config
 
 import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import akka.http.scaladsl.model.Uri
-import ch.epfl.bluebrain.nexus.tests.config.AppConfig._
 import com.typesafe.config.Config
 import pureconfig.ConvertHelpers._
 import pureconfig.generic.auto._
-import pureconfig.{ConfigConvert, loadConfigOrThrow}
+import pureconfig.{ConfigConvert, ConfigSource}
 
 /**
   * Akka settings extension to expose application configuration.  It typically uses the configuration instance of the
@@ -20,16 +19,8 @@ class Settings(config: Config) extends Extension {
   private implicit val uriConverter: ConfigConvert[Uri] =
     ConfigConvert.viaString[Uri](catchReadError(s => Uri(s)), _.toString)
 
-  val appConfig = AppConfig(
-    loadConfigOrThrow[HttpConfig](config, "app.http"),
-    loadConfigOrThrow[KgConfig](config, "app.kg"),
-    loadConfigOrThrow[AdminConfig](config, "app.admin"),
-    loadConfigOrThrow[IamConfig](config, "app.iam"),
-    loadConfigOrThrow[PrefixesConfig](config, "app.prefixes"),
-    loadConfigOrThrow[ExternalStorageConfig](config, "app.storage.external"),
-    loadConfigOrThrow[S3Config](config, "app.storage.s3"),
-    loadConfigOrThrow[Long](config, "app.storage.max-file-size")
-  )
+  val appConfig =
+    ConfigSource.fromConfig(config).at("app").loadOrThrow[AppConfig]
 
 }
 

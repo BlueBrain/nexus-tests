@@ -7,15 +7,15 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class AppConfig(http: HttpConfig,
                            kg: KgConfig,
-                           createConfig: CreateConfig,
-                           fetchConfig: FetchConfig,
-                           updateConfig: UpdateConfig,
-                           tagConfig: TagConfig,
-                           attachmentsConfig: AttachmentsConfig,
-                           esSearchConfig: EsSearchConfig,
-                           blazegraphConfig: BlazegraphConfig,
-                           multipleProjectsConfig: MultipleProjectsConfig,
-                           fullSimulationConfig: FullSimulationConfig)
+                           create: CreateConfig,
+                           fetch: FetchConfig,
+                           update: UpdateConfig,
+                           tag: TagConfig,
+                           attachments: AttachmentsConfig,
+                           esSearch: EsSearchConfig,
+                           blazegraph: BlazegraphConfig,
+                           multipleProjects: MultipleProjectsConfig,
+                           fullSimulation: FullSimulationConfig)
 
 object AppConfig {
 

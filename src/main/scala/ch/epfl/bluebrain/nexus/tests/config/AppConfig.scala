@@ -15,18 +15,16 @@ import scala.concurrent.duration.FiniteDuration
   * @param admin           admin connection settings
   * @param iam             IAM connection settings
   * @param prefixes        the collection of prefixes used throughout the service
-  * @param external        external storage connection settings
-  * @param s3              the S3 storage backend settings
-  * @param storageFileSize the storage maxFilSize setting
+  * @param storage         storage settings
   */
-final case class AppConfig(http: HttpConfig,
-                           kg: KgConfig,
-                           admin: AdminConfig,
-                           iam: IamConfig,
-                           prefixes: PrefixesConfig,
-                           external: ExternalStorageConfig,
-                           s3: S3Config,
-                           storageFileSize: Long)
+final case class AppConfig(
+    http: HttpConfig,
+    kg: KgConfig,
+    admin: AdminConfig,
+    iam: IamConfig,
+    prefixes: PrefixesConfig,
+    storage: StorageConfig
+)
 
 object AppConfig {
 
@@ -36,21 +34,27 @@ object AppConfig {
 
   final case class AdminConfig(uri: Uri, attachmentSize: Long)
 
-  final case class IamConfig(uri: Uri,
-                             testRealm: String,
-                             serviceAccountToken: String,
-                             testUserToken: String,
-                             testUserSub: String,
-                             coreContext: Uri)
+  final case class IamConfig(
+      uri: Uri,
+      testRealm: String,
+      serviceAccountToken: String,
+      testUserToken: String,
+      testUserSub: String,
+      coreContext: Uri
+  )
+
+  final case class StorageConfig(s3: S3Config, external: ExternalStorageConfig, maxFileSize: Long)
 
   final case class ExternalStorageConfig(endpoint: Uri, credentials: String)
 
-  final case class PrefixesConfig(coreContext: Uri,
-                                  standardsContext: Uri,
-                                  linksContext: Uri,
-                                  searchContext: Uri,
-                                  distributionContext: Uri,
-                                  errorContext: Uri)
+  final case class PrefixesConfig(
+      coreContext: Uri,
+      standardsContext: Uri,
+      linksContext: Uri,
+      searchContext: Uri,
+      distributionContext: Uri,
+      errorContext: Uri
+  )
 
   final case class S3Config(endpoint: Uri, accessKey: Option[String], secretKey: Option[String]) {
     val endpointURI: URI = new URI(endpoint.toString)

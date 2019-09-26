@@ -13,9 +13,9 @@ import scala.concurrent.duration._
 
 class FullSimulation extends BaseSimulation with Resources {
 
-  val journeyDuration = config.fullSimulationConfig.duration
+  val journeyDuration = config.fullSimulation.duration
 
-  val project = config.fullSimulationConfig.project
+  val project = config.fullSimulation.project
 
   val esQueries = jsonContentOf("/es-queries.json").hcursor
     .downField("queries")
@@ -117,13 +117,13 @@ class FullSimulation extends BaseSimulation with Resources {
         http("List Resources")
           .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
           check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-        .repeat(config.fullSimulationConfig.repeats)(
+        .repeat(config.fullSimulation.repeats)(
           randomSwitch(
-            config.fullSimulationConfig.fetchPercentage                 -> fetch,
-            config.fullSimulationConfig.fetchAndUpdatePercentage        -> fetchAndUpdate,
-            config.fullSimulationConfig.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
-            config.fullSimulationConfig.blazegraphSearchPercentage      -> blazegraphSearch,
-            config.fullSimulationConfig.esSearchPercentage              -> esSearch
+            config.fullSimulation.fetchPercentage                 -> fetch,
+            config.fullSimulation.fetchAndUpdatePercentage        -> fetchAndUpdate,
+            config.fullSimulation.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
+            config.fullSimulation.blazegraphSearchPercentage      -> blazegraphSearch,
+            config.fullSimulation.esSearchPercentage              -> esSearch
           )
         )
     )
@@ -131,8 +131,8 @@ class FullSimulation extends BaseSimulation with Resources {
   setUp(
     scn
       .inject(
-        rampConcurrentUsers(0) to config.fullSimulationConfig.users during (1 minutes),
-        constantConcurrentUsers(config.fullSimulationConfig.users) during config.fullSimulationConfig.duration
+        rampConcurrentUsers(0) to config.fullSimulation.users during (1 minutes),
+        constantConcurrentUsers(config.fullSimulation.users) during config.fullSimulation.duration
       )
       .protocols(httpConf))
 }

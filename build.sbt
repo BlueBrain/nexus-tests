@@ -27,21 +27,21 @@ scalafmt: {
 import org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings
 
 // Dependency versions
-val ammoniteVersion   = "1.6.9"
-val akkaVersion       = "2.5.23"
-val akkaHttpVersion   = "10.1.9"
-val alpakkaVersion    = "1.1.0"
-val catsVersion       = "1.4.0"
-val circeVersion      = "0.10.0"
+val ammoniteVersion   = "1.7.1"
+val akkaVersion       = "2.5.25"
+val akkaHttpVersion   = "10.1.10"
+val alpakkaVersion    = "1.1.1"
+val catsVersion       = "2.0.0"
+val circeVersion      = "0.12.1"
 val mockitoVersion    = "2.22.0"
-val pureconfigVersion = "0.11.1"
+val pureconfigVersion = "0.12.0"
 val scalaTestVersion  = "3.0.8"
-val gatlingVersion    = "3.2.0"
+val gatlingVersion    = "3.2.1"
 val uuidGenVersion    = "3.2.0"
-val awsSdkVersion     = "2.7.11"
+val awsSdkVersion     = "2.9.7"
 
 // Nexus dependency versions
-val commonsVersion = "0.17.1"
+val commonsVersion = "0.17.11"
 
 // Dependency modules
 lazy val akkaHttpCore    = "com.typesafe.akka"      %% "akka-http-core"          % akkaHttpVersion
@@ -70,9 +70,10 @@ lazy val root = project
   .settings(inConfig(IntegrationTest)(scalafmtConfigSettings))
   .settings(noPublish)
   .settings(
-    name                  := "tests",
-    moduleName            := "tests",
-    coverageFailOnMinimum := false,
+    name                     := "tests",
+    moduleName               := "tests",
+    coverageFailOnMinimum    := false,
+    javaSpecificationVersion := "1.8",
     libraryDependencies ++= Seq(
       akkaHttpCore,
       akkaStream,
@@ -100,7 +101,7 @@ lazy val root = project
 lazy val noPublish = Seq(
   publishLocal    := {},
   publish         := {},
-  publishArtifact := false,
+  publishArtifact := false
 )
 
 inThisBuild(
@@ -112,12 +113,13 @@ inThisBuild(
       Developer("bogdanromanx", "Bogdan Roman", "noreply@epfl.ch", url("https://bluebrain.epfl.ch/")),
       Developer("hygt", "Henry Genet", "noreply@epfl.ch", url("https://bluebrain.epfl.ch/")),
       Developer("umbreak", "Didac Montero Mendez", "noreply@epfl.ch", url("https://bluebrain.epfl.ch/")),
-      Developer("wwajerowicz", "Wojtek Wajerowicz", "noreply@epfl.ch", url("https://bluebrain.epfl.ch/")),
+      Developer("wwajerowicz", "Wojtek Wajerowicz", "noreply@epfl.ch", url("https://bluebrain.epfl.ch/"))
     ),
     // These are the sbt-release-early settings to configure
     releaseEarlyWith              := BintrayPublisher,
     releaseEarlyNoGpg             := true,
-    releaseEarlyEnableSyncToMaven := false,
-  ))
+    releaseEarlyEnableSyncToMaven := false
+  )
+)
 
 addCommandAlias("review", ";clean;scalafmtCheck;scalafmtSbtCheck;test:scalafmtCheck;test")

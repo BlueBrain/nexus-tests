@@ -44,14 +44,15 @@ object Data extends DataNeighbours {
     * @param project       the project label
     * @param schema        the schema @id
     */
-  final case class LocalData(id: String,
-                             payload: String,
-                             path: Path,
-                             relationships: List[String],
-                             org: String,
-                             project: String,
-                             schema: Uri)
-      extends Data {
+  final case class LocalData(
+      id: String,
+      payload: String,
+      path: Path,
+      relationships: List[String],
+      org: String,
+      project: String,
+      schema: Uri
+  ) extends Data {
     def relationEdges: List[(String, String)] = relationships.map(id -> _)
 
     def withReplacement(map: mutable.Map[String, String]): LocalData = {
@@ -80,19 +81,21 @@ object Data extends DataNeighbours {
     final def apply(path: Path)(implicit s: Settings): Data = {
       val payload = read(path)
       parse(payload).toOption
-        .flatMap(json =>
-          relationships(json).map {
-            case (local, neighbors) =>
-              val schemaName = (path / up).baseName
-              s.schemasMap
-                .get(schemaName)
-                .map { schema =>
-                  val proj = (path / up / up).baseName
-                  val org  = (path / up / up / up).baseName
-                  LocalData(local, json.noSpaces, path, neighbors, org, proj, schema)
-                }
-                .getOrElse(FailedDataSchemaMap(path, schemaName))
-        })
+        .flatMap(
+          json =>
+            relationships(json).map {
+              case (local, neighbors) =>
+                val schemaName = (path / up).baseName
+                s.schemasMap
+                  .get(schemaName)
+                  .map { schema =>
+                    val proj = (path / up / up).baseName
+                    val org  = (path / up / up / up).baseName
+                    LocalData(local, json.noSpaces, path, neighbors, org, proj, schema)
+                  }
+                  .getOrElse(FailedDataSchemaMap(path, schemaName))
+            }
+        )
         .getOrElse(FailedDataFormat(path))
     }
   }
@@ -123,7 +126,7 @@ trait DataNeighbours {
               }
             case ("@context", _) => keys
             case (_, json)       => inner(json, keys)
-        }
+          }
       )
     value.hcursor
       .get[String]("@id")

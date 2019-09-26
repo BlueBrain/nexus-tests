@@ -48,8 +48,10 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
   override def beforeAll(): Unit = {
     super.beforeAll()
     s3Client.createBucket(CreateBucketRequest.builder.bucket(bucket).build)
-    s3Client.putObject(PutObjectRequest.builder.bucket(bucket).key(logoKey).build,
-                       Paths.get(getClass.getResource("/kg/files/nexus-logo.png").toURI))
+    s3Client.putObject(
+      PutObjectRequest.builder.bucket(bucket).key(logoKey).build,
+      Paths.get(getClass.getResource("/kg/files/nexus-logo.png").toURI)
+    )
     ()
   }
 
@@ -70,10 +72,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         if (permissions.permissions.contains("some-read") && permissions.permissions.contains("some-write"))
           succeed
         else {
-          val body = jsonContentOf("/iam/permissions/append.json",
-                                   Map(
-                                     quote("{perms}") -> List("some-read", "some-write").mkString("\",\"")
-                                   )).toEntity
+          val body = jsonContentOf(
+            "/iam/permissions/append.json",
+            Map(
+              quote("{perms}") -> List("some-read", "some-write").mkString("\",\"")
+            )
+          ).toEntity
           cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         }
@@ -120,7 +124,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{id}")          -> "nxv:mystorage",
               quote("{project}")     -> fullId,
               quote("{read}")        -> "resources/read",
-              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
               quote("{write}")       -> "files/write",
               quote("{iamBase}")     -> config.iam.uri.toString(),
               quote("{user}")        -> config.iam.testUserSub
@@ -133,10 +137,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (!Set("disk/read", "disk/write").subsetOf(permissions.permissions)) {
-          val body = jsonContentOf("/iam/permissions/append.json",
-                                   Map(
-                                     quote("{perms}") -> """disk/read", "disk/write"""
-                                   )).toEntity
+          val body = jsonContentOf(
+            "/iam/permissions/append.json",
+            Map(
+              quote("{perms}") -> """disk/read", "disk/write"""
+            )
+          ).toEntity
           cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         } else {
@@ -160,7 +166,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{project}")     -> fullId,
               quote("{read}")        -> "disk/read",
               quote("{write}")       -> "disk/write",
-              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
               quote("{iamBase}")     -> config.iam.uri.toString(),
               quote("{user}")        -> config.iam.testUserSub
             )
@@ -174,8 +180,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val payload = jsonContentOf(
         "/kg/storages/remote-disk.json",
         Map(
-          quote("{endpoint}") -> config.external.endpoint.toString,
-          quote("{cred}")     -> config.external.credentials,
+          quote("{endpoint}") -> config.storage.external.endpoint.toString,
+          quote("{cred}")     -> config.storage.external.credentials,
           quote("{read}")     -> "resources/read",
           quote("{write}")    -> "files/write",
           quote("{folder}")   -> "nexustest",
@@ -192,12 +198,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/remote-disk-response.json",
             Map(
-              quote("{endpoint}")    -> config.external.endpoint.toString,
+              quote("{endpoint}")    -> config.storage.external.endpoint.toString,
               quote("{folder}")      -> "nexustest",
               quote("{kgBase}")      -> s"$kgBase",
               quote("{id}")          -> "nxv:myexternalstorage",
               quote("{project}")     -> fullId,
-              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
               quote("{read}")        -> "resources/read",
               quote("{write}")       -> "files/write",
               quote("{iamBase}")     -> config.iam.uri.toString(),
@@ -211,10 +217,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (!Set("disk/extread", "disk/extwrite").subsetOf(permissions.permissions)) {
-          val body = jsonContentOf("/iam/permissions/append.json",
-                                   Map(
-                                     quote("{perms}") -> """disk/extread", "disk/extwrite"""
-                                   )).toEntity
+          val body = jsonContentOf(
+            "/iam/permissions/append.json",
+            Map(
+              quote("{perms}") -> """disk/extread", "disk/extwrite"""
+            )
+          ).toEntity
           cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         } else {
@@ -225,8 +233,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val payload2 = jsonContentOf(
         "/kg/storages/remote-disk.json",
         Map(
-          quote("{endpoint}") -> config.external.endpoint.toString,
-          quote("{cred}")     -> config.external.credentials,
+          quote("{endpoint}") -> config.storage.external.endpoint.toString,
+          quote("{cred}")     -> config.storage.external.credentials,
           quote("{read}")     -> "disk/extread",
           quote("{write}")    -> "disk/extwrite",
           quote("{folder}")   -> "nexustest",
@@ -243,11 +251,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           val expected = jsonContentOf(
             "/kg/storages/remote-disk-response.json",
             Map(
-              quote("{endpoint}")    -> config.external.endpoint.toString,
+              quote("{endpoint}")    -> config.storage.external.endpoint.toString,
               quote("{folder}")      -> "nexustest",
               quote("{kgBase}")      -> s"$kgBase",
               quote("{id}")          -> "nxv:myexternalstorage2",
-              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
               quote("{project}")     -> fullId,
               quote("{read}")        -> "disk/extread",
               quote("{write}")       -> "disk/extwrite",
@@ -280,10 +288,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (!Set("s3/read", "s3/write").subsetOf(permissions.permissions)) {
-          val body = jsonContentOf("/iam/permissions/append.json",
-                                   Map(
-                                     quote("{perms}") -> """s3/read", "s3/write"""
-                                   )).toEntity
+          val body = jsonContentOf(
+            "/iam/permissions/append.json",
+            Map(
+              quote("{perms}") -> """s3/read", "s3/write"""
+            )
+          ).toEntity
           cl(Req(PATCH, s"$iamBase/permissions?rev=${permissions._rev}", headersServiceAccount, body))
             .mapResp(_.status shouldEqual StatusCodes.OK)
         } else {
@@ -300,7 +310,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{id}")          -> "nxv:mys3storage",
               quote("{project}")     -> fullId,
               quote("{bucket}")      -> bucket,
-              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
               quote("{read}")        -> "resources/read",
               quote("{write}")       -> "files/write",
               quote("{iamBase}")     -> config.iam.uri.toString(),
@@ -341,7 +351,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{project}")     -> fullId,
               quote("{bucket}")      -> bucket,
               quote("{read}")        -> "s3/read",
-              quote("{maxFileSize}") -> config.storageFileSize.toString,
+              quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
               quote("{write}")       -> "s3/write",
               quote("{iamBase}")     -> config.iam.uri.toString(),
               quote("{user}")        -> config.iam.testUserSub
@@ -391,8 +401,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val payload = jsonContentOf(
         "/kg/storages/remote-disk.json",
         Map(
-          quote("{endpoint}") -> config.external.endpoint.toString,
-          quote("{cred}")     -> config.external.credentials,
+          quote("{endpoint}") -> config.storage.external.endpoint.toString,
+          quote("{cred}")     -> config.storage.external.credentials,
           quote("{read}")     -> "resources/read",
           quote("{write}")    -> "files/write",
           quote("{folder}")   -> "nexustest",
@@ -456,11 +466,13 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(PUT, s"$kgBase/files/$fullId/nonexistent.png?storage=nxv:mys3storage", headersJsonUser, payload.toEntity))
         .mapJson { (json, resp) =>
           resp.status shouldEqual StatusCodes.BadGateway
-          json shouldEqual jsonContentOf("/kg/files/linking-notfound.json",
-                                         Map(
-                                           quote("{endpoint}") -> s3Config.endpoint.toString,
-                                           quote("{bucket}")   -> bucket,
-                                         ))
+          json shouldEqual jsonContentOf(
+            "/kg/files/linking-notfound.json",
+            Map(
+              quote("{endpoint}") -> s3Config.endpoint.toString,
+              quote("{bucket}")   -> bucket
+            )
+          )
         }
     }
 
@@ -480,7 +492,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "s3attachment.json")
+            "s3attachment.json"
+          )
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -494,7 +507,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "s3attachment.json")
+            "s3attachment.json"
+          )
           result.header[`Content-Type`].value.value shouldEqual "application/json"
         // Temporarily disable this check. When the change in the storage is done and we have the payload uncompressed we can enable it again
         // val expectedContent = contentOf("/kg/files/attachment.json")
@@ -508,11 +522,13 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment.json"))).toEntity()
 
       cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage&rev=1",
-            headersJsonUser,
-            multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
+        Req(
+          PUT,
+          s"$kgBase/files/$fullId/s3attachment.json?storage=nxv:mys3storage&rev=1",
+          headersJsonUser,
+          multipartForm
+        )
+      ).mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
     "fetch updated attachment" in {
@@ -523,7 +539,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "s3attachment.json")
+            "s3attachment.json"
+          )
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -533,17 +550,20 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(
-        Req(GET,
-            s"$kgBase/files/$fullId/attachment:s3attachment.json?rev=1",
-            headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "s3attachment.json")
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
+        Req(
+          GET,
+          s"$kgBase/files/$fullId/attachment:s3attachment.json?rev=1",
+          headersUser ++ Seq(Accept(MediaRanges.`*/*`))
+        )
+      ).mapString { (content, result) =>
+        result.status shouldEqual StatusCodes.OK
+        result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+        result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+          "s3attachment.json"
+        )
+        result.header[`Content-Type`].value.value shouldEqual "application/json"
+        content shouldEqual expectedContent
+      }
     }
 
     "upload second attachment to created storage" in eventually {
@@ -553,8 +573,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/s3attachment2?storage=nxv:mys3storage", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "fetch second attachment" in {
@@ -565,7 +585,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "s3attachment2")
+            "s3attachment2"
+          )
           content shouldEqual expectedContent
         }
     }
@@ -607,8 +628,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Forbidden)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
 
     "add ACLs for custom storage" in {
@@ -633,8 +654,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/s3attachment3?storage=nxv:mys3storage2", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
 
@@ -646,11 +667,13 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
 
       cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage",
-            headersJsonUser,
-            multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+        Req(
+          PUT,
+          s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage",
+          headersJsonUser,
+          multipartForm
+        )
+      ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "fetch attachment" in {
@@ -696,11 +719,13 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
 
       cl(
-        Req(PUT,
-            s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage&rev=1",
-            headersJsonUser,
-            multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
+        Req(
+          PUT,
+          s"$kgBase/files/$fullId/extattachment.json?storage=nxv:myexternalstorage&rev=1",
+          headersJsonUser,
+          multipartForm
+        )
+      ).mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
     "fetch updated attachment" in {
@@ -765,7 +790,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.hcursor.get[String]("_location").right.value should startWith(
-            "file:///gpfs/bbp.cscs.ch/data/project/nexustest")
+            "file:///gpfs/bbp.cscs.ch/data/project/nexustest"
+          )
           json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
     }
@@ -777,8 +803,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Forbidden)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
 
     "add ACLs for custom storage" in {
@@ -803,8 +829,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/extattachment3?storage=nxv:myexternalstorage2", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
 
@@ -840,7 +866,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "attachment.json")
+            "attachment.json"
+          )
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -855,7 +882,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.header[`Content-Encoding`].value.encodings shouldEqual Seq(HttpEncodings.gzip)
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "attachment.json")
+            "attachment.json"
+          )
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           Gzip.decode(content).map(_.decodeString("UTF-8")).futureValue shouldEqual expectedContent
         }
@@ -867,8 +895,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment.json"))).toEntity()
 
       cl(
-        Req(PUT, s"$kgBase/files/$fullId/attachment.json?storage=defaultStorage&rev=1", headersJsonUser, multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
+        Req(PUT, s"$kgBase/files/$fullId/attachment.json?storage=defaultStorage&rev=1", headersJsonUser, multipartForm)
+      ).mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
     "fetch updated attachment" in {
@@ -879,7 +907,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "attachment.json")
+            "attachment.json"
+          )
           result.header[`Content-Type`].value.value shouldEqual "application/json"
           content shouldEqual expectedContent
         }
@@ -889,17 +918,20 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(
-        Req(GET,
-            s"$kgBase/files/$fullId/attachment:attachment.json?rev=1",
-            headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapString { (content, result) =>
-          result.status shouldEqual StatusCodes.OK
-          result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
-          result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "attachment.json")
-          result.header[`Content-Type`].value.value shouldEqual "application/json"
-          content shouldEqual expectedContent
-        }
+        Req(
+          GET,
+          s"$kgBase/files/$fullId/attachment:attachment.json?rev=1",
+          headersUser ++ Seq(Accept(MediaRanges.`*/*`))
+        )
+      ).mapString { (content, result) =>
+        result.status shouldEqual StatusCodes.OK
+        result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
+        result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
+          "attachment.json"
+        )
+        result.header[`Content-Type`].value.value shouldEqual "application/json"
+        content shouldEqual expectedContent
+      }
     }
 
     "upload second attachment to created storage" in eventually {
@@ -909,8 +941,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/attachment2?storage=nxv:mystorage", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
     "attempt to upload a third attachment against an storage that does not exists" in {
@@ -920,8 +952,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:wrong-id", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.NotFound)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
 
     "fetch second attachment" in {
@@ -932,7 +964,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           result.status shouldEqual StatusCodes.OK
           result.header[`Content-Disposition`].value.dispositionType shouldEqual ContentDispositionTypes.attachment
           result.header[`Content-Disposition`].value.params.get("filename").value shouldEqual attachmentString(
-            "attachment2")
+            "attachment2"
+          )
           content shouldEqual expectedContent
         }
     }
@@ -973,8 +1006,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/attachment6?storage=nxv:mystorage2", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Forbidden)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
 
     "add ACLs for custom storage" in {
@@ -1000,8 +1033,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(
         Req(PUT, s"$kgBase/files/$fullId/attachment4?storage=nxv:mystorage2", headersJsonUser, multipartForm)
-          .removeHeader("Content-Type"))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+          .removeHeader("Content-Type")
+      ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
   }
 
@@ -1021,8 +1054,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       eventually {
         cl(
           Req(PUT, s"$kgBase/files/$fullId/attachment3?storage=nxv:mystorage", headersJsonUser, multipartForm)
-            .removeHeader("Content-Type"))
-          .mapResp(_.status shouldEqual StatusCodes.NotFound)
+            .removeHeader("Content-Type")
+        ).mapResp(_.status shouldEqual StatusCodes.NotFound)
       }
     }
 
