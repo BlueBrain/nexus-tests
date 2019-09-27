@@ -121,6 +121,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             "/kg/storages/disk-response.json",
             Map(
               quote("{kgBase}")      -> s"$kgBase",
+              quote("{adminBase}")   -> s"$adminBase",
               quote("{id}")          -> "nxv:mystorage",
               quote("{project}")     -> fullId,
               quote("{read}")        -> "resources/read",
@@ -162,6 +163,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             "/kg/storages/disk-response.json",
             Map(
               quote("{kgBase}")      -> s"$kgBase",
+              quote("{adminBase}")   -> s"$adminBase",
               quote("{id}")          -> "nxv:mystorage2",
               quote("{project}")     -> fullId,
               quote("{read}")        -> "disk/read",
@@ -201,6 +203,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{endpoint}")    -> config.storage.external.endpoint.toString,
               quote("{folder}")      -> "nexustest",
               quote("{kgBase}")      -> s"$kgBase",
+              quote("{adminBase}")   -> s"$adminBase",
               quote("{id}")          -> "nxv:myexternalstorage",
               quote("{project}")     -> fullId,
               quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
@@ -211,6 +214,14 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             )
           )
           json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          result.status shouldEqual StatusCodes.OK
+        }
+
+      cl(Req(GET, s"$kgBase/storages/$fullId/nxv:myexternalstorage/source", headersJsonUser))
+        .mapJson { (json, result) =>
+          val expected =
+            jsonContentOf("/kg/storages/storage-source.json", Map(quote("{storageBase}") -> s"$externalStorageBase"))
+          json should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
 
@@ -254,6 +265,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{endpoint}")    -> config.storage.external.endpoint.toString,
               quote("{folder}")      -> "nexustest",
               quote("{kgBase}")      -> s"$kgBase",
+              quote("{adminBase}")   -> s"$adminBase",
               quote("{id}")          -> "nxv:myexternalstorage2",
               quote("{maxFileSize}") -> config.storage.maxFileSize.toString,
               quote("{project}")     -> fullId,
