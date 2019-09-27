@@ -19,7 +19,7 @@
   "_outgoing": "{kgBase}/storages/{project}/{id}/outgoing",
   "_self": "{kgBase}/storages/{project}/{id}",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/storage.json",
-  "_project": "https://dev.nexus.ocp.bbp.epfl.ch/v1/projects/{project}",
+  "_project": "{adminBase}/projects/{project}",
   "_rev": 1,
   "_deprecated": false,
   "_createdBy": "{iamBase}/realms/internal/users/{user}",

@@ -52,6 +52,7 @@ class BaseSpec
   private[tests] val adminBase                    = config.admin.uri
   private[tests] val iamBase                      = config.iam.uri
   private[tests] val kgBase                       = config.kg.uri
+  private[tests] val externalStorageBase          = config.storage.external.endpoint
   private[tests] val s3Config                     = config.storage.s3
   private[tests] val replSub                      = Map(quote("{sub}") -> config.iam.testUserSub)
   private[tests] val realmLabel                   = "internal"

@@ -97,7 +97,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "fetch the payload" in {
+    "fetch the payload wih metadata" in {
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersJsonUser)).mapJson { (json, result) =>
         val expected = jsonContentOf(
           "/kg/resources/simple-resource-response.json",
@@ -113,6 +113,19 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         )
         result.status shouldEqual StatusCodes.OK
         json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+      }
+    }
+
+    "fetch the original payload" in {
+      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/source", headersJsonUser)).mapJson {
+        (json, result) =>
+          val expected =
+            jsonContentOf(
+              "/kg/resources/simple-resource.json",
+              Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
+            )
+          result.status shouldEqual StatusCodes.OK
+          json should equalIgnoreArrayOrder(expected)
       }
     }
   }
