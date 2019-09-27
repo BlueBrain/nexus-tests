@@ -172,7 +172,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{admin}")    -> config.admin.uri.toString()
             )
           )
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(resp)
+          json.removeFields("_createdAt", "_updatedAt", "_expiresInSeconds") should equalIgnoreArrayOrder(resp)
           result.status shouldEqual StatusCodes.OK
         }
     }
