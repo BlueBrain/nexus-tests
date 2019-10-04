@@ -30,7 +30,7 @@ object AppConfig {
 
   final case class HttpConfig(patienceConfig: FiniteDuration)
 
-  final case class KgConfig(uri: Uri)
+  final case class KgConfig(uri: Uri, version: Uri, status: Uri)
 
   final case class AdminConfig(uri: Uri, attachmentSize: Long)
 
