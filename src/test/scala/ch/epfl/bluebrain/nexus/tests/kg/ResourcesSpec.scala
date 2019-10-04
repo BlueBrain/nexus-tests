@@ -22,6 +22,25 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   val id1     = s"$orgId/$projId1"
   val id2     = s"$orgId/$projId2"
 
+  "fetching information" should {
+    "return the software version" in {
+      cl(Req(GET, config.kg.version)).mapJson { (json, result) =>
+        json.asObject.value.keys.toSet should
+          (equal(Set("storage", "kg", "iam", "admin", "elasticsearch-1", "blazegraph")) or equal(
+            Set("storage", "kg", "iam", "admin", "elasticsearch-2", "blazegraph")
+          ))
+        result.status shouldEqual StatusCodes.OK
+      }
+    }
+
+    "return the cassandra and cluster health" in {
+      cl(Req(GET, config.kg.status)).mapJson { (json, result) =>
+        json shouldEqual Json.obj("cassandra" -> Json.fromString("up"), "cluster" -> Json.fromString("up"))
+        result.status shouldEqual StatusCodes.OK
+      }
+    }
+  }
+
   "creating projects" should {
 
     "add necessary permissions for user" in {
@@ -450,6 +469,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
       result shouldEqual expected
     }
+
   }
 
   def getNext(json: Json): Option[String] =
