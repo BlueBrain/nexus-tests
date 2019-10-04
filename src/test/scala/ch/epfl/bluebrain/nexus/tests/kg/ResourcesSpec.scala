@@ -12,9 +12,9 @@ import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, Inspectors}
+import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
 
-class ResourcesSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure {
+class ResourcesSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
 
   val orgId   = genId()
   val projId1 = genId()
@@ -25,15 +25,12 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   "fetching information" should {
     "return the software version" in {
       cl(Req(GET, config.kg.version)).mapJson { (json, result) =>
-        json.asObject.value.keys.toSet should
-          (equal(Set("storage", "kg", "iam", "admin", "elasticsearch-1", "blazegraph")) or equal(
-            Set("storage", "kg", "iam", "admin", "elasticsearch-2", "blazegraph")
-          ))
+        json.asObject.value.keys.toSet shouldEqual Set("storage", "kg", "iam", "admin", "elasticsearch", "blazegraph")
         result.status shouldEqual StatusCodes.OK
       }
     }
 
-    "return the cassandra and cluster health" in {
+    "return the cassandra and cluster status" in {
       cl(Req(GET, config.kg.status)).mapJson { (json, result) =>
         json shouldEqual Json.obj("cassandra" -> Json.fromString("up"), "cluster" -> Json.fromString("up"))
         result.status shouldEqual StatusCodes.OK
@@ -468,6 +465,36 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       )
 
       result shouldEqual expected
+    }
+
+    "create context" in {
+      val payload = jsonContentOf("/kg/resources/simple-context.json")
+
+      cl(Req(PUT, s"$kgBase/resources/$id1/_/test-resource:mycontext", headersJsonUser, payload.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
+    "create resource using the created context" in {
+      val payload = jsonContentOf("/kg/resources/simple-resource-context.json")
+
+      cl(Req(POST, s"$kgBase/resources/$id1/", headersJsonUser, payload.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.Created)
+    }
+
+    "update context" in {
+      val payload = Json.obj("@context" -> Json.obj("alias" -> Json.fromString("http://example.com/alias")))
+
+      cl(Req(PUT, s"$kgBase/resources/$id1/_/test-resource:mycontext?rev=1", headersJsonUser, payload.toEntity))
+        .mapResp(_.status shouldEqual StatusCodes.OK)
+    }
+
+    "fetched previously created resource" in {
+      val resourceId = URLEncoder.encode("http://example.com/base/myid", "UTF-8")
+      cl(Req(GET, s"$kgBase/resources/$id1/_/${resourceId}", headersJsonUser)).mapJson { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        json.hcursor.get[String]("@id").right.value shouldEqual "http://example.com/base/myid"
+        json.hcursor.get[String]("@type").right.value shouldEqual "http://example.com/type"
+      }
     }
 
   }
