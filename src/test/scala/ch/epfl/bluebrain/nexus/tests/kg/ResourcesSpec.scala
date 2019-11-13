@@ -25,7 +25,8 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   "fetching information" should {
     "return the software version" in {
       cl(Req(GET, config.kg.version)).mapJson { (json, result) =>
-        json.asObject.value.keys.toSet shouldEqual Set("storage", "kg", "iam", "admin", "elasticsearch", "blazegraph")
+        json.asObject.value.keys.toSet shouldEqual
+          Set("nexus", "storage", "kg", "iam", "admin", "elasticsearch", "blazegraph")
         result.status shouldEqual StatusCodes.OK
       }
     }
