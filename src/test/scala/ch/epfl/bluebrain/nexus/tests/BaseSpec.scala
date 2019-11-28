@@ -9,7 +9,6 @@ import akka.http.scaladsl.model.headers.{Accept, Authorization}
 import akka.http.scaladsl.model.{RequestEntity, StatusCodes, HttpRequest => Req, _}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
-import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.{UntypedHttpClient, _}
@@ -117,7 +116,6 @@ class BaseSpec
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.http.patienceConfig, 300 millis)
 
   private implicit val ec: ExecutionContextExecutor = system.dispatcher
-  private implicit val mt: ActorMaterializer        = ActorMaterializer()
 
   private[tests] implicit val cl: UntypedHttpClient[Future] = HttpClient.untyped[Future]
 

@@ -9,6 +9,7 @@ import io.circe.generic.extras.semiauto._
 final case class ViewStatistics(
     delayInSeconds: Long,
     discardedEvents: Long,
+    failedEvents: Long,
     evaluatedEvents: Long,
     lastEventDateTime: Instant,
     lastProcessedEventDateTime: Instant,
