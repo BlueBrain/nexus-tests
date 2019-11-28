@@ -300,6 +300,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           stats.processedEvents shouldEqual 12
           stats.evaluatedEvents shouldEqual 6
           stats.discardedEvents shouldEqual 6
+          stats.failedEvents shouldEqual 0
         }
     }
 
@@ -314,6 +315,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           stats.processedEvents shouldEqual 12
           stats.evaluatedEvents shouldEqual 12
           stats.discardedEvents shouldEqual 0
+          stats.failedEvents shouldEqual 0
         }
     }
 
@@ -394,6 +396,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           stats.processedEvents shouldEqual 12
           stats.evaluatedEvents shouldEqual 12
           stats.discardedEvents shouldEqual 0
+          stats.failedEvents shouldEqual 0
         }
     }
 
