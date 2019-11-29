@@ -15,11 +15,11 @@ class ElasticSearchSimulation extends BaseSimulation with Resources {
     .toArray
     .random
 
-  val project = config.esSearchConfig.project
+  val project = config.esSearch.project
 
   val scn = scenario("ElasticSearchSimulation")
     .feed(queries)
-    .during(config.esSearchConfig.duration) {
+    .during(config.esSearch.duration) {
       exec(
         http("ElasticSearch Query")
           .post(s"/views/perftestorg/perftestproj$project/nxv:defaultElasticIndex/_search")
@@ -31,8 +31,9 @@ class ElasticSearchSimulation extends BaseSimulation with Resources {
   setUp(
     scn
       .inject(
-        rampConcurrentUsers(0) to config.esSearchConfig.parallelUsers during (1 minutes),
-        constantConcurrentUsers(config.esSearchConfig.parallelUsers) during config.esSearchConfig.duration
+        rampConcurrentUsers(0) to config.esSearch.parallelUsers during (1 minutes),
+        constantConcurrentUsers(config.esSearch.parallelUsers) during config.esSearch.duration
       )
-      .protocols(httpConf))
+      .protocols(httpConf)
+  )
 }

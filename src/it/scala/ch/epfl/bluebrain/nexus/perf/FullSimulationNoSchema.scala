@@ -104,7 +104,8 @@ class FullSimulationNoSchema extends BaseSimulation with Resources {
     http("BlazeGraph Query")
       .post(s"/views/perftestorg/perftestproj$project/nxv:defaultSparqlIndex/sparql")
       .body(StringBody("${query}"))
-      .header("Content-Type", "text/plain"))
+      .header("Content-Type", "text/plain")
+  )
 
   val scn = scenario("FullSimulationNoSchema")
     .feed(schemasFeeder)
@@ -112,15 +113,17 @@ class FullSimulationNoSchema extends BaseSimulation with Resources {
       val s = session("schema").as[String]
       session.set("encodedSchema", URLEncoder.encode(s, "UTF-8"))
     }
-    .tryMax(config.http.retries)(repeat(config.fullSimulation.repeats)(
-      randomSwitch(
-        config.fullSimulation.fetchPercentage                 -> fetch,
-        config.fullSimulation.fetchAndUpdatePercentage        -> fetchAndUpdate,
-        config.fullSimulation.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
-        config.fullSimulation.blazegraphSearchPercentage      -> blazegraphSearch,
-        config.fullSimulation.esSearchPercentage              -> esSearch
+    .tryMax(config.http.retries)(
+      repeat(config.fullSimulation.repeats)(
+        randomSwitch(
+          config.fullSimulation.fetchPercentage                 -> fetch,
+          config.fullSimulation.fetchAndUpdatePercentage        -> fetchAndUpdate,
+          config.fullSimulation.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
+          config.fullSimulation.blazegraphSearchPercentage      -> blazegraphSearch,
+          config.fullSimulation.esSearchPercentage              -> esSearch
+        )
       )
-    ))
+    )
 
   setUp(
     scn
@@ -128,5 +131,6 @@ class FullSimulationNoSchema extends BaseSimulation with Resources {
         rampConcurrentUsers(0) to config.fullSimulation.users during (1 minutes),
         constantConcurrentUsers(config.fullSimulation.users) during config.fullSimulation.duration
       )
-      .protocols(httpConf))
+      .protocols(httpConf)
+  )
 }

@@ -9,11 +9,11 @@ import scala.util.Random
 
 class AddAttachmentSimulationNoSchema extends BaseSimulation {
 
-  val project = config.attachmentsConfig.project
+  val project = config.attachments.project
 
-  val instancesToAttachTo = config.attachmentsConfig.instances
-  val attachments         = config.attachmentsConfig.attachmentsPerInstance
-  val attachmentSize      = config.attachmentsConfig.attachmentSize
+  val instancesToAttachTo = config.attachments.instances
+  val attachments         = config.attachments.attachmentsPerInstance
+  val attachmentSize      = config.attachments.attachmentSize
 
   val attachmentFile = pwd / 'tmp / "test_attachment"
 
@@ -39,18 +39,22 @@ class AddAttachmentSimulationNoSchema extends BaseSimulation {
           }.exec(
               http("Get Resource By Id")
                 .get(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}")
-                .check(jsonPath("$.._rev")
-                  .ofType[Int]
-                  .saveAs("currentRevision"))
+                .check(
+                  jsonPath("$.._rev")
+                    .ofType[Int]
+                    .saveAs("currentRevision")
+                )
             )
             .exec(
               http("Upload Attachment")
-                .put(s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}/attachments/attachment$${attachmentsCounter}?rev=$${currentRevision}")
+                .put(
+                  s"/resources/perftestorg/perftestproj$project/resource/$${encodedId}/attachments/attachment$${attachmentsCounter}?rev=$${currentRevision}"
+                )
                 .formUpload("file", attachmentFile.toString())
             )
         )
       )
     }
 
-  setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(config.fetch.users)).protocols(httpConf))
 }

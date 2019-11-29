@@ -12,10 +12,10 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
 
   private val numProjects = 5
 
-  val journeyDuration = config.multipleProjectsConfig.fetchDuration
+  val journeyDuration = config.multipleProjects.fetchDuration
 
-  val reads  = config.fetchConfig.reads
-  val writes = config.fetchConfig.writes
+  val reads  = config.fetch.reads
+  val writes = config.fetch.writes
 
   val scn = scenario("FetchMultipleProjectsSimulation")
     .feed(schemasFeeder)
@@ -30,9 +30,11 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
             .current()
             .nextInt(numProjects) + 1
           session.set("project", project)
-        }.exec(http("List Resources")
-            .get("/resources/perftestorg/perftestproj${project}/${encodedSchema}")
-            check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
+        }.exec(
+            http("List Resources")
+              .get("/resources/perftestorg/perftestproj${project}/${encodedSchema}")
+              check jsonPath("$.._total").ofType[Int].saveAs("search_total")
+          )
           .repeat(reads)(
             exec { session =>
               val rnd = ThreadLocalRandom
@@ -72,7 +74,8 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
               .exec(
                 http("Update Resource")
                   .put(
-                    "/resources/perftestorg/perftestproj${project}/$${encodedSchema}/${encodedId}?rev=${updateRevision}")
+                    "/resources/perftestorg/perftestproj${project}/$${encodedSchema}/${encodedId}?rev=${updateRevision}"
+                  )
                   .body(StringBody("${updatePayload}"))
                   .header("Content-Type", "application/json")
               )
@@ -80,6 +83,6 @@ class FetchMultipleProjectsSimulation extends BaseSimulation {
       }
     )
 
-  setUp(scn.inject(atOnceUsers(config.multipleProjectsConfig.parallelUsers)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(config.multipleProjects.parallelUsers)).protocols(httpConf))
 
 }

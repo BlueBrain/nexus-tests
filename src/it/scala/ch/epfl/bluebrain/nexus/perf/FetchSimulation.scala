@@ -11,11 +11,11 @@ import io.gatling.http.Predef._
 
 class FetchSimulation extends BaseSimulation {
 
-  val project         = config.fetchConfig.project
-  val journeyDuration = config.fetchConfig.duration
+  val project         = config.fetch.project
+  val journeyDuration = config.fetch.duration
 
-  val reads  = config.fetchConfig.reads
-  val writes = config.fetchConfig.writes
+  val reads  = config.fetch.reads
+  val writes = config.fetch.writes
 
   val scn = scenario("FetchSimulation")
     .feed(schemasFeeder)
@@ -27,8 +27,9 @@ class FetchSimulation extends BaseSimulation {
       exec(
         http("List Resources")
           .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
-          check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-        .during(journeyDuration)(repeat(reads)(
+          check jsonPath("$.._total").ofType[Int].saveAs("search_total")
+      ).during(journeyDuration)(
+        repeat(reads)(
           exec { session =>
             val rnd = ThreadLocalRandom
               .current()
@@ -65,13 +66,15 @@ class FetchSimulation extends BaseSimulation {
             .exec(
               http("Update Resource")
                 .put(
-                  s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
+                  s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}"
+                )
                 .body(StringBody("${updatePayload}"))
                 .header("Content-Type", "application/json")
             )
-        ))
+        )
+      )
     }
 
-  setUp(scn.inject(atOnceUsers(config.fetchConfig.users)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(config.fetch.users)).protocols(httpConf))
 
 }

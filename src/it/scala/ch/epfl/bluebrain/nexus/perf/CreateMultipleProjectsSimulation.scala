@@ -9,13 +9,13 @@ import io.gatling.http.Predef._
 
 class CreateMultipleProjectsSimulation extends BaseSimulation {
 
-  private val numProjects         = config.multipleProjectsConfig.projects
-  private val instancesPerProject = config.multipleProjectsConfig.instancesPerProject
+  private val numProjects         = config.multipleProjects.projects
+  private val instancesPerProject = config.multipleProjects.instancesPerProject
 
   private val settings  = Settings(Uri("http://example.com/ids/"), map)
   private val templates = Templates(settings)
 
-  private val parallelUsers = config.multipleProjectsConfig.parallelUsers
+  private val parallelUsers = config.multipleProjects.parallelUsers
   private val totalSize     = numProjects * instancesPerProject
 
   private def feeder =

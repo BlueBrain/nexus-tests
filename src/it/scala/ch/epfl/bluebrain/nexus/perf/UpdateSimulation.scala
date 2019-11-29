@@ -11,10 +11,10 @@ import io.gatling.http.Predef._
 
 class UpdateSimulation extends BaseSimulation {
 
-  val project = config.updateConfig.project
+  val project = config.update.project
 
-  val revisions    = config.updateConfig.revisions
-  val revisionStep = config.updateConfig.revisionsStep
+  val revisions    = config.update.revisions
+  val revisionStep = config.update.revisionsStep
 
   val revisionExpression: Expression[Boolean] = { session =>
     session("expectedRevisions").as[Int] >= session("currentRevision").as[Int]
@@ -34,48 +34,54 @@ class UpdateSimulation extends BaseSimulation {
       exec(
         http("List Resources")
           .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
-          check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-        .repeat(repeatCountExpression, "instanceNumber")(
-          exec { session =>
-            val s              = session("schema").as[String]
-            val instanceNumber = session("instanceNumber").as[Int] + 1
-            session
-              .set("encodedId", URLEncoder.encode(s"$s/ids/$instanceNumber", "UTF-8"))
-              .set("expectedRevisions", Math.max((revisions - (instanceNumber - 1) * revisionStep) - 1, 1))
-          }.exec(
-              http("Get Resource By Id")
-                .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
-                .check(jsonPath("$.._rev")
-                         .ofType[Int]
-                         .saveAs("currentRevision"),
-                       bodyString.saveAs("savedPayload"))
-            )
-            .asLongAs(revisionExpression)(
-              exec { session =>
-                val json     = parse(session("savedPayload").as[String]).right.get
-                val revision = json.asObject.getOrElse(JsonObject())("_rev").flatMap(_.asNumber).flatMap(_.toInt).get
-                val update = json.mapObject { obj =>
-                  obj
-                    .filterKeys(s => !s.startsWith("_"))
-                    .add(s"nxv:updated${revision + 1}", Json.fromString(s"${UUID.randomUUID().toString}"))
-                }
-                session.set("updateRevision", revision).set("updatePayload", update.spaces2)
-              }.exec(
-                  http("Update Resource")
-                    .put(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}")
-                    .body(StringBody("${updatePayload}"))
-                    .header("Content-Type", "application/json")
-                )
-                .exec(
-                  http("Get Resource By Id")
-                    .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
-                    .check(jsonPath("$.._rev")
-                             .ofType[Int]
-                             .saveAs("currentRevision"),
-                           bodyString.saveAs("savedPayload"))
-                )
-            )
-        )
+          check jsonPath("$.._total").ofType[Int].saveAs("search_total")
+      ).repeat(repeatCountExpression, "instanceNumber")(
+        exec { session =>
+          val s              = session("schema").as[String]
+          val instanceNumber = session("instanceNumber").as[Int] + 1
+          session
+            .set("encodedId", URLEncoder.encode(s"$s/ids/$instanceNumber", "UTF-8"))
+            .set("expectedRevisions", Math.max((revisions - (instanceNumber - 1) * revisionStep) - 1, 1))
+        }.exec(
+            http("Get Resource By Id")
+              .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+              .check(
+                jsonPath("$.._rev")
+                  .ofType[Int]
+                  .saveAs("currentRevision"),
+                bodyString.saveAs("savedPayload")
+              )
+          )
+          .asLongAs(revisionExpression)(
+            exec { session =>
+              val json     = parse(session("savedPayload").as[String]).right.get
+              val revision = json.asObject.getOrElse(JsonObject())("_rev").flatMap(_.asNumber).flatMap(_.toInt).get
+              val update = json.mapObject { obj =>
+                obj
+                  .filterKeys(s => !s.startsWith("_"))
+                  .add(s"nxv:updated${revision + 1}", Json.fromString(s"${UUID.randomUUID().toString}"))
+              }
+              session.set("updateRevision", revision).set("updatePayload", update.spaces2)
+            }.exec(
+                http("Update Resource")
+                  .put(
+                    s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}?rev=$${updateRevision}"
+                  )
+                  .body(StringBody("${updatePayload}"))
+                  .header("Content-Type", "application/json")
+              )
+              .exec(
+                http("Get Resource By Id")
+                  .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}/$${encodedId}")
+                  .check(
+                    jsonPath("$.._rev")
+                      .ofType[Int]
+                      .saveAs("currentRevision"),
+                    bodyString.saveAs("savedPayload")
+                  )
+              )
+          )
+      )
     }
 
   setUp(scn.inject(atOnceUsers(schemas.size)).protocols(httpConf))

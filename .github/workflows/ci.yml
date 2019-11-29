@@ -1,0 +1,20 @@
+name: Continuous Integration
+on:
+  pull_request:
+jobs:
+  review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v1
+      - uses: olafurpg/setup-scala@v5
+        with:
+          java-version: adopt@1.11
+      - name: Review
+        run: |
+         sbt -Dsbt.color=always -Dsbt.supershell=false \
+           clean scalafmtCheck scalafmtSbtCheck test:scalafmtCheck it:scalafmtCheck \
+           compile test:compile it:compile
+

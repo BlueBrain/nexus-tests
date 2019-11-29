@@ -9,7 +9,7 @@ import io.gatling.http.Predef._
 
 class FetchAttachmentSimulation extends BaseSimulation {
 
-  val project = config.attachmentsConfig.project
+  val project = config.attachments.project
 
   val scn = scenario("FetchAttachmentSimulation")
     .feed(schemasFeeder)
@@ -17,11 +17,11 @@ class FetchAttachmentSimulation extends BaseSimulation {
       val s = session("schema").as[String]
       session.set("encodedSchema", URLEncoder.encode(s, "UTF-8"))
     }
-    .during(config.attachmentsConfig.duration)(
+    .during(config.attachments.duration)(
       exec { session =>
         val rnd = ThreadLocalRandom
           .current()
-          .nextInt(config.attachmentsConfig.instances) + 1
+          .nextInt(config.attachments.instances) + 1
         val s = session("schema").as[String]
         session.set("encodedId", URLEncoder.encode(s"$s/ids/$rnd", "UTF-8"))
 
@@ -40,11 +40,14 @@ class FetchAttachmentSimulation extends BaseSimulation {
 
           val downloadUrls = distributions.map(_.hcursor.downField("_downloadURL").as[String].right.get).toList
 
-          session.set("downloadUrl",
-                      downloadUrls(
-                        ThreadLocalRandom
-                          .current()
-                          .nextInt(downloadUrls.size)))
+          session.set(
+            "downloadUrl",
+            downloadUrls(
+              ThreadLocalRandom
+                .current()
+                .nextInt(downloadUrls.size)
+            )
+          )
         }
         .exec(
           http("Download Attachment")
@@ -52,5 +55,5 @@ class FetchAttachmentSimulation extends BaseSimulation {
         )
     )
 
-  setUp(scn.inject(atOnceUsers(config.attachmentsConfig.parallelUsers)).protocols(httpConf))
+  setUp(scn.inject(atOnceUsers(config.attachments.parallelUsers)).protocols(httpConf))
 }

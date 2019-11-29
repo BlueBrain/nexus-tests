@@ -12,9 +12,9 @@ import io.gatling.http.Predef._
 
 class CreateSimulation extends BaseSimulation {
 
-  private val projectNumber = config.createConfig.project.toString
-  private val size          = config.createConfig.size
-  private val parallelUsers = config.createConfig.parallelUsers
+  private val projectNumber = config.create.project.toString
+  private val size          = config.create.size
+  private val parallelUsers = config.create.parallelUsers
   private val settings      = Settings(Uri("http://example.com/ids/"), map)
   private val templates     = Templates(settings)
 
@@ -45,7 +45,8 @@ class CreateSimulation extends BaseSimulation {
               "project"          -> projectNumber,
               "schema"           -> URLEncoder.encode(instance.schema.toString, "UTF-8"),
               "schemaNonEncoded" -> instance.schema.toString
-            ))
+            )
+          )
         }
       }
 

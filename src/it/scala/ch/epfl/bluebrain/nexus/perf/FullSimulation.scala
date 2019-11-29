@@ -104,7 +104,8 @@ class FullSimulation extends BaseSimulation with Resources {
     http("BlazeGraph Query")
       .post(s"/views/perftestorg/perftestproj$project/nxv:defaultSparqlIndex/sparql")
       .body(StringBody("${query}"))
-      .header("Content-Type", "text/plain"))
+      .header("Content-Type", "text/plain")
+  )
 
   val scn = scenario("FullSimulation")
     .feed(schemasFeeder)
@@ -116,16 +117,16 @@ class FullSimulation extends BaseSimulation with Resources {
       exec(
         http("List Resources")
           .get(s"/resources/perftestorg/perftestproj$project/$${encodedSchema}")
-          check jsonPath("$.._total").ofType[Int].saveAs("search_total"))
-        .repeat(config.fullSimulation.repeats)(
-          randomSwitch(
-            config.fullSimulation.fetchPercentage                 -> fetch,
-            config.fullSimulation.fetchAndUpdatePercentage        -> fetchAndUpdate,
-            config.fullSimulation.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
-            config.fullSimulation.blazegraphSearchPercentage      -> blazegraphSearch,
-            config.fullSimulation.esSearchPercentage              -> esSearch
-          )
+          check jsonPath("$.._total").ofType[Int].saveAs("search_total")
+      ).repeat(config.fullSimulation.repeats)(
+        randomSwitch(
+          config.fullSimulation.fetchPercentage                 -> fetch,
+          config.fullSimulation.fetchAndUpdatePercentage        -> fetchAndUpdate,
+          config.fullSimulation.fetchAndGetByRevisionPercentage -> fetchAndGetByRevision,
+          config.fullSimulation.blazegraphSearchPercentage      -> blazegraphSearch,
+          config.fullSimulation.esSearchPercentage              -> esSearch
         )
+      )
     )
 
   setUp(
@@ -134,5 +135,6 @@ class FullSimulation extends BaseSimulation with Resources {
         rampConcurrentUsers(0) to config.fullSimulation.users during (1 minutes),
         constantConcurrentUsers(config.fullSimulation.users) during config.fullSimulation.duration
       )
-      .protocols(httpConf))
+      .protocols(httpConf)
+  )
 }

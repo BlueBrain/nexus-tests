@@ -122,4 +122,4 @@ inThisBuild(
   )
 )
 
-addCommandAlias("review", ";clean;scalafmtCheck;scalafmtSbtCheck;test:scalafmtCheck;test")
+addCommandAlias("review", ";clean;scalafmtCheck;scalafmtSbtCheck;test:scalafmtCheck;it:scalafmtCheck;compile;test:compile;it:compile")

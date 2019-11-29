@@ -4,6 +4,7 @@ import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvi
 import akka.http.scaladsl.model.Uri
 import com.typesafe.config.Config
 import pureconfig.ConvertHelpers._
+import pureconfig.generic.auto._
 import pureconfig.{ConfigConvert, ConfigSource}
 
 /**
@@ -18,7 +19,7 @@ class Settings(config: Config) extends Extension {
   private implicit val uriConverter: ConfigConvert[Uri] =
     ConfigConvert.viaString[Uri](catchReadError(s => Uri(s)), _.toString)
 
-  val appConfig = ConfigSource.fromConfig(config).at("app").loadOrThrow[AppConfig]
+  val appConfig: AppConfig = ConfigSource.fromConfig(config).at("app").loadOrThrow[AppConfig]
 
 }
 
