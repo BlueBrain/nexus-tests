@@ -44,12 +44,12 @@ oc rsh cassandra-0 bash /tmp/cassandra_dump/restore.sh $c_username $c_password
 
 # Delete ElasticSearch dev indices
 echo -e "${GREEN}Deleting ElasticSearch indices${RESET}"
-curl -XDELETE 'http://elasticsearch.dev.nexus.ocp.bbp.epfl.ch/kg_*'
+curl -s -XDELETE 'http://elasticsearch.dev.nexus.ocp.bbp.epfl.ch/kg_*'
 
 # Delete Sparql dev namespaces
 echo -e "${GREEN}Deleting Sparql namespaces${RESET}"
 for i in `curl -s 'http://blazegraph.dev.nexus.ocp.bbp.epfl.ch/blazegraph/namespace?describe-each-named-graph=false' | grep sparqlEndpoint | grep -o --color "rdf:resource=\"[^\"]*" | sed 's/rdf:resource="//' | sed 's#/sparql$##' | grep -v kb | grep -v LBS`
- do curl -X DELETE "$i"
+ do curl -s -XDELETE "$i"
 done
 
 # Scale up services
