@@ -1,7 +1,0 @@
-prefix nsg: <https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/>
-prefix prov: <http://www.w3.org/ns/prov#>
-
-select ?s where {
-  ?s prov:wasGeneratedBy / prov:used / ^prov:hadMember / ^nsg:hasPart / ^prov:generated / prov:used / ^prov:generated / prov:used / nsg:species / rdfs:label "Rattus norvegicus"
-}
-LIMIT 50

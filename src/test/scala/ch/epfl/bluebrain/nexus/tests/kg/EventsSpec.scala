@@ -10,13 +10,14 @@ import akka.http.scaladsl.model.{HttpRequest => Req, _}
 import akka.stream.alpakka.sse.scaladsl.EventSource
 import akka.stream.scaladsl.Sink
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
+import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import com.fasterxml.uuid.Generators
 import io.circe.Json
 import io.circe.parser._
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors, OptionValues}
+import org.scalatest.{CancelAfterFailure, Inspectors, OptionValues}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -98,7 +99,7 @@ class EventsSpec
           cl(Req(GET, endpoint, headersJsonUser))
             .mapJson { (json, result) =>
               result.status shouldEqual StatusCodes.OK
-              json.hcursor.downField("_total").as[Int].right.value shouldEqual 1
+              json.hcursor.downField("_total").as[Int].rightValue shouldEqual 1
             }
         }
       }
@@ -199,7 +200,7 @@ class EventsSpec
       projectEvents
         .map(_.getEventType().get())
         .toList shouldEqual List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
-      val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
+      val result = Json.arr(projectEvents.map(e => parse(e.getData()).rightValue): _*)
 
       removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
         "/kg/events/events.json",
@@ -240,7 +241,7 @@ class EventsSpec
       projectEvents
         .map(_.getEventType().get())
         .toList shouldEqual List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
-      val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
+      val result = Json.arr(projectEvents.map(e => parse(e.getData()).rightValue): _*)
 
       removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
         "/kg/events/events.json",
@@ -273,13 +274,13 @@ class EventsSpec
         EventSource(s"$kgBase/resources/$orgId2/events", send, initialLastEventId = Some(timestamp.toString))
         //drop resolver, views and storage events
           .drop(4)
-          .takeWithin(3 seconds)
+          .takeWithin(3.seconds)
           .runWith(Sink.seq)
           .futureValue
 
       projectEvents.size shouldEqual 1
       projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created")
-      val result = Json.arr(projectEvents.map(e => parse(e.getData()).right.value): _*)
+      val result = Json.arr(projectEvents.map(e => parse(e.getData()).rightValue): _*)
 
       removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
         "/kg/events/events2.json",
@@ -338,7 +339,7 @@ class EventsSpec
           "FileCreated",
           "FileUpdated"
         )
-        val result = Json.arr(events.map(e => parse(e.getData()).right.value): _*)
+        val result = Json.arr(events.map(e => parse(e.getData()).rightValue): _*)
         removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
           "/kg/events/events-multi-project.json",
           Map(

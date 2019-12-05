@@ -2,6 +2,7 @@ package ch.epfl.bluebrain.nexus.tests.config
 
 import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import akka.http.scaladsl.model.Uri
+import com.github.ghik.silencer.silent
 import com.typesafe.config.Config
 import pureconfig.ConvertHelpers._
 import pureconfig.generic.auto._
@@ -16,11 +17,12 @@ import pureconfig.{ConfigConvert, ConfigSource}
 @SuppressWarnings(Array("LooksLikeInterpolatedString"))
 class Settings(config: Config) extends Extension {
 
-  private implicit val uriConverter: ConfigConvert[Uri] =
-    ConfigConvert.viaString[Uri](catchReadError(s => Uri(s)), _.toString)
-
-  val appConfig =
+  @silent
+  val appConfig: AppConfig = {
+    implicit val uriConverter: ConfigConvert[Uri] =
+      ConfigConvert.viaString[Uri](catchReadError(s => Uri(s)), _.toString)
     ConfigSource.fromConfig(config).at("app").loadOrThrow[AppConfig]
+  }
 
 }
 
