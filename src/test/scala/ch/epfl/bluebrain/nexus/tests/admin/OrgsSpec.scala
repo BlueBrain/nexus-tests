@@ -5,11 +5,12 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
+import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, EitherValues, OptionValues}
+import org.scalatest.{CancelAfterFailure, OptionValues}
 
 class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually with EitherValues {
 
@@ -124,7 +125,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     "fetch organization by UUID" in {
       cl(Req(GET, s"$adminBase/orgs/$id", headersUser)).mapJson { (orgJson, _) =>
-        val orgUuid = orgJson.hcursor.get[String]("_uuid").right.value
+        val orgUuid = orgJson.hcursor.get[String]("_uuid").rightValue
         cl(Req(GET, s"$adminBase/orgs/$orgUuid/", headersUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json shouldEqual orgJson

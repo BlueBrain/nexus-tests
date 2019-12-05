@@ -35,13 +35,12 @@ val catsVersion       = "2.0.0"
 val circeVersion      = "0.12.1"
 val mockitoVersion    = "2.22.0"
 val pureconfigVersion = "0.12.1"
-val scalaTestVersion  = "3.0.8"
-val gatlingVersion    = "3.3.1"
+val scalaTestVersion  = "3.1.0"
 val uuidGenVersion    = "3.2.0"
 val awsSdkVersion     = "2.10.23"
 
 // Nexus dependency versions
-val commonsVersion = "0.19.0"
+val commonsVersion = "0.20.0"
 
 // Dependency modules
 lazy val akkaHttpCore    = "com.typesafe.akka"      %% "akka-http-core"          % akkaHttpVersion
@@ -59,36 +58,26 @@ lazy val awsSdk          = "software.amazon.awssdk" % "s3"                      
 lazy val commonsCore = "ch.epfl.bluebrain.nexus" %% "commons-core" % commonsVersion
 lazy val commonsTest = "ch.epfl.bluebrain.nexus" %% "commons-test" % commonsVersion
 
-// Performance tests
-lazy val gatling       = "io.gatling"            % "gatling-test-framework"    % gatlingVersion
-lazy val gatlingCharts = "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
-lazy val ammoniteOps   = "com.lihaoyi"           %% "ammonite-ops"             % ammoniteVersion
-
 lazy val root = project
-  .enablePlugins(GatlingPlugin)
   .in(file("."))
-  .settings(inConfig(IntegrationTest)(scalafmtConfigSettings))
   .settings(noPublish)
   .settings(
-    name                     := "tests",
-    moduleName               := "tests",
-    coverageFailOnMinimum    := false,
-    javaSpecificationVersion := "1.8",
+    name                  := "tests",
+    moduleName            := "tests",
+    coverageFailOnMinimum := false,
     libraryDependencies ++= Seq(
       akkaHttpCore,
       akkaStream,
       pureconfig,
       commonsCore,
-      ammoniteOps,
+      //ammoniteOps,
       akkaHttpTestKit % Test,
       awsSdk          % Test,
       commonsTest     % Test,
       scalaTest       % Test,
       slf4j           % Test,
       alpakkaSSE      % Test,
-      uuidGen         % Test,
-      gatling         % "test,it",
-      gatlingCharts   % "test,it"
+      uuidGen         % Test
     ),
     parallelExecution in Test := false,
     Test / testOptions        += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports")
@@ -122,4 +111,4 @@ inThisBuild(
   )
 )
 
-addCommandAlias("review", ";clean;scalafmtCheck;scalafmtSbtCheck;test:scalafmtCheck;it:scalafmtCheck;compile;test:compile;it:compile")
+addCommandAlias("review", ";clean;scalafmtCheck;scalafmtSbtCheck;test:scalafmtCheck;compile;test:compile")

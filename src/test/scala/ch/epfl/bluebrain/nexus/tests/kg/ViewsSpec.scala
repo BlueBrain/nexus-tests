@@ -7,11 +7,13 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, MediaTypes, StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
+import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.kg.types.ViewStatistics
 import io.circe.Json
-import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
+import org.scalatest.{CancelAfterFailure, Inspectors}
 import org.scalatest.concurrent.Eventually
+
 import scala.collection.immutable.Seq
 
 class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
@@ -87,7 +89,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testSparqlView", headersJsonUser))
         .mapJson {
           case (json, _) =>
-            val uuid = json.hcursor.get[String]("_uuid").right.value
+            val uuid = json.hcursor.get[String]("_uuid").rightValue
             val expectedMap = Map(
               quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testSparqlView",
               quote("{resources}")      -> s"$kgBase/views/$fullId/test-resource:testSparqlView",
@@ -131,7 +133,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(Req(GET, s"$kgBase/views/$fullId2/test-resource:testAggEsView", headersJsonUser))
         .mapJson {
           case (json, _) =>
-            val uuid = json.hcursor.get[String]("_uuid").right.value
+            val uuid = json.hcursor.get[String]("_uuid").rightValue
             val expectedMap = Map(
               quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testAggEsView",
               quote("{resources}")      -> s"$kgBase/views/$fullId2/test-resource:testAggEsView",
@@ -151,7 +153,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       cl(Req(GET, s"$kgBase/views/$fullId2/test-resource:testAggView", headersJsonUser))
         .mapJson {
           case (json, _) =>
-            val uuid = json.hcursor.get[String]("_uuid").right.value
+            val uuid = json.hcursor.get[String]("_uuid").rightValue
             val expectedMap = Map(
               quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testAggView",
               quote("{resources}")      -> s"$kgBase/views/$fullId2/test-resource:testAggView",
@@ -264,7 +266,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           sortedMatchCells.toEntity
         )
       ).mapJson { (json, result) =>
-        val indexes   = json.getJson("hits").getArray("hits").map(_.hcursor.get[String]("_index").right.value)
+        val indexes   = json.getJson("hits").getArray("hits").map(_.hcursor.get[String]("_index").rightValue)
         val toReplace = indexes.zipWithIndex.map { case (value, i) => quote(s"{index${i + 1}}") -> value }.toMap
         result.status shouldEqual StatusCodes.OK
         json.removeField("took") shouldEqual jsonContentOf("/kg/views/es-search-response-aggregated.json", toReplace)

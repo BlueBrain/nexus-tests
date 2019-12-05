@@ -5,10 +5,11 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
+import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
-import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
+import org.scalatest.{CancelAfterFailure, Inspectors}
 import org.scalatest.concurrent.Eventually
 
 import scala.collection.immutable
@@ -138,9 +139,9 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
 
     "fetch project by UUID" in {
       cl(Req(GET, s"$adminBase/orgs/$orgId", headersServiceAccount)).mapJson { (orgJson, _) =>
-        val orgUuid = orgJson.hcursor.get[String]("_uuid").right.value
+        val orgUuid = orgJson.hcursor.get[String]("_uuid").rightValue
         cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (projJson, _) =>
-          val projectUuid = projJson.hcursor.get[String]("_uuid").right.value
+          val projectUuid = projJson.hcursor.get[String]("_uuid").rightValue
           cl(Req(GET, s"$adminBase/projects/$orgUuid/$projectUuid", headersUser)).mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.OK
             json shouldEqual projJson
@@ -235,7 +236,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
 
       cl(Req(uri = s"$adminBase/projects/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Project", "projects", id, s"$description update 2", 4L, projId, true)
+        validateAdminResource(json, "Project", "projects", id, s"$description update 2", 4L, projId, deprecated = true)
       }
 
       cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersJsonUser)).mapJson { (json, result) =>
@@ -283,9 +284,10 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
 
     val orgId = genId()
 
-    val projectIds: immutable.Seq[String] = 1 to 5 map { _ =>
-      s"$orgId/${genId()}"
-    } sorted
+    val projectIds: immutable.Seq[String] =
+      (1 to 5).map { _ =>
+        s"$orgId/${genId()}"
+      }.sorted
 
     def projectListingResults(ids: Seq[String]): Json = {
       Json.arr(

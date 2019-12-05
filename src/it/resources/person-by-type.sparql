@@ -1,8 +1,0 @@
-prefix nsg: <https://bbp-nexus.epfl.ch/vocabs/bbp/neurosciencegraph/core/v0.1.0/>
-prefix prov: <http://www.w3.org/ns/prov#>
-
-select ?s where {
-  ?s rdf:type nsg:Person
-
-}
-LIMIT 50

@@ -1,5 +1,6 @@
 package ch.epfl.bluebrain.nexus.tests.iam.types
 
+import com.github.ghik.silencer.silent
 import io.circe.Decoder
 import io.circe.generic.extras.Configuration
 import io.circe.generic.extras.semiauto._
@@ -20,6 +21,7 @@ final case class Group(realm: String, group: String)  extends Identity
 
 object AclListing {
 
+  @silent
   private implicit val config: Configuration = Configuration.default.withDiscriminator("@type")
 
   implicit val identityDecoder: Decoder[Identity]     = deriveConfiguredDecoder[Identity]

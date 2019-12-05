@@ -8,19 +8,20 @@ import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.scaladsl.{Sink, Source}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
+import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
+import org.scalatest.{CancelAfterFailure, Inspectors}
 
 class ResourcesSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
 
-  val orgId   = genId()
-  val projId1 = genId()
-  val projId2 = genId()
-  val id1     = s"$orgId/$projId1"
-  val id2     = s"$orgId/$projId2"
+  private val orgId   = genId()
+  private val projId1 = genId()
+  private val projId2 = genId()
+  private val id1     = s"$orgId/$projId1"
+  private val id2     = s"$orgId/$projId2"
 
   "fetching information" should {
     "return the software version" in {
@@ -110,7 +111,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           Map(quote("{priority}") -> "5", quote("{resourceId}") -> "10")
         )
 
-      cl(Req(PUT, s"$kgBase/resources/$id1/${id2}/test-resource:10", headersJsonUser, payload2.toEntity))
+      cl(Req(PUT, s"$kgBase/resources/$id1/$id2/test-resource:10", headersJsonUser, payload2.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
@@ -222,7 +223,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    s"fetches a resource in project '${id1}' through project '${id2}' resolvers" in {
+    s"fetches a resource in project '$id1' through project '$id2' resolvers" in {
 
       cl(Req(GET, s"$kgBase/schemas/$id1/test-schema", headersJsonUser)).mapJson { (json, result1) =>
         result1.status shouldEqual StatusCodes.OK
@@ -448,7 +449,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
                 }
             )
         }
-        .mapConcat[Json](_.to[collection.immutable.Seq])
+        .mapConcat[Json](_.to(Seq))
         .runWith(Sink.seq)
         .futureValue
 
@@ -491,10 +492,10 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
     "fetched previously created resource" in {
       val resourceId = URLEncoder.encode("http://example.com/base/myid", "UTF-8")
-      cl(Req(GET, s"$kgBase/resources/$id1/_/${resourceId}", headersJsonUser)).mapJson { (json, result) =>
+      cl(Req(GET, s"$kgBase/resources/$id1/_/$resourceId", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.hcursor.get[String]("@id").right.value shouldEqual "http://example.com/base/myid"
-        json.hcursor.get[String]("@type").right.value shouldEqual "http://example.com/type"
+        json.hcursor.get[String]("@id").rightValue shouldEqual "http://example.com/base/myid"
+        json.hcursor.get[String]("@type").rightValue shouldEqual "http://example.com/type"
       }
     }
 

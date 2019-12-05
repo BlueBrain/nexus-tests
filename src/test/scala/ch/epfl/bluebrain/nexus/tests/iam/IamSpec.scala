@@ -311,7 +311,6 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
         result.status shouldEqual StatusCodes.OK
         val acls = js
           .as[AclListing]
-          .right
           .getOrElse(throw new RuntimeException(s"Couldn't decode ${js.noSpaces} to AclListing"))
 
         val rev = acls._results.head._rev

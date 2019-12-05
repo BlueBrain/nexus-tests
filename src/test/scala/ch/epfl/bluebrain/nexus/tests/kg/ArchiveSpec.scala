@@ -13,11 +13,12 @@ import akka.http.scaladsl.model.{HttpEntity, MediaRanges, MediaTypes, StatusCode
 import akka.stream.scaladsl.{Sink, StreamConverters}
 import akka.util.ByteString
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
+import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import io.circe.Printer
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
+import org.scalatest.{CancelAfterFailure, Inspectors}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq

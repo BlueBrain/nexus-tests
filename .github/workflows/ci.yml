@@ -15,6 +15,5 @@ jobs:
       - name: Review
         run: |
          sbt -Dsbt.color=always -Dsbt.supershell=false \
-           clean scalafmtCheck scalafmtSbtCheck test:scalafmtCheck it:scalafmtCheck \
-           compile test:compile it:compile
-
+           clean scalafmtCheck scalafmtSbtCheck test:scalafmtCheck \
+           compile test:compile

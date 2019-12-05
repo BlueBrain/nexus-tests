@@ -11,20 +11,21 @@ import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, MediaRanges, Multipart, StatusCodes, HttpRequest => Req}
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
+import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
 import io.circe.Json
 import org.apache.commons.codec.Charsets
 import org.apache.jena.ext.com.google.common.io.BaseEncoding
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, EitherValues, Inspectors}
+import org.scalatest.{CancelAfterFailure, Inspectors}
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 
 import scala.collection.immutable.Seq
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
 
@@ -434,7 +435,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         cl(Req(GET, s"$kgBase/storages/$fullId", headersJsonUser))
           .mapJson { (json, result) =>
             result.status shouldEqual StatusCodes.OK
-            json.hcursor.downField("_total").as[Int].right.value shouldEqual 7
+            json.hcursor.downField("_total").as[Int].rightValue shouldEqual 7
           }
       }
     }
@@ -628,7 +629,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.hcursor.get[String]("_location").right.value should startWith("http://minio.dev.nexus.ocp.bbp.epfl.ch")
+          json.hcursor.get[String]("_location").rightValue should startWith("http://minio.dev.nexus.ocp.bbp.epfl.ch")
           json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
     }
@@ -801,7 +802,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.hcursor.get[String]("_location").right.value should startWith(
+          json.hcursor.get[String]("_location").rightValue should startWith(
             "file:///gpfs/bbp.cscs.ch/data/project/nexustest"
           )
           json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected

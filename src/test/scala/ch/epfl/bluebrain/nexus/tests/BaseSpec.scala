@@ -11,7 +11,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.ByteString
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient
-import ch.epfl.bluebrain.nexus.commons.http.HttpClient.{UntypedHttpClient, _}
+import ch.epfl.bluebrain.nexus.commons.http.HttpClient._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{CirceEq, Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.config.Settings
@@ -19,8 +19,10 @@ import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, User}
 import com.typesafe.config.ConfigFactory
 import io.circe.parser._
 import io.circe.{Decoder, Json}
-import org.scalatest._
+import org.scalatest.{Assertion, BeforeAndAfterAll, OptionValues}
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -28,7 +30,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.reflect._
 
 class BaseSpec
-    extends WordSpecLike
+    extends AnyWordSpecLike
     with BeforeAndAfterAll
     with Matchers
     with ScalatestRouteTest
@@ -62,7 +64,7 @@ class BaseSpec
     val _ = ensureRealmExists
   }
 
-  def cleanAcls =
+  def cleanAcls: Assertion =
     cl(Req(uri = s"$iamBase/acls/*/*?ancestors=true&self=false", headers = headersServiceAccount))
       .mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
@@ -89,7 +91,7 @@ class BaseSpec
         result.status shouldEqual StatusCodes.OK
       }
 
-  def ensureRealmExists = {
+  def ensureRealmExists: Assertion = {
     val body =
       jsonContentOf(
         "/iam/realms/create.json",
@@ -113,7 +115,7 @@ class BaseSpec
     }
   }
 
-  override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.http.patienceConfig, 300 millis)
+  override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.http.patienceConfig, 300.millis)
 
   private implicit val ec: ExecutionContextExecutor = system.dispatcher
 
@@ -148,11 +150,10 @@ class BaseSpec
     def mapJson(body: (Json, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[Json]): Assertion =
       whenReady(value)(res => um(res.entity).map(json => body(json, res)).futureValue)
 
-    def mapDecoded[A: ClassTag](body: (A, HttpResponse) => Assertion)(implicit decoder: Decoder[A]) =
+    def mapDecoded[A: ClassTag](body: (A, HttpResponse) => Assertion)(implicit decoder: Decoder[A]): Assertion =
       mapJson { (json, response) =>
         val obj = json
           .as[A]
-          .right
           .getOrElse(throw new RuntimeException(s"Couldn't decode ${json.noSpaces} to ${classTag[A].toString()}."))
         body(obj, response)
       }
@@ -237,7 +238,7 @@ class BaseSpec
       quote("{user}")       -> config.iam.testUserSub,
       quote("{adminBase}")  -> config.admin.uri.toString(),
       quote("{orgId}")      -> id,
-      quote("{deprecated}") -> deprecated.toString()
+      quote("{deprecated}") -> deprecated.toString
     )
     jsonContentOf("/admin/response.json", resp)
   }
