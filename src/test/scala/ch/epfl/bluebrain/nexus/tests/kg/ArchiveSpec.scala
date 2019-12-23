@@ -12,6 +12,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpEntity, MediaRanges, MediaTypes, StatusCodes, HttpRequest => Req}
 import akka.stream.scaladsl.{Sink, StreamConverters}
 import akka.util.ByteString
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
@@ -126,7 +127,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapJson { (json, resp) =>
           val response = jsonContentOf("/kg/archives/archive-wrong-response.json")
           resp.status shouldEqual StatusCodes.BadRequest
-          json.removeField("report") shouldEqual response
+          json.removeKeys("report") shouldEqual response
         }
     }
 
@@ -173,7 +174,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{admin}")    -> config.admin.uri.toString()
             )
           )
-          json.removeFields("_createdAt", "_updatedAt", "_expiresInSeconds") should equalIgnoreArrayOrder(resp)
+          json.removeKeys("_createdAt", "_updatedAt", "_expiresInSeconds") should equalIgnoreArrayOrder(resp)
           result.status shouldEqual StatusCodes.OK
         }
     }

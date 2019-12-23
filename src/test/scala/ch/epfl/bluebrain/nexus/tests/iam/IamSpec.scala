@@ -4,6 +4,7 @@ import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.Randomness
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
@@ -36,7 +37,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
 
       cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=$rev", headersServiceAccount, body))
         .mapJson { (json, _) =>
-          json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
+          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> config.iam.testRealm,
@@ -53,7 +54,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
+          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/fetch-response.json",
             Map(
               quote("{realm}")   -> config.iam.testRealm,
@@ -77,7 +78,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=${rev + 1}", headersServiceAccount, body))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
+          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> config.iam.testRealm,
@@ -94,7 +95,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
+          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/fetch-updated-response.json",
             Map(
               quote("{realm}")   -> config.iam.testRealm,
@@ -111,7 +112,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       cl(Req(DELETE, s"$iamBase/realms/$realmLabel?rev=${rev + 2}", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
+          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> config.iam.testRealm,
@@ -127,7 +128,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
+          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
             "/iam/realms/fetch-deprecated-response.json",
             Map(
               quote("{realm}")   -> config.iam.testRealm,

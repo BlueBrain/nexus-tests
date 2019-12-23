@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
@@ -388,7 +389,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       .withFocus(
         _.mapArray(
           _.map(
-            _.removeFields("_createdAt", "_updatedAt", "_uuid", "_organizationUuid")
+            _.removeKeys("_createdAt", "_updatedAt", "_uuid", "_organizationUuid")
           )
         )
       )

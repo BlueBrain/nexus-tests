@@ -7,6 +7,7 @@ import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.scaladsl.{Sink, Source}
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
@@ -130,7 +131,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           )
         )
         result.status shouldEqual StatusCodes.OK
-        json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+        json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
       }
     }
 
@@ -166,7 +167,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
     "fail to create a cross-project-resolver for proj2 if identities are missing" in {
 
-      cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.removeField("identities").toEntity))
+      cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.removeKeys("identities").toEntity))
         .mapResp(_.status shouldEqual StatusCodes.BadRequest)
     }
 
@@ -199,7 +200,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         )
       cl(Req(GET, s"$kgBase/resolvers/$id2/example-id", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
+        json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
       }
     }
 
@@ -283,7 +284,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
         cl(Req(GET, s"$base/test-resource:1", headersJsonUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") shouldEqual expected
+          json.removeKeys("_createdAt", "_updatedAt") shouldEqual expected
         }
       }
     }
@@ -304,7 +305,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
         cl(Req(GET, s"$base/test-resource:1?rev=1", headersJsonUser)).mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expected)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
         }
       }
     }
@@ -339,7 +340,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersJsonUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag1)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expectedTag1)
       }
 
       val expectedTag2 = jsonContentOf(
@@ -356,7 +357,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       )
       cl(Req(GET, s"$kgBase/resources/$id1/_/test-resource:1?tag=v1.0.0", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
-        json.removeField("_createdAt").removeField("_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
+        json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
       }
     }
   }
@@ -512,13 +513,13 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   def removeSearchMetadata(json: Json): Json =
     json
-      .removeField("_next")
+      .removeKeys("_next")
       .hcursor
       .downField("_results")
       .withFocus(
         _.mapArray(
           _.map(
-            _.removeFields("_createdAt", "_updatedAt")
+            _.removeKeys("_createdAt", "_updatedAt")
           )
         )
       )
