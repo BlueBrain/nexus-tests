@@ -5,11 +5,11 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, MediaTypes, StatusCodes, HttpRequest => Req}
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.kg.types.ViewStatistics
 import io.circe.Json
 import org.scalatest.{CancelAfterFailure, Inspectors}
 import org.scalatest.concurrent.Eventually
@@ -99,7 +99,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               quote("{uuid}")           -> uuid
             )
             val expected = jsonContentOf("/kg/views/sparql-view-response.json", expectedMap)
-            json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+            json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
         }
     }
 
@@ -145,7 +145,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               quote("{uuid}")           -> uuid
             )
             val expected = jsonContentOf("/kg/views/agg-elastic-view-response.json", expectedMap)
-            json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+            json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
         }
     }
 
@@ -165,7 +165,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
               quote("{uuid}")           -> uuid
             )
             val expected = jsonContentOf("/kg/views/agg-sparql-view-response.json", expectedMap)
-            json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+            json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
         }
     }
 
@@ -181,7 +181,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
             PUT,
             s"$kgBase/resources/$projectId/resource/patchedcell:$unprefixedId",
             headersJsonUser,
-            payload.removeField("@id").toEntity
+            payload.removeKeys("@id").toEntity
           )
         ).mapResp(_.status shouldEqual StatusCodes.Created)
       }
@@ -228,13 +228,13 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         .mapJson { (json, result) =>
           val index = json.getJson("hits").getArray("hits").head.getString("_index")
           result.status shouldEqual StatusCodes.OK
-          json.removeField("took") shouldEqual jsonContentOf(
+          json.removeKeys("took") shouldEqual jsonContentOf(
             "/kg/views/es-search-response.json",
             Map(quote("{index}") -> index)
           )
           cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
             .mapJson { (json2, _) =>
-              json2.removeField("took") shouldEqual json.removeField("took")
+              json2.removeKeys("took") shouldEqual json.removeKeys("took")
             }
         }
     }
@@ -245,14 +245,14 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       ).mapJson { (json, result) =>
         val index = json.getJson("hits").getArray("hits").head.getString("_index")
         result.status shouldEqual StatusCodes.OK
-        json.removeField("took") shouldEqual jsonContentOf(
+        json.removeKeys("took") shouldEqual jsonContentOf(
           "/kg/views/es-search-response-2.json",
           Map(quote("{index}") -> index)
         )
 
         cl(Req(POST, s"$kgBase/views/$fullId2/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
           .mapJson { (json2, _) =>
-            json2.removeField("took") shouldEqual json.removeField("took")
+            json2.removeKeys("took") shouldEqual json.removeKeys("took")
           }
       }
     }
@@ -269,7 +269,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         val indexes   = json.getJson("hits").getArray("hits").map(_.hcursor.get[String]("_index").rightValue)
         val toReplace = indexes.zipWithIndex.map { case (value, i) => quote(s"{index${i + 1}}") -> value }.toMap
         result.status shouldEqual StatusCodes.OK
-        json.removeField("took") shouldEqual jsonContentOf("/kg/views/es-search-response-aggregated.json", toReplace)
+        json.removeKeys("took") shouldEqual jsonContentOf("/kg/views/es-search-response-aggregated.json", toReplace)
       }
     }
 
@@ -284,7 +284,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       ).mapJson { (json, result) =>
         val index = json.getJson("hits").getArray("hits").head.getString("_index")
         result.status shouldEqual StatusCodes.OK
-        json.removeField("took") shouldEqual jsonContentOf(
+        json.removeKeys("took") shouldEqual jsonContentOf(
           "/kg/views/es-search-response-2.json",
           Map(quote("{index}") -> index)
         )
@@ -293,31 +293,33 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
     "fetch statistics for testView" in {
       cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testView/statistics", headersJsonUser))
-        .mapDecoded[ViewStatistics] { (stats, result) =>
+        .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          stats.delayInSeconds shouldEqual 0
-          stats.remainingEvents shouldEqual 0
-          stats.lastEventDateTime shouldEqual stats.lastEventDateTime
-          stats.totalEvents shouldEqual 12
-          stats.processedEvents shouldEqual 12
-          stats.evaluatedEvents shouldEqual 6
-          stats.discardedEvents shouldEqual 6
-          stats.failedEvents shouldEqual 0
+          val map = Map(
+            quote("{total}")     -> "12",
+            quote("{processed}") -> "12",
+            quote("{evaluated}") -> "6",
+            quote("{discarded}") -> "6",
+            quote("{remaining}") -> "0"
+          )
+          val expected = jsonContentOf("/kg/views/statistics.json", map)
+          json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
         }
     }
 
     "fetch statistics for defaultElasticSearchIndex" in {
       cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultElasticSearchIndex/statistics", headersJsonUser))
-        .mapDecoded[ViewStatistics] { (stats, result) =>
+        .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          stats.delayInSeconds shouldEqual 0
-          stats.remainingEvents shouldEqual 0
-          stats.lastEventDateTime shouldEqual stats.lastEventDateTime
-          stats.totalEvents shouldEqual 12
-          stats.processedEvents shouldEqual 12
-          stats.evaluatedEvents shouldEqual 12
-          stats.discardedEvents shouldEqual 0
-          stats.failedEvents shouldEqual 0
+          val map = Map(
+            quote("{total}")     -> "12",
+            quote("{processed}") -> "12",
+            quote("{evaluated}") -> "12",
+            quote("{discarded}") -> "0",
+            quote("{remaining}") -> "0"
+          )
+          val expected = jsonContentOf("/kg/views/statistics.json", map)
+          json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
         }
     }
 
@@ -389,16 +391,17 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
     "fetch statistics for defaultSparqlIndex" in {
       cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/statistics", headersJsonUser))
-        .mapDecoded[ViewStatistics] { (stats, result) =>
+        .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          stats.delayInSeconds shouldEqual 0
-          stats.remainingEvents shouldEqual 0
-          stats.lastEventDateTime shouldEqual stats.lastEventDateTime
-          stats.totalEvents shouldEqual 12
-          stats.processedEvents shouldEqual 12
-          stats.evaluatedEvents shouldEqual 12
-          stats.discardedEvents shouldEqual 0
-          stats.failedEvents shouldEqual 0
+          val map = Map(
+            quote("{total}")     -> "12",
+            quote("{processed}") -> "12",
+            quote("{evaluated}") -> "12",
+            quote("{discarded}") -> "0",
+            quote("{remaining}") -> "0"
+          )
+          val expected = jsonContentOf("/kg/views/statistics.json", map)
+          json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
         }
     }
 
@@ -449,7 +452,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
     "remove @type on a resource" in {
 
-      val payload      = jsonContentOf("/kg/views/instances/instance1.json").removeField("@type")
+      val payload      = jsonContentOf("/kg/views/instances/instance1.json").removeKeys("@type")
       val id           = payload.asObject.value("@id").value.asString.value
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
       cl(
@@ -457,7 +460,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
           PUT,
           s"$kgBase/resources/$fullId/_/patchedcell:$unprefixedId?rev=2",
           headersJsonUser,
-          payload.removeField("@id").toEntity
+          payload.removeKeys("@id").toEntity
         )
       ).mapResp(_.status shouldEqual StatusCodes.OK)
     }
@@ -467,19 +470,19 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         .mapJson { (json, result) =>
           val index = json.getJson("hits").getArray("hits").head.getString("_index")
           result.status shouldEqual StatusCodes.OK
-          json.removeField("took") shouldEqual jsonContentOf(
+          json.removeKeys("took") shouldEqual jsonContentOf(
             "/kg/views/es-search-response-no-type.json",
             Map(quote("{index}") -> index)
           )
           cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
             .mapJson { (json2, _) =>
-              json2.removeField("took") shouldEqual json.removeField("took")
+              json2.removeKeys("took") shouldEqual json.removeKeys("took")
             }
         }
     }
 
     "deprecate a resource" in {
-      val payload      = jsonContentOf("/kg/views/instances/instance2.json").removeField("@type")
+      val payload      = jsonContentOf("/kg/views/instances/instance2.json").removeKeys("@type")
       val id           = payload.asObject.value("@id").value.asString.value
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
       cl(Req(DELETE, s"$kgBase/resources/$fullId/_/patchedcell:$unprefixedId?rev=2", headersJsonUser))
@@ -491,13 +494,13 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         .mapJson { (json, result) =>
           val index = json.getJson("hits").getArray("hits").head.getString("_index")
           result.status shouldEqual StatusCodes.OK
-          json.removeField("took") shouldEqual jsonContentOf(
+          json.removeKeys("took") shouldEqual jsonContentOf(
             "/kg/views/es-search-response-no-deprecated.json",
             Map(quote("{index}") -> index)
           )
           cl(Req(POST, s"$kgBase/views/$fullId/test-resource:testView/_search", headersJsonUser, matchAll.toEntity))
             .mapJson { (json2, _) =>
-              json2.removeField("took") shouldEqual json.removeField("took")
+              json2.removeKeys("took") shouldEqual json.removeKeys("took")
             }
         }
     }

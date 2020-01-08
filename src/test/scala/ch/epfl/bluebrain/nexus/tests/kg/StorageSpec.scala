@@ -12,6 +12,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, MediaRanges, Multipar
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers.stringUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
 import io.circe.Json
@@ -132,7 +133,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{user}")        -> config.iam.testUserSub
             )
           )
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
 
@@ -174,7 +175,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{user}")        -> config.iam.testUserSub
             )
           )
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
     }
@@ -214,7 +215,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{user}")        -> config.iam.testUserSub
             )
           )
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
 
@@ -276,7 +277,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{user}")        -> config.iam.testUserSub
             )
           )
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
     }
@@ -330,7 +331,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
               quote("{user}")        -> config.iam.testUserSub
             )
           )
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
 
@@ -371,7 +372,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             )
           ).deepMerge(Json.obj("region" -> Json.fromString("not-important")))
 
-          json.removeFields("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
           result.status shouldEqual StatusCodes.OK
         }
     }
@@ -421,7 +422,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           quote("{folder}")   -> "nexustest",
           quote("{id}")       -> "myexternalstorage"
         )
-      ).removeField("folder")
+      ).removeKeys("folder")
 
       eventually {
         cl(Req(POST, s"$kgBase/storages/$fullId", headersJsonUser, payload.toEntity))
@@ -453,7 +454,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(PUT, s"$kgBase/files/$fullId/logo.png?storage=nxv:mys3storage", headersJsonUser, payload.toEntity))
         .mapJson { (json, resp) =>
           resp.status shouldEqual StatusCodes.Created
-          json.removeFields("_createdAt", "_updatedAt") shouldEqual
+          json.removeKeys("_createdAt", "_updatedAt") shouldEqual
             jsonContentOf(
               "/kg/files/linking-metadata.json",
               Map(
@@ -630,7 +631,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
           json.hcursor.get[String]("_location").rightValue should startWith("http://minio.dev.nexus.ocp.bbp.epfl.ch")
-          json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected
+          json.removeKeys("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
     }
 
@@ -805,7 +806,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           json.hcursor.get[String]("_location").rightValue should startWith(
             "file:///gpfs/bbp.cscs.ch/data/project/nexustest"
           )
-          json.removeFields("_createdAt", "_updatedAt", "_location") shouldEqual expected
+          json.removeKeys("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
     }
 
@@ -1008,7 +1009,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_updatedAt") shouldEqual expected
+          json.removeKeys("_createdAt", "_updatedAt") shouldEqual expected
         }
     }
 
@@ -1090,7 +1091,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment2", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.removeFields("_createdAt", "_updatedAt") shouldEqual expected
+          json.removeKeys("_createdAt", "_updatedAt") shouldEqual expected
         }
     }
   }

@@ -40,6 +40,7 @@ val uuidGenVersion    = "3.2.0"
 val awsSdkVersion     = "2.10.23"
 
 // Nexus dependency versions
+val rdfVersion     = "0.5.2"
 val commonsVersion = "0.20.0"
 
 // Dependency modules
@@ -57,6 +58,7 @@ lazy val awsSdk          = "software.amazon.awssdk" % "s3"                      
 // Nexus dependency modules
 lazy val commonsCore = "ch.epfl.bluebrain.nexus" %% "commons-core" % commonsVersion
 lazy val commonsTest = "ch.epfl.bluebrain.nexus" %% "commons-test" % commonsVersion
+lazy val rdf         = "ch.epfl.bluebrain.nexus" %% "rdf"          % rdfVersion
 
 lazy val root = project
   .in(file("."))
@@ -70,6 +72,7 @@ lazy val root = project
       akkaStream,
       pureconfig,
       commonsCore,
+      rdf,
       //ammoniteOps,
       akkaHttpTestKit % Test,
       awsSdk          % Test,

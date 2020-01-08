@@ -6,10 +6,12 @@ import akka.http.javadsl.model.headers.HttpCredentials
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.Uri.{Path => AkkaPath}
 import akka.http.scaladsl.model.headers.{Accept, Authorization}
-import akka.http.scaladsl.model.{RequestEntity, StatusCodes, HttpRequest => Req, _}
+import akka.http.scaladsl.model.{RequestEntity, StatusCodes, HttpRequest => Req}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.ByteString
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
@@ -126,21 +128,14 @@ class BaseSpec
   private[tests] implicit class JsonSyntax(json: Json) {
     def toEntity: HttpEntity.Strict = HttpEntity(ContentTypes.`application/json`, json.noSpaces)
 
-    def getString(field: String): String   = json.asObject.flatMap(_(field)).flatMap(_.asString).value
-    def getLong(field: String): Long       = json.asObject.flatMap(_(field)).flatMap(_.asNumber).flatMap(_.toLong).value
-    def getBoolean(field: String): Boolean = json.asObject.flatMap(_(field)).flatMap(_.asBoolean).value
-    def getJson(field: String): Json       = json.asObject.flatMap(_(field)).value
-    def getArray(field: String): Seq[Json] = json.asObject.flatMap(_(field)).flatMap(_.asArray).value
-
+    def getString(field: String): String                = json.asObject.flatMap(_(field)).flatMap(_.asString).value
+    def getLong(field: String): Long                    = json.asObject.flatMap(_(field)).flatMap(_.asNumber).flatMap(_.toLong).value
+    def getBoolean(field: String): Boolean              = json.asObject.flatMap(_(field)).flatMap(_.asBoolean).value
+    def getJson(field: String): Json                    = json.asObject.flatMap(_(field)).value
+    def getArray(field: String): Seq[Json]              = json.asObject.flatMap(_(field)).flatMap(_.asArray).value
     def updateField(field: String, value: String): Json = json.mapObject(_.add(field, Json.fromString(value)))
-    def removeField(field: String): Json                = removeFields(field)
-    def removeFields(fields: String*): Json = json.mapObject { jsonObj =>
-      fields.foldLeft(jsonObj) { (obj, field) =>
-        obj.remove(field)
-      }
+    def removeMetadata(): Json                          = json.removeKeys("_uuid", "_createdAt", "_updatedAt")
 
-    }
-    def removeMetadata(): Json = json.removeFields("_uuid", "_createdAt", "_updatedAt")
   }
 
   private[tests] implicit class HttpResponseSyntax(value: Future[HttpResponse]) {

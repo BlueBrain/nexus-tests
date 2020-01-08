@@ -9,6 +9,7 @@ import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.model.{HttpRequest => Req, _}
 import akka.stream.alpakka.sse.scaladsl.EventSource
 import akka.stream.scaladsl.Sink
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
@@ -362,7 +363,7 @@ class EventsSpec
       .withFocus(
         _.mapArray(
           _.map(
-            _.removeFields("_instant", "_updatedAt")
+            _.removeKeys("_instant", "_updatedAt")
           )
         )
       )
@@ -376,8 +377,8 @@ class EventsSpec
           _.map { json =>
             json.hcursor.downField("_attributes").focus match {
               case Some(attr) =>
-                json.removeField("_attributes") deepMerge
-                  Json.obj("_attributes" -> attr.removeField("_location"))
+                json.removeKeys("_attributes") deepMerge
+                  Json.obj("_attributes" -> attr.removeKeys("_location"))
               case None => json
             }
           }
