@@ -378,7 +378,7 @@ class EventsSpec
             json.hcursor.downField("_attributes").focus match {
               case Some(attr) =>
                 json.removeKeys("_attributes") deepMerge
-                  Json.obj("_attributes" -> attr.removeKeys("_location"))
+                  Json.obj("_attributes" -> attr.removeKeys("_location", "_uuid", "_path"))
               case None => json
             }
           }
