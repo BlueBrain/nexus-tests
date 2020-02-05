@@ -11,6 +11,7 @@
         "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/04e5f081-26fb-49ea-9d38-da7ef49d9e9f",
         "_index": "{index}",
         "_source": {
+          "@id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/04e5f081-26fb-49ea-9d38-da7ef49d9e9f",
           "@type": "Cell",
           "brainLocation": {
             "brainRegion": {
@@ -30,6 +31,7 @@
         "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/08825325-0a84-4924-839b-baabcd9bdbb8",
         "_index": "{index}",
         "_source": {
+          "@id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/08825325-0a84-4924-839b-baabcd9bdbb8",
           "@type": "Cell",
           "brainLocation": {
             "brainRegion": {
@@ -49,6 +51,7 @@
         "_id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/048bf2a9-c3e4-4401-bb1e-61f5fcacb85b",
         "_index": "{index}",
         "_source": {
+          "@id": "https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/048bf2a9-c3e4-4401-bb1e-61f5fcacb85b",
           "@type": "Cell",
           "brainLocation": {
             "brainRegion": {
