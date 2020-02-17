@@ -123,7 +123,7 @@ class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with C
         "/kg/views/composite/composite-view.json",
         replSub ++ Map(
           quote("{org}")               -> orgId,
-          quote("{remoteEndpoint}")    -> kgBase.toString.dropRight(3),
+          quote("{remoteEndpoint}")    -> kgBase.toString,
           quote("{remoteSourceToken}") -> config.iam.testUserToken
         )
       )
@@ -249,8 +249,9 @@ class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with C
     }
 
     "reset the view" in {
-      cl(Req(DELETE, s"$kgBase/views/${orgId}/bands/composite/projections/_/progress", headersJsonUser)).mapResp {
+      cl(Req(DELETE, s"$kgBase/views/${orgId}/bands/composite/projections/_/offset", headersJsonUser)).mapResp {
         resp =>
+        println(resp)
           resp.status shouldEqual StatusCodes.OK
       }
     }

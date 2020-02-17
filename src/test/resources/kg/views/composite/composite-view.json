@@ -25,7 +25,7 @@
   "projections": [
     {
       "@id": "https://music.example.com/bands",
-      "@type": "ElasticSearch",
+      "@type": "ElasticSearchProjection",
       "mapping": {
         "properties": {
           "@type": {
@@ -91,7 +91,7 @@
     },
     {
       "@id": "https://music.example.com/albums",
-      "@type": "ElasticSearch",
+      "@type": "ElasticSearchProjection",
       "mapping": {
         "properties": {
           "@type": {
