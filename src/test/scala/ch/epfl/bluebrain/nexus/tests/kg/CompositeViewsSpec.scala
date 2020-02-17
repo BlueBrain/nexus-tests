@@ -249,10 +249,8 @@ class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with C
     }
 
     "reset the view" in {
-      cl(Req(DELETE, s"$kgBase/views/${orgId}/bands/composite/projections/_/offset", headersJsonUser)).mapResp {
-        resp =>
-        println(resp)
-          resp.status shouldEqual StatusCodes.OK
+      cl(Req(DELETE, s"$kgBase/views/${orgId}/bands/composite/projections/_/offset", headersJsonUser)).mapResp { resp =>
+        resp.status shouldEqual StatusCodes.OK
       }
     }
 
