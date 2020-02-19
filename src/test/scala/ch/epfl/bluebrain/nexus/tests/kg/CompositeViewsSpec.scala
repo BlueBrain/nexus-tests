@@ -123,6 +123,7 @@ class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with C
         "/kg/views/composite/composite-view.json",
         replSub ++ Map(
           quote("{org}")               -> orgId,
+          quote("{org2}")              -> orgId,
           quote("{remoteEndpoint}")    -> kgBase.toString,
           quote("{remoteSourceToken}") -> config.iam.testUserToken
         )
@@ -133,6 +134,61 @@ class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with C
     }
 
     waitForView()
+
+    "reject creating a composite view with wrong remote source project" in {
+
+      val view = jsonContentOf(
+        "/kg/views/composite/composite-view.json",
+        replSub ++ Map(
+          quote("{org}")               -> orgId,
+          quote("{org2}")              -> "{org2}",
+          quote("{remoteEndpoint}")    -> kgBase.toString,
+          quote("{remoteSourceToken}") -> config.iam.testUserToken
+        )
+      )
+      cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite2", headersJsonUser, view.toEntity)).mapJson {
+        (json, result) =>
+          println(json)
+          result.status shouldEqual StatusCodes.BadRequest
+          json shouldEqual jsonContentOf("/kg/views/composite/composite-source-project-reject.json")
+      }
+    }
+
+    "reject creating a composite view with wrong remote source endpoint" in {
+
+      val view = jsonContentOf(
+        "/kg/views/composite/composite-view.json",
+        replSub ++ Map(
+          quote("{org}")               -> orgId,
+          quote("{org2}")              -> orgId,
+          quote("{remoteEndpoint}")    -> s"$kgBase/other",
+          quote("{remoteSourceToken}") -> config.iam.testUserToken
+        )
+      )
+      cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite2", headersJsonUser, view.toEntity)).mapJson {
+        (json, result) =>
+          result.status shouldEqual StatusCodes.BadRequest
+          json shouldEqual jsonContentOf("/kg/views/composite/composite-source-project-reject.json")
+      }
+    }
+
+    "reject creating a composite view with wrong remote source token" in {
+
+      val view = jsonContentOf(
+        "/kg/views/composite/composite-view.json",
+        replSub ++ Map(
+          quote("{org}")               -> orgId,
+          quote("{org2}")              -> orgId,
+          quote("{remoteEndpoint}")    -> kgBase.toString,
+          quote("{remoteSourceToken}") -> s"${config.iam.testUserToken}wrong"
+        )
+      )
+      cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite2", headersJsonUser, view.toEntity)).mapJson {
+        (json, result) =>
+          result.status shouldEqual StatusCodes.BadRequest
+          json shouldEqual jsonContentOf("/kg/views/composite/composite-source-token-reject.json")
+      }
+    }
   }
 
   "searching the projections" should {
