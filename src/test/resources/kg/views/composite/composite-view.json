@@ -17,7 +17,7 @@
     {
       "@id": "https://music.example.com/sources/songs",
       "@type": "RemoteProjectEventStream",
-      "project": "{org}/songs",
+      "project": "{org2}/songs",
       "endpoint": "{remoteEndpoint}",
       "token": "{remoteSourceToken}"
     }
