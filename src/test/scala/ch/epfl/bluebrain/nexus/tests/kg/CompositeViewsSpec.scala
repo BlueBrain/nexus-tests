@@ -148,7 +148,6 @@ class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with C
       )
       cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite2", headersJsonUser, view.toEntity)).mapJson {
         (json, result) =>
-          println(json)
           result.status shouldEqual StatusCodes.BadRequest
           json shouldEqual jsonContentOf("/kg/views/composite/composite-source-project-reject.json")
       }
