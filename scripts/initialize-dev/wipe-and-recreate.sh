@@ -17,6 +17,7 @@ oc wait pods/iam-0 --for=delete --namespace=bbp-nexus-dev --timeout=3m || true
 # Fetch cassandra user and password from the Openshift secrets
 c_username=`oc get secret cassandra -o=jsonpath='{.data.username}' | base64 --decode`
 c_password=`oc get secret cassandra -o=jsonpath='{.data.password}' | base64 --decode`
+token=`oc get secret nexus-sa -o=jsonpath='{.data.service-account-token}' | base64 --decode`
 
 # Truncate cassandra tables
 echo -e "${GREEN}Truncating cassandra tables${RESET}"
@@ -63,6 +64,7 @@ oc wait pods/kg-0 --for condition=ready --namespace=bbp-nexus-dev --timeout=4m
 oc rsync "${BASH_SOURCE%/*}/delete_files" kg-0:/tmp/
 oc rsh kg-0 bash /tmp/delete_files/delete_files.sh
 until curl -s http://kg.dev.nexus.ocp.bbp.epfl.ch | grep '"name":"kg"' &> /dev/null; do echo "Waiting until kg service is up"; sleep 2; done
+curl -s -XPUT -H "Authorization: Bearer $token" -H "Content-Type: application/json" "https://dev.nexus.ocp.bbp.epfl.ch/v1/realms/bbp?rev=1" -d '{"@type": "Realm", "name": "BlueBrain", "openIdConfig": "https://bbpauth.epfl.ch/auth/realms/BBP/.well-known/openid-configuration"}' &> /dev/null
 
 echo -e "${GREEN}Services are up and backed up with the following configuration: ${RESET}"
 echo "- Users authenticated in BBP or Github have full permissions on /"
