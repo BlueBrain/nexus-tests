@@ -394,7 +394,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       val payload = jsonContentOf(
         "/kg/storages/s3.json",
         Map(
-          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storage",
+          quote("{storageId}") -> "https://bluebrain.github.io/nexus/vocabulary/mys3storagewrongbucket",
           quote("{bucket}")    -> "foobar",
           quote("{endpoint}")  -> s3Config.endpoint.toString,
           quote("{accessKey}") -> s3Config.accessKey.get,
@@ -402,13 +402,11 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         )
       )
 
-      eventually {
-        cl(Req(POST, s"$kgBase/storages/$fullId", headersJsonUser, payload.toEntity))
-          .mapJson { (json, result) =>
-            json shouldEqual jsonContentOf("/kg/storages/s3-error.json")
-            result.status shouldEqual StatusCodes.BadRequest
-          }
-      }
+      cl(Req(POST, s"$kgBase/storages/$fullId", headersJsonUser, payload.toEntity))
+        .mapJson { (json, result) =>
+          json shouldEqual jsonContentOf("/kg/storages/s3-error.json")
+          result.status shouldEqual StatusCodes.BadRequest
+        }
     }
 
     "fail creating a RemoteDiskStorage without folder" in {
