@@ -322,7 +322,7 @@ class EventsSpec
         .asString
         .value
 
-      forAll(List(s"$kgBase/events", s"$kgBase/resources/events")) { address =>
+      forAll(List(s"$kgBase/resources/events")) { address =>
         val events: Seq[ServerSentEvent] =
           EventSource(address, send, initialLastEventId = Some(timestamp.toString))
             .drop(8)

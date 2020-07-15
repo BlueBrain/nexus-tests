@@ -19,6 +19,10 @@
               "label": "Somatosensory cortex hindlimb layer II/III"
             }
           },
+          "http://schema.org/name": {
+            "@type": "xsd:string",
+            "@value": "ABC-MT-C1"
+          },
           "name": "ABC-MT-C1",
           "nxv:deprecated": false
         },
@@ -38,6 +42,10 @@
               "@id": "http://www.parcellation.org/0000014",
               "label": "Somatosensory cortex hindlimb layer IV"
             }
+          },
+          "http://schema.org/name": {
+            "@type": "xsd:string",
+            "@value": "C080301A2-MT-C1"
           },
           "name": "C080301A2-MT-C1",
           "nxv:deprecated": false
@@ -59,6 +67,10 @@
               "label": "Somatosensory cortex hindlimb layer II/III"
             }
           },
+          "http://schema.org/name": {
+            "@type": "xsd:string",
+            "@value": "C161001B2-MT-C1"
+          },
           "name": "C161001B2-MT-C1",
           "nxv:deprecated": false
         },
@@ -78,6 +90,10 @@
               "@id": "http://www.parcellation.org/0000004",
               "label": "Somatosensory cortex hindlimb"
             }
+          },
+          "http://schema.org/name": {
+            "@type": "xsd:string",
+            "@value": "C230402B-MT-C1"
           },
           "name": "C230402B-MT-C1",
           "nxv:deprecated": false
@@ -99,6 +115,10 @@
               "label": "Somatosensory cortex hindlimb layer II/III"
             }
           },
+          "http://schema.org/name": {
+            "@type": "xsd:string",
+            "@value": "C240300A1-MT-C1"
+          },
           "name": "C240300A1-MT-C1",
           "nxv:deprecated": false
         },
@@ -119,6 +139,10 @@
               "label": "Somatosensory cortex hindlimb layer II/III"
             }
           },
+          "http://schema.org/name": {
+            "@type": "xsd:string",
+            "@value": "C251001B2-MT-C1"
+          },
           "name": "C251001B2-MT-C1",
           "nxv:deprecated": false
         },
@@ -138,6 +162,10 @@
               "@id": "http://www.parcellation.org/0000020",
               "label": "Somatosensory cortex hindlimb"
             }
+          },
+          "http://schema.org/name": {
+            "@type": "xsd:string",
+            "@value": "DEF-MT-C1"
           },
           "name": "DEF-MT-C1",
           "nxv:deprecated": false

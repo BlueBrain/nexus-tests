@@ -810,7 +810,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fail to upload file against a storage with custom permissions" in eventually {
+    "fail to upload file against a storage with custom permissions" in {
       val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/files/attachment2").getBytes)
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
