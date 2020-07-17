@@ -12,7 +12,7 @@
     "_algorithm": "SHA-256"
   },
   "_filename": "logo.png",
-  "_location": "{endpoint}/{bucket}/{key}",
+  "_location": "{endpointBucket}/{key}",
   "_mediaType": "image/png",
   "_incoming": "{kgBase}/files/{projId}/attachment:logo.png/incoming",
   "_outgoing": "{kgBase}/files/{projId}/attachment:logo.png/outgoing",
