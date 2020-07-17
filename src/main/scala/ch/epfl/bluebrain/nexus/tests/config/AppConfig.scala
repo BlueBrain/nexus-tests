@@ -3,6 +3,7 @@ package ch.epfl.bluebrain.nexus.tests.config
 import java.net.URI
 
 import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.Uri.Host
 import ch.epfl.bluebrain.nexus.tests.config.AppConfig._
 
 import scala.concurrent.duration.FiniteDuration
@@ -58,5 +59,8 @@ object AppConfig {
 
   final case class S3Config(endpoint: Uri, accessKey: Option[String], secretKey: Option[String]) {
     val endpointURI: URI = new URI(endpoint.toString)
+    def endpointWithSubdomain(bucket: String): Uri =
+      endpoint.copy(authority = endpoint.authority.copy(host = Host(s"$bucket.${endpoint.authority.host.toString()}")))
+
   }
 }

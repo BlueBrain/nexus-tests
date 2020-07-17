@@ -28,14 +28,21 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     "return the software version" in {
       cl(Req(GET, config.kg.version)).mapJson { (json, result) =>
         json.asObject.value.keys.toSet shouldEqual
-          Set("nexus", "storage", "kg", "iam", "admin", "elasticsearch", "blazegraph")
+          Set("delta", "storage", "elasticsearch", "blazegraph")
         result.status shouldEqual StatusCodes.OK
       }
     }
 
     "return the cassandra and cluster status" in {
       cl(Req(GET, config.kg.status)).mapJson { (json, result) =>
-        json shouldEqual Json.obj("cassandra" -> Json.fromString("up"), "cluster" -> Json.fromString("up"))
+        json shouldEqual
+          Json.obj(
+            "cluster"       -> Json.fromString("up"),
+            "cassandra"     -> Json.fromString("up"),
+            "storage"       -> Json.fromString("up"),
+            "elasticsearch" -> Json.fromString("up"),
+            "blazegraph"    -> Json.fromString("up")
+          )
         result.status shouldEqual StatusCodes.OK
       }
     }

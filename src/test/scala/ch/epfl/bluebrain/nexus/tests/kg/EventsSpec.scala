@@ -322,9 +322,8 @@ class EventsSpec
         .asString
         .value
 
-      forAll(List(s"$kgBase/events", s"$kgBase/resources/events")) { address =>
         val events: Seq[ServerSentEvent] =
-          EventSource(address, send, initialLastEventId = Some(timestamp.toString))
+          EventSource(s"$kgBase/resources/events", send, initialLastEventId = Some(timestamp.toString))
             .drop(8)
             .take(7)
             .runWith(Sink.seq)
@@ -354,7 +353,7 @@ class EventsSpec
             quote("{organization2Uuid}") -> organization2Uuid
           )
         )
-      }
+
     }
   }
 

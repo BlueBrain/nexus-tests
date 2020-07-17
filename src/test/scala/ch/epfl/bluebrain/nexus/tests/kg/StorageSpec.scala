@@ -33,7 +33,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
   private val orgId   = genId()
   private val projId  = genId()
   private val fullId  = s"$orgId/$projId"
-  private val bucket  = genId()
+  private val bucket  = "mybucket"
   private val logoKey = "some/path/to/nexus-logo.png"
 
   private val credentialsProvider = (s3Config.accessKey, s3Config.secretKey) match {
@@ -458,13 +458,13 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
             jsonContentOf(
               "/kg/files/linking-metadata.json",
               Map(
-                quote("{projId}")    -> fullId,
-                quote("{endpoint}")  -> s3Config.endpoint.toString,
-                quote("{bucket}")    -> bucket,
-                quote("{key}")       -> logoKey,
-                quote("{kgBase}")    -> kgBase.toString,
-                quote("{adminBase}") -> adminBase.toString,
-                quote("{iamBase}")   -> iamBase.toString
+                quote("{projId}")         -> fullId,
+                quote("{endpoint}")       -> s3Config.endpoint.toString,
+                quote("{endpointBucket}") -> s3Config.endpointWithSubdomain(bucket).toString,
+                quote("{key}")            -> logoKey,
+                quote("{kgBase}")         -> kgBase.toString,
+                quote("{adminBase}")      -> adminBase.toString,
+                quote("{iamBase}")        -> iamBase.toString
               )
             )
         }
@@ -482,10 +482,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
           resp.status shouldEqual StatusCodes.BadGateway
           json shouldEqual jsonContentOf(
             "/kg/files/linking-notfound.json",
-            Map(
-              quote("{endpoint}") -> s3Config.endpoint.toString,
-              quote("{bucket}")   -> bucket
-            )
+            Map(quote("{endpointBucket}") -> s3Config.endpointWithSubdomain(bucket).toString)
           )
         }
     }
@@ -630,7 +627,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          json.hcursor.get[String]("_location").rightValue should startWith("http://minio.dev.nexus.ocp.bbp.epfl.ch")
+          // TODO: Remove the duplicated mybucket when the issue on the minio side is fixed: https://github.com/minio/minio/issues/10054
+          json.hcursor.get[String]("_location").rightValue should startWith(s"http://$bucket.$bucket.minio.dev.nexus.ocp.bbp.epfl.ch")
           json.removeKeys("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
     }
