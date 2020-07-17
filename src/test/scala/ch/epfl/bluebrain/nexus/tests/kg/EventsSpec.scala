@@ -322,37 +322,37 @@ class EventsSpec
         .asString
         .value
 
-        val events: Seq[ServerSentEvent] =
-          EventSource(s"$kgBase/resources/events", send, initialLastEventId = Some(timestamp.toString))
-            .drop(8)
-            .take(7)
-            .runWith(Sink.seq)
-            .futureValue
+      val events: Seq[ServerSentEvent] =
+        EventSource(s"$kgBase/resources/events", send, initialLastEventId = Some(timestamp.toString))
+          .drop(8)
+          .take(7)
+          .runWith(Sink.seq)
+          .futureValue
 
-        events.size shouldEqual 7
-        events.map(_.getEventType().get()).toList shouldEqual List(
-          "Created",
-          "Created",
-          "Updated",
-          "TagAdded",
-          "Deprecated",
-          "FileCreated",
-          "FileUpdated"
+      events.size shouldEqual 7
+      events.map(_.getEventType().get()).toList shouldEqual List(
+        "Created",
+        "Created",
+        "Updated",
+        "TagAdded",
+        "Deprecated",
+        "FileCreated",
+        "FileUpdated"
+      )
+      val result = Json.arr(events.map(e => parse(e.getData()).rightValue): _*)
+      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
+        "/kg/events/events-multi-project.json",
+        Map(
+          quote("{resources}")         -> s"$kgBase/resources/$id",
+          quote("{iamBase}")           -> config.iam.uri.toString(),
+          quote("{realm}")             -> config.iam.testRealm,
+          quote("{user}")              -> config.iam.testUserSub,
+          quote("{projectUuid}")       -> projectUuid,
+          quote("{project2Uuid}")      -> project2Uuid,
+          quote("{organizationUuid}")  -> organizationUuid,
+          quote("{organization2Uuid}") -> organization2Uuid
         )
-        val result = Json.arr(events.map(e => parse(e.getData()).rightValue): _*)
-        removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
-          "/kg/events/events-multi-project.json",
-          Map(
-            quote("{resources}")         -> s"$kgBase/resources/$id",
-            quote("{iamBase}")           -> config.iam.uri.toString(),
-            quote("{realm}")             -> config.iam.testRealm,
-            quote("{user}")              -> config.iam.testUserSub,
-            quote("{projectUuid}")       -> projectUuid,
-            quote("{project2Uuid}")      -> project2Uuid,
-            quote("{organizationUuid}")  -> organizationUuid,
-            quote("{organization2Uuid}") -> organization2Uuid
-          )
-        )
+      )
 
     }
   }
