@@ -627,9 +627,8 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", requestHeaders))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
-          // TODO: Remove the duplicated mybucket when the issue on the minio side is fixed: https://github.com/minio/minio/issues/10054
           json.hcursor.get[String]("_location").rightValue should startWith(
-            s"http://$bucket.$bucket.minio.dev.nexus.ocp.bbp.epfl.ch"
+            s"http://$bucket.minio.dev.nexus.ocp.bbp.epfl.ch"
           )
           json.removeKeys("_createdAt", "_updatedAt", "_location") shouldEqual expected
         }
