@@ -45,7 +45,7 @@ class EventsSpec
     "add necessary permissions for user" in {
       val json = jsonContentOf(
         "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create\",\"events/read")
+        replSub + (quote("{perms}") -> "organizations/create\",\"events/read\",\"resources/read")
       ).toEntity
       cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
