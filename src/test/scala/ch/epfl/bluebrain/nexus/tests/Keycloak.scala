@@ -10,6 +10,7 @@ import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import io.circe.Json
 import io.circe.optics.JsonPath._
 import monix.bio.Task
+import scala.concurrent.duration._
 
 trait Keycloak
 
@@ -41,8 +42,13 @@ object Keycloak extends Keycloak {
       )
     ).flatMap { res =>
       Task.deferFuture{ um(res.entity) }
+    }.onErrorRestartLoop((10, 20.second)) { (err, state, retry) =>
+           val (maxRetries, delay) = state
+      if (maxRetries > 0)
+            retry((maxRetries - 1, delay * 2)).delayExecution(delay)
+      else
+        Task.raiseError(err)
     }.runSyncUnsafe()
-
     _access_token.getOption(response)
       .getOrElse(
         throw new IllegalArgumentException(
