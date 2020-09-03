@@ -12,10 +12,11 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpEntity, MediaRanges, MediaTypes, StatusCodes, HttpRequest => Req}
 import akka.stream.scaladsl.{Sink, StreamConverters}
 import akka.util.ByteString
-import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import io.circe.Printer
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.scalatest.concurrent.Eventually
@@ -73,18 +74,18 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "creating projects" should {
 
-    "created org using service account" in {
+    "created org using service account" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersServiceAccount, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "add necessary ACLs for user" in {
+    "add necessary ACLs for user" taggedAs ToMigrateTag in {
       val json = jsonContentOf("/iam/add.json", replSub + (quote("{perms}") -> "projects/create")).toEntity
       cl(Req(PATCH, s"$iamBase/acls/$orgId?rev=1", headersServiceAccount, json))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "succeed if payload is correct" in {
+    "succeed if payload is correct" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/projects/$fullId", headersJsonUser, kgProjectReqEntity(name = fullId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
 
@@ -93,7 +94,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     }
   }
 
-  "creating resources" in {
+  "creating resources" taggedAs ToMigrateTag in {
 
     val source        = StreamConverters.fromInputStream(() => getClass.getResourceAsStream("/kg/files/nexus-logo.png"))
     val entity        = HttpEntity.IndefiniteLength(MediaTypes.`image/png`, source)
@@ -113,14 +114,14 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "creating archives" should {
 
-    "succeed" in {
+    "succeed" taggedAs ToMigrateTag in {
       val payload = jsonContentOf("/kg/archives/archive3.json", Map(quote("{project2}") -> fullId2))
 
       cl(Req(PUT, s"$kgBase/archives/$fullId/test-resource:archive", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "failed if payload is wrong" in {
+    "failed if payload is wrong" taggedAs ToMigrateTag in {
       val payload = jsonContentOf("/kg/archives/archive-wrong.json")
 
       cl(Req(PUT, s"$kgBase/archives/$fullId/archive2", headersJsonUser, payload.toEntity))
@@ -131,7 +132,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "failed on wrong path" in {
+    "failed on wrong path" taggedAs ToMigrateTag in {
       val wrong    = List.tabulate(2)(i => jsonContentOf(s"/kg/archives/archive-wrong-path${i + 1}.json"))
       val expected = jsonContentOf("/kg/archives/archive-path-invalid.json")
       forAll(wrong) { payload =>
@@ -143,7 +144,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "failed on path collisions" in {
+    "failed on path collisions" taggedAs ToMigrateTag in {
       val collisions = List.tabulate(2)(i => jsonContentOf(s"/kg/archives/archive-path-collision${i + 1}.json"))
       val expected = jsonContentOf(
         "/kg/archives/archive-path-dup.json",
@@ -161,7 +162,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "fetching archive" should {
 
-    "succeed returning metadata" in {
+    "succeed returning metadata" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/archives/$fullId/test-resource:archive", headersJsonUser))
         .mapJson { (json, result) =>
           val resp = jsonContentOf(
@@ -179,7 +180,7 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "succeed returning binary" in {
+    "succeed returning binary" taggedAs ToMigrateTag in {
       val prefix = "https:%2F%2Fdev.nexus.test.com%2Fsimplified-resource%2F"
       cl(Req(GET, s"$kgBase/archives/$fullId/test-resource:archive", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
         .mapByteString { (byteString, result) =>
@@ -195,21 +196,21 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "delete resources/read permissions for user on project 2" in {
+    "delete resources/read permissions for user on project 2" taggedAs ToMigrateTag in {
       val json =
         jsonContentOf("/iam/subtract-permissions.json", replSub + (quote("{perms}") -> "resources/read")).toEntity
       cl(Req(PATCH, s"$iamBase/acls/$fullId2?rev=1", headersServiceAccount, json))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "failed when a resource in the archive cannot be fetched" in {
+    "failed when a resource in the archive cannot be fetched" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/archives/$fullId/test-resource:archive", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
         .mapJson { (json, result) =>
           json shouldEqual jsonContentOf("/kg/archives/archive-element-not-found.json")
           result.status shouldEqual StatusCodes.NotFound
         }
     }
-    "succeed returning metadata using query param ignoreNotFound" in {
+    "succeed returning metadata using query param ignoreNotFound" taggedAs ToMigrateTag in {
       cl(
         Req(
           GET,

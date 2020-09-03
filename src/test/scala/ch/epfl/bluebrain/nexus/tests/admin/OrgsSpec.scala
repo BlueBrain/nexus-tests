@@ -7,6 +7,7 @@ import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
@@ -16,14 +17,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
   "creating an organization" should {
 
-    "fail if the permissions are missing" in {
+    "fail if the permissions are missing" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/${genId()}", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
         json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
       }
     }
 
-    "add necessary permissions for user" in {
+    "add necessary permissions for user"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
@@ -39,14 +40,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     val id = genId()
 
-    "succeed if payload is correct" in {
+    "succeed if payload is correct"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
     }
 
-    "check if permissions have been created for user" in {
+    "check if permissions have been created for user"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/$id", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl.head.permissions shouldEqual Set(
@@ -72,7 +73,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       }
     }
 
-    "fail if organization already exists" in {
+    "fail if organization already exists"  taggedAs ToMigrateTag in {
       val id = genId()
       cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
@@ -91,7 +92,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
   "fetching an organization" should {
     val id     = genId()
     val create = orgReqEntity(s"$id organization")
-    "fail if the permissions are missing" in {
+    "fail if the permissions are missing"  taggedAs ToMigrateTag in {
 
       cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
@@ -105,7 +106,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       }
     }
 
-    "add orgs/read permissions for user" in {
+    "add orgs/read permissions for user"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/read")
@@ -116,14 +117,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     }
 
-    "succeed if organization exists" in {
+    "succeed if organization exists"  taggedAs ToMigrateTag in {
       cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateAdminResource(json, "Organization", "orgs", id, s"$id organization", 1L, id)
       }
     }
 
-    "fetch organization by UUID" in {
+    "fetch organization by UUID"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$adminBase/orgs/$id", headersUser)).mapJson { (orgJson, _) =>
         val orgUuid = orgJson.hcursor.get[String]("_uuid").rightValue
         cl(Req(GET, s"$adminBase/orgs/$orgUuid/", headersUser)).mapJson { (json, result) =>
@@ -133,14 +134,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       }
     }
 
-    "return not found when fetching a non existing revision of an organizations" in {
+    "return not found when fetching a non existing revision of an organizations"  taggedAs ToMigrateTag in {
       cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headersJsonUser)).mapResp { result =>
         result.status shouldEqual StatusCodes.NotFound
       }
     }
 
     val nonExistent = genId()
-    "add orgs/read permissions for non-existing organization" in {
+    "add orgs/read permissions for non-existing organization"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/read")
@@ -155,7 +156,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     }
 
-    "return not found when fetching a non existing organization" in {
+    "return not found when fetching a non existing organization"  taggedAs ToMigrateTag in {
       cl(Req(uri = s"$adminBase/orgs/$nonExistent", headers = headersJsonUser)).mapResp { result =>
         result.status shouldEqual StatusCodes.NotFound
       }
@@ -167,7 +168,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     val id     = genId()
     val create = orgReqEntity(s"$id organization")
 
-    "add orgs/create permissions for user" in {
+    "add orgs/create permissions for user"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
@@ -178,14 +179,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     }
 
-    "create organization" in {
+    "create organization"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
     }
 
-    "fail if the permissions are missing" in {
+    "fail if the permissions are missing"  taggedAs ToMigrateTag in {
       cleanAcls
       cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
@@ -194,7 +195,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     }
 
-    "add orgs/write permissions for user" in {
+    "add orgs/write permissions for user"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/write\",\"organizations/read")
@@ -204,7 +205,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       }
     }
 
-    "fail when wrong revision is provided" in {
+    "fail when wrong revision is provided"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$id?rev=4", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
         json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json", errorCtx)
@@ -212,7 +213,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     }
 
     val nonExistent = genId()
-    "add orgs/read permissions for non-existing organization" in {
+    "add orgs/read permissions for non-existing organization"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/write")
@@ -227,14 +228,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     }
 
-    "fail when organization does not exist" in {
+    "fail when organization does not exist"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$nonExistent?rev=1", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.NotFound
         json shouldEqual jsonContentOf("/admin/errors/not-exists.json", Map(quote("{orgId}") -> nonExistent))
       }
     }
 
-    "succeed and fetch revisions" in {
+    "succeed and fetch revisions"  taggedAs ToMigrateTag in {
 
       val updatedName = s"$id organization update 1"
       val update      = orgReqEntity(updatedName)
@@ -284,7 +285,7 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
     val name   = genString()
     val create = orgReqEntity(name)
 
-    "add orgs/create permissions for user" in {
+    "add orgs/create permissions for user"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
@@ -295,14 +296,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
 
     }
 
-    "create the organization" in {
+    "create the organization"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
       }
     }
 
-    "fail when wrong revision is provided" in {
+    "fail when wrong revision is provided"  taggedAs ToMigrateTag in {
 
       cl(Req(DELETE, s"$adminBase/orgs/$id?rev=4", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
@@ -310,14 +311,14 @@ class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with E
       }
     }
 
-    "fail when revision is not provided" in {
+    "fail when revision is not provided"  taggedAs ToMigrateTag in {
       cl(Req(DELETE, s"$adminBase/orgs/$id", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.BadRequest
         json shouldEqual jsonContentOf("/admin/errors/rev-not-provided.json")
       }
     }
 
-    "succeed if organization exists" in {
+    "succeed if organization exists"  taggedAs ToMigrateTag in {
       cl(Req(DELETE, s"$adminBase/orgs/$id?rev=1", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 2L, "orgs", "Organization", true)

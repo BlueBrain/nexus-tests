@@ -7,10 +7,11 @@ import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.scaladsl.{Sink, Source}
-import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
 import org.scalatest.concurrent.Eventually
@@ -25,7 +26,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   private val id2     = s"$orgId/$projId2"
 
   "fetching information" should {
-    "return the software version" in {
+    "return the software version" taggedAs ToMigrateTag in {
       cl(Req(GET, config.kg.version)).mapJson { (json, result) =>
         json.asObject.value.keys.toSet shouldEqual
           Set("delta", "storage", "elasticsearch", "blazegraph")
@@ -33,7 +34,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "return the cassandra and cluster status" in {
+    "return the cassandra and cluster status" taggedAs ToMigrateTag in {
       cl(Req(GET, config.kg.status)).mapJson { (json, result) =>
         json shouldEqual
           Json.obj(
@@ -50,7 +51,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   "creating projects" should {
 
-    "add necessary permissions for user" in {
+    "add necessary permissions for user" taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
@@ -64,7 +65,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "succeed if payload is correct" in {
+    "succeed if payload is correct" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
       cl(Req(PUT, s"$adminBase/projects/$id1", headersJsonUser, kgProjectReqEntity(name = id1)))
@@ -75,7 +76,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   }
 
   "adding schema" should {
-    "create a schema" in {
+    "create a schema" taggedAs ToMigrateTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
       eventually {
@@ -83,14 +84,14 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
           .mapResp(_.status shouldEqual StatusCodes.Created)
       }
     }
-    "creating a schema with property shape" in {
+    "creating a schema with property shape" taggedAs ToMigrateTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-prop-shape.json")
 
       cl(Req(POST, s"$kgBase/schemas/$id1", headersJsonUser, schemaPayload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "creating a schema that imports the property shape schema" in {
+    "creating a schema that imports the property shape schema" taggedAs ToMigrateTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-imports.json")
 
       eventually {
@@ -101,7 +102,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   }
 
   "creating a resource" should {
-    "succeed if the payload is correct" in {
+    "succeed if the payload is correct" taggedAs ToMigrateTag in {
       val payload =
         jsonContentOf(
           "/kg/resources/simple-resource.json",
@@ -123,7 +124,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "fetch the payload wih metadata" in {
+    "fetch the payload wih metadata" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersJsonUser)).mapJson { (json, result) =>
         val expected = jsonContentOf(
           "/kg/resources/simple-resource-response.json",
@@ -142,7 +143,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "fetch the original payload" in {
+    "fetch the original payload" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/source", headersJsonUser)).mapJson {
         (json, result) =>
           val expected =
@@ -162,7 +163,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         "/kg/resources/cross-project-resolver.json",
         Map(quote("{project}") -> id1, quote("{user}") -> config.iam.testUserSub)
       )
-    "fail if the schema doesn't exist in the project" in {
+    "fail if the schema doesn't exist in the project" taggedAs ToMigrateTag in {
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
         Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
@@ -172,19 +173,19 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         .mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
 
-    "fail to create a cross-project-resolver for proj2 if identities are missing" in {
+    "fail to create a cross-project-resolver for proj2 if identities are missing" taggedAs ToMigrateTag in {
 
       cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.removeKeys("identities").toEntity))
         .mapResp(_.status shouldEqual StatusCodes.BadRequest)
     }
 
-    "create a cross-project-resolver for proj2" in {
+    "create a cross-project-resolver for proj2" taggedAs ToMigrateTag in {
 
       cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "update a cross-project-resolver for proj2" in {
+    "update a cross-project-resolver for proj2" taggedAs ToMigrateTag in {
       val updated = resolverPayload deepMerge Json.obj("priority" -> Json.fromInt(20))
       eventually {
         cl(Req(PUT, s"$kgBase/resolvers/$id2/example-id?rev=1", headersJsonUser, updated.toEntity))
@@ -192,7 +193,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "fetch the update" in {
+    "fetch the update" taggedAs ToMigrateTag in {
       val expected =
         jsonContentOf(
           "/kg/resources/cross-project-resolver-updated-resp.json",
@@ -211,7 +212,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "wait for the cross-project resolver to be indexed" in {
+    "wait for the cross-project resolver to be indexed" taggedAs ToMigrateTag in {
       val expected = jsonContentOf(
         "/kg/resources/cross-project-resolver-list.json",
         Map(
@@ -231,7 +232,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    s"fetches a resource in project '$id1' through project '$id2' resolvers" in {
+    s"fetches a resource in project '$id1' through project '$id2' resolvers" taggedAs ToMigrateTag in {
 
       cl(Req(GET, s"$kgBase/schemas/$id1/test-schema", headersJsonUser)).mapJson { (json, result1) =>
         result1.status shouldEqual StatusCodes.OK
@@ -251,7 +252,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "resolve schema from the other project" in {
+    "resolve schema from the other project" taggedAs ToMigrateTag in {
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
         Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
@@ -266,7 +267,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   }
 
   "updating a resource" should {
-    "send the update" in {
+    "send the update" taggedAs ToMigrateTag in {
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
         Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
@@ -275,7 +276,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
-    "fetch the update" in {
+    "fetch the update" taggedAs ToMigrateTag in {
       val expected = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
         Map(
@@ -296,7 +297,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "fetch previous revision" in {
+    "fetch previous revision" taggedAs ToMigrateTag in {
       val expected = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
         Map(
@@ -320,7 +321,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   "tagging a resource" should {
 
-    "create a tag" in {
+    "create a tag" taggedAs ToMigrateTag in {
       val tag1 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1"))
       val tag2 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.1", quote("{rev}") -> "2"))
 
@@ -330,7 +331,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "fetch a tagged value" in {
+    "fetch a tagged value" taggedAs ToMigrateTag in {
 
       val expectedTag1 = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
@@ -371,7 +372,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
   "listing resources" should {
 
-    "list default resources" in {
+    "list default resources" taggedAs ToMigrateTag in {
       val mapping = Map(
         quote("{kgBase}")        -> kgBase.toString(),
         quote("{project-label}") -> id1,
@@ -396,7 +397,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "add more resource to the project" in {
+    "add more resource to the project" taggedAs ToMigrateTag in {
 
       forAll(2 to 5) { resourceId =>
         val payload = jsonContentOf(
@@ -409,7 +410,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
 
     }
 
-    "list the resources" in {
+    "list the resources" taggedAs ToMigrateTag in {
       val expected = jsonContentOf(
         "/kg/listings/response.json",
         Map(
@@ -428,7 +429,7 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "return 400 when using both from and after" in {
+    "return 400 when using both from and after" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10&after=%5B%22test%22%5D", headersJsonUser)).mapJson {
         (json, result) =>
           result.status shouldEqual StatusCodes.BadRequest
@@ -436,14 +437,14 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       }
     }
 
-    "return 400 when from is bigger than limit" in {
+    "return 400 when from is bigger than limit" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10001", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.BadRequest
         json shouldEqual jsonContentOf("/kg/listings/from-over-limit-error.json")
       }
     }
 
-    "list responses using after" in {
+    "list responses using after" taggedAs ToMigrateTag in {
 
       val um = implicitly[FromEntityUnmarshaller[Json]]
       val result = Source
@@ -477,28 +478,28 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
       result shouldEqual expected
     }
 
-    "create context" in {
+    "create context" taggedAs ToMigrateTag in {
       val payload = jsonContentOf("/kg/resources/simple-context.json")
 
       cl(Req(PUT, s"$kgBase/resources/$id1/_/test-resource:mycontext", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "create resource using the created context" in {
+    "create resource using the created context" taggedAs ToMigrateTag in {
       val payload = jsonContentOf("/kg/resources/simple-resource-context.json")
 
       cl(Req(POST, s"$kgBase/resources/$id1/", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "update context" in {
+    "update context" taggedAs ToMigrateTag in {
       val payload = Json.obj("@context" -> Json.obj("alias" -> Json.fromString("http://example.com/alias")))
 
       cl(Req(PUT, s"$kgBase/resources/$id1/_/test-resource:mycontext?rev=1", headersJsonUser, payload.toEntity))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "fetched previously created resource" in {
+    "fetched previously created resource" taggedAs ToMigrateTag in {
       val resourceId = URLEncoder.encode("http://example.com/base/myid", "UTF-8")
       cl(Req(GET, s"$kgBase/resources/$id1/_/$resourceId", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK

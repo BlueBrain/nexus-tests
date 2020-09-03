@@ -5,14 +5,15 @@ import java.util.regex.Pattern.quote
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, MediaTypes, StatusCodes, HttpRequest => Req}
-import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import io.circe.Json
-import org.scalatest.{CancelAfterFailure, Inspectors}
 import org.scalatest.concurrent.Eventually
+import org.scalatest.{CancelAfterFailure, Inspectors}
 
 import scala.collection.immutable.Seq
 
@@ -27,7 +28,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
   "creating projects" should {
 
-    "add necessary permissions for user" in {
+    "add necessary permissions for user" taggedAs ToMigrateTag in {
       val json      = jsonContentOf("/iam/add.json", replSub + (quote("{perms}")       -> "organizations/create")).toEntity
       val jsonAnnon = jsonContentOf("/iam/add_annon.json", replSub + (quote("{perms}") -> "views/query")).toEntity
 
@@ -37,7 +38,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "succeed if payload is correct" in {
+    "succeed if payload is correct" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
       cl(Req(PUT, s"$adminBase/projects/$fullId", headersJsonUser, kgProjectReqEntity(name = fullId)))
@@ -50,7 +51,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
 
   "creating the view" should {
 
-    "create a context" in {
+    "create a context" taggedAs ToMigrateTag in {
       val payload = jsonContentOf("/kg/views/context.json")
       forAll(List(fullId, fullId2)) { project =>
         cl(Req(PUT, s"$kgBase/resources/$project/resource/test-resource:context", headersJsonUser, payload.toEntity))
@@ -58,7 +59,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "wait until in project resolver is created" in {
+    "wait until in project resolver is created" taggedAs ToMigrateTag in {
       eventually {
         cl(Req(GET, s"$kgBase/resolvers/$fullId", headersJsonUser)).mapJson { (json, result) =>
           json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 1
@@ -67,7 +68,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "create an ElasticSearch view" in {
+    "create an ElasticSearch view" taggedAs ToMigrateTag in {
 
       val payload = jsonContentOf("/kg/views/elastic-view.json")
 
@@ -103,7 +104,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         }
     }
 
-    "create an AggregateSparqlView" in {
+    "create an AggregateSparqlView" taggedAs ToMigrateTag in {
 
       val payload = jsonContentOf(
         "/kg/views/agg-sparql-view.json",
@@ -116,7 +117,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "create an AggregateElasticSearchView" in {
+    "create an AggregateElasticSearchView" taggedAs ToMigrateTag in {
 
       val payload = jsonContentOf(
         "/kg/views/agg-elastic-view.json",
@@ -169,7 +170,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         }
     }
 
-    "post instances" in {
+    "post instances" taggedAs ToMigrateTag in {
 
       forAll(1 to 8) { i =>
         val payload      = jsonContentOf(s"/kg/views/instances/instance$i.json")
@@ -187,7 +188,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "wait until in project view is indexed" in {
+    "wait until in project view is indexed" taggedAs ToMigrateTag in {
       eventually {
         cl(Req(GET, s"$kgBase/views/$fullId", headersJsonUser)).mapJson { (json, result) =>
           json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 4
@@ -196,7 +197,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "wait until all instances are indexed in default view of project 2" in {
+    "wait until all instances are indexed in default view of project 2" taggedAs ToMigrateTag in {
       eventually {
         cl(Req(GET, s"$kgBase/resources/$fullId2/resource", headersJsonUser)).mapJson { (json, result) =>
           json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 4
@@ -205,7 +206,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "return 400 with bad query instances" in {
+    "return 400 with bad query instances" taggedAs ToMigrateTag in {
 
       val query = Json.obj("query" -> Json.obj("other" -> Json.obj()))
 
@@ -291,7 +292,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "fetch statistics for testView" in {
+    "fetch statistics for testView" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/views/$fullId/test-resource:testView/statistics", headersJsonUser))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -307,7 +308,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         }
     }
 
-    "fetch statistics for defaultElasticSearchIndex" in {
+    "fetch statistics for defaultElasticSearchIndex" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultElasticSearchIndex/statistics", headersJsonUser))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -361,7 +362,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "search instances in AggregateSparqlView when logged" in {
+    "search instances in AggregateSparqlView when logged" taggedAs ToMigrateTag in {
       cl(
         Req(
           POST,
@@ -375,7 +376,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "search instances in AggregateSparqlView as anonymous" in {
+    "search instances in AggregateSparqlView as anonymous" taggedAs ToMigrateTag in {
       cl(
         Req(
           POST,
@@ -389,7 +390,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "fetch statistics for defaultSparqlIndex" in {
+    "fetch statistics for defaultSparqlIndex" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$kgBase/views/$fullId/nxv:defaultSparqlIndex/statistics", headersJsonUser))
         .mapJson { (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -419,7 +420,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "tag resources resource" in {
+    "tag resources resource" taggedAs ToMigrateTag in {
 
       forAll(1 to 5) { i =>
         val payload      = jsonContentOf(s"/kg/views/instances/instance$i.json")
@@ -450,7 +451,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
       }
     }
 
-    "remove @type on a resource" in {
+    "remove @type on a resource" taggedAs ToMigrateTag in {
 
       val payload      = jsonContentOf("/kg/views/instances/instance1.json").removeKeys("@type")
       val id           = payload.asObject.value("@id").value.asString.value
@@ -481,7 +482,7 @@ class ViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfte
         }
     }
 
-    "deprecate a resource" in {
+    "deprecate a resource" taggedAs ToMigrateTag in {
       val payload      = jsonContentOf("/kg/views/instances/instance2.json").removeKeys("@type")
       val id           = payload.asObject.value("@id").value.asString.value
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")

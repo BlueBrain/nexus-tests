@@ -9,10 +9,11 @@ import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.model.{HttpRequest => Req, _}
 import akka.stream.alpakka.sse.scaladsl.EventSource
 import akka.stream.scaladsl.Sink
-import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import com.fasterxml.uuid.Generators
 import io.circe.Json
@@ -42,7 +43,7 @@ class EventsSpec
 
   "creating projects" should {
 
-    "add necessary permissions for user" in {
+    "add necessary permissions for user" taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create\",\"events/read\",\"resources/read")
@@ -56,21 +57,21 @@ class EventsSpec
       }
     }
 
-    "succeed creating project 1 if payload is correct" in {
+    "succeed creating project 1 if payload is correct" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
       cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, kgProjectReqEntity(name = id)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "succeed creating project 2 if payload is correct" in {
+    "succeed creating project 2 if payload is correct" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId2", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
       cl(Req(PUT, s"$adminBase/projects/$id2", headersJsonUser, kgProjectReqEntity(name = id)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "wait for default project events" in {
+    "wait for default project events" taggedAs ToMigrateTag in {
       eventually {
         val endpoints = List(
           s"$kgBase/views/$id/nxv:defaultElasticSearchIndex",
@@ -89,7 +90,7 @@ class EventsSpec
       }
     }
 
-    "wait for storages to be indexed" in {
+    "wait for storages to be indexed" taggedAs ToMigrateTag in {
       val endpoints = List(
         s"$kgBase/storages/$id",
         s"$kgBase/storages/$id2"
@@ -109,7 +110,7 @@ class EventsSpec
 
   "fetching events" should {
 
-    "add events to project" in {
+    "add events to project" taggedAs ToMigrateTag in {
 
       //Created event
       val payload = jsonContentOf(
@@ -175,7 +176,7 @@ class EventsSpec
 
     }
 
-    "fetch resource events filtered by project" in {
+    "fetch resource events filtered by project" taggedAs ToMigrateTag in {
 
       val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
@@ -216,7 +217,7 @@ class EventsSpec
       )
     }
 
-    "fetch resource events filtered by organization 1" in {
+    "fetch resource events filtered by organization 1" taggedAs ToMigrateTag in {
 
       val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
@@ -257,7 +258,7 @@ class EventsSpec
       )
     }
 
-    "fetch resource events filtered by organization 2" in {
+    "fetch resource events filtered by organization 2" taggedAs ToMigrateTag in {
 
       val projectUuid = cl(Req(GET, s"$adminBase/projects/$id2", headersJsonUser)).jsonValue.asObject
         .value("_uuid")
@@ -296,7 +297,7 @@ class EventsSpec
       )
     }
 
-    "fetch global events" in {
+    "fetch global events" taggedAs ToMigrateTag in {
 
       val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
         .value("_uuid")

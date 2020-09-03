@@ -4,142 +4,16 @@ import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
-import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.Randomness
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import ch.epfl.bluebrain.nexus.tests.iam.types._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{CancelAfterFailure, Inspectors}
 
 class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Eventually with Randomness {
 
-  "manage realms" should {
-
-    var rev = 1L
-
-    "fetch realm revision" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
-        .mapJson { (json, result) =>
-          rev = json.hcursor.get[Long]("_rev").getOrElse(rev)
-          result.status shouldEqual StatusCodes.OK
-        }
-    }
-
-    "re-create realm" in {
-      val body =
-        jsonContentOf(
-          "/iam/realms/create.json",
-          Map(
-            quote("{realm}") -> config.iam.testRealm
-          )
-        ).toEntity
-
-      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=$rev", headersServiceAccount, body))
-        .mapJson { (json, _) =>
-          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
-            "/iam/realms/ref-response.json",
-            Map(
-              quote("{realm}")      -> config.iam.testRealm,
-              quote("{iamBase}")    -> config.iam.uri.toString,
-              quote("{label}")      -> realmLabel,
-              quote("{rev}")        -> s"${rev + 1}",
-              quote("{deprecated}") -> "false"
-            )
-          )
-        }
-    }
-
-    "fetch realm" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
-        .mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
-            "/iam/realms/fetch-response.json",
-            Map(
-              quote("{realm}")   -> config.iam.testRealm,
-              quote("{iamBase}") -> config.iam.uri.toString,
-              quote("{rev}")     -> s"${rev + 1}",
-              quote("{label}")   -> realmLabel
-            )
-          )
-        }
-    }
-
-    "update realm" in {
-
-      val body =
-        jsonContentOf(
-          "/iam/realms/update.json",
-          Map(
-            quote("{realm}") -> config.iam.testRealm
-          )
-        ).toEntity
-      cl(Req(PUT, s"$iamBase/realms/$realmLabel?rev=${rev + 1}", headersServiceAccount, body))
-        .mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
-            "/iam/realms/ref-response.json",
-            Map(
-              quote("{realm}")      -> config.iam.testRealm,
-              quote("{iamBase}")    -> config.iam.uri.toString,
-              quote("{label}")      -> realmLabel,
-              quote("{rev}")        -> s"${rev + 2}",
-              quote("{deprecated}") -> "false"
-            )
-          )
-        }
-    }
-
-    "fetch updated realm" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
-        .mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
-            "/iam/realms/fetch-updated-response.json",
-            Map(
-              quote("{realm}")   -> config.iam.testRealm,
-              quote("{iamBase}") -> config.iam.uri.toString,
-              quote("{rev}")     -> s"${rev + 2}",
-              quote("{label}")   -> realmLabel
-            )
-          )
-        }
-
-    }
-
-    "deprecate realm" in {
-      cl(Req(DELETE, s"$iamBase/realms/$realmLabel?rev=${rev + 2}", headersServiceAccount))
-        .mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
-            "/iam/realms/ref-response.json",
-            Map(
-              quote("{realm}")      -> config.iam.testRealm,
-              quote("{iamBase}")    -> config.iam.uri.toString,
-              quote("{label}")      -> realmLabel,
-              quote("{rev}")        -> s"${rev + 3}",
-              quote("{deprecated}") -> "true"
-            )
-          )
-        }
-    }
-    "fetch deprecated realm" in {
-      cl(Req(GET, s"$iamBase/realms/$realmLabel", headersServiceAccount))
-        .mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_createdBy", "_updatedAt", "_updatedBy") shouldEqual jsonContentOf(
-            "/iam/realms/fetch-deprecated-response.json",
-            Map(
-              quote("{realm}")   -> config.iam.testRealm,
-              quote("{iamBase}") -> config.iam.uri.toString,
-              quote("{rev}")     -> s"${rev + 3}",
-              quote("{label}")   -> realmLabel
-            )
-          )
-        }
-    }
-  }
   "manage permissions" should {
 
     val permission1 = s"${genString(8)}/${genString(8)}"
@@ -169,7 +43,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       "archives/write"
     )
 
-    "clear permissions" in {
+    "clear permissions" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (permissions.permissions == minimumPermissions)
@@ -179,7 +53,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
             .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
-    "add permissions" in {
+    "add permissions"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf(
@@ -193,14 +67,14 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "check added permissions" in {
+    "check added permissions"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual minimumPermissions + permission1 + permission2
       }
     }
 
-    "subtract permissions" in {
+    "subtract permissions"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf(
@@ -214,14 +88,14 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
 
     }
-    "check subtracted permissions" in {
+    "check subtracted permissions"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual minimumPermissions + permission1
       }
     }
 
-    "replace permissions" in {
+    "replace permissions"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body =
@@ -236,14 +110,14 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "check replaced permissions" in {
+    "check replaced permissions"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual minimumPermissions + permission1 + permission2
       }
     }
 
-    "reject subtracting minimal permission" in {
+    "reject subtracting minimal permission"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf(
@@ -257,7 +131,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "reject replacing minimal permission" in {
+    "reject replacing minimal permission"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         val body = jsonContentOf(
@@ -278,7 +152,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
     val projectPath1 = genString()
     val projectPath2 = genString()
 
-    "add permissions for user on /" in {
+    "add permissions for user on /"  taggedAs ToMigrateTag in {
       ensureRealmExists
       val json =
         jsonContentOf(
@@ -294,7 +168,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "fetch permissions for user" in {
+    "fetch permissions for user"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/?self=false", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl
@@ -307,7 +181,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "delete some permissions for user" in {
+    "delete some permissions for user"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapJson { (js, result) =>
         result.status shouldEqual StatusCodes.OK
         val acls = js
@@ -323,7 +197,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "check if permissions were removed" in {
+    "check if permissions were removed"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/?self=false", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl
@@ -336,7 +210,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "add permissions for user on paths with depth1" in {
+    "add permissions for user on paths with depth1"  taggedAs ToMigrateTag in {
       val json =
         jsonContentOf(
           "/iam/add.json",
@@ -351,7 +225,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "add permissions for user on /orgpath/projectpath1 and /orgpath/projectpath2" in {
+    "add permissions for user on /orgpath/projectpath1 and /orgpath/projectpath2"  taggedAs ToMigrateTag in {
       val body =
         jsonContentOf(
           "/iam/add.json",
@@ -367,7 +241,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "list permissions on /*/*" in {
+    "list permissions on /*/*"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/*/*", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._total should be >= 4L
@@ -399,7 +273,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "list permissions on /orgpath1/*" in {
+    "list permissions on /orgpath1/*"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/$orgPath1/*", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._total shouldEqual 2
@@ -420,7 +294,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
       }
     }
 
-    "list permissions on /*/* with ancestors" in {
+    "list permissions on /*/* with ancestors"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/*/*?ancestors=true", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         val expectedPermissions = Set("projects/create", "projects/read", "projects/write")

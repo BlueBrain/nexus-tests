@@ -14,6 +14,7 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
 import io.circe.Json
 import org.apache.commons.codec.Charsets
@@ -68,7 +69,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "creating projects" should {
 
-    "add necessary permissions for custom storage" in {
+    "add necessary permissions for custom storage" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
         if (permissions.permissions.contains("some-read") && permissions.permissions.contains("some-write"))
@@ -86,7 +87,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "add necessary ACLs for user" in {
+    "add necessary ACLs for user" taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
@@ -100,7 +101,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "succeed if payload is correct" in {
+    "succeed if payload is correct" taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
         .mapResp(_.status shouldEqual StatusCodes.Created)
       cl(Req(PUT, s"$adminBase/projects/$fullId", headersJsonUser, kgProjectReqEntity(name = fullId)))
@@ -110,7 +111,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "creating a storage" should {
 
-    "succeed creating a DiskStorage" in {
+    "succeed creating a DiskStorage" taggedAs ToMigrateTag in {
       val payload = jsonContentOf("/kg/storages/disk.json")
       eventually {
         cl(Req(POST, s"$kgBase/storages/$fullId", headersJsonUser, payload.toEntity))
@@ -180,7 +181,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "succeed creating a RemoteDiskStorage" in {
+    "succeed creating a RemoteDiskStorage" taggedAs ToMigrateTag in {
       val payload = jsonContentOf(
         "/kg/storages/remote-disk.json",
         Map(
@@ -282,7 +283,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "succeed creating an S3Storage" in {
+    "succeed creating an S3Storage" taggedAs ToMigrateTag in {
       val payload = jsonContentOf(
         "/kg/storages/s3.json",
         Map(
@@ -377,7 +378,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fail creating a DiskStorage on a wrong volume" in {
+    "fail creating a DiskStorage on a wrong volume" taggedAs ToMigrateTag in {
       val volume  = "/" + genString()
       val payload = jsonContentOf("/kg/storages/disk.json") deepMerge Json.obj("volume" -> Json.fromString(volume))
 
@@ -390,7 +391,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "fail creating an S3Storage with an invalid bucket" in {
+    "fail creating an S3Storage with an invalid bucket" taggedAs ToMigrateTag in {
       val payload = jsonContentOf(
         "/kg/storages/s3.json",
         Map(
@@ -411,7 +412,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "fail creating a RemoteDiskStorage without folder" in {
+    "fail creating a RemoteDiskStorage without folder" taggedAs ToMigrateTag in {
       val payload = jsonContentOf(
         "/kg/storages/remote-disk.json",
         Map(
@@ -430,7 +431,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "wait for storages to be indexed" in {
+    "wait for storages to be indexed" taggedAs ToMigrateTag in {
 
       eventually {
         cl(Req(GET, s"$kgBase/storages/$fullId", headersJsonUser))
@@ -444,7 +445,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "uploading an attachment against the S3 storage" should {
 
-    "link an existing file" in {
+    "link an existing file" taggedAs ToMigrateTag in {
       val payload = Json.obj(
         "filename"  -> Json.fromString("logo.png"),
         "path"      -> Json.fromString(logoKey),
@@ -470,7 +471,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fail to link a nonexistent file" in {
+    "fail to link a nonexistent file" taggedAs ToMigrateTag in {
       val payload = Json.obj(
         "filename"  -> Json.fromString("logo.png"),
         "path"      -> Json.fromString("non/existent.png"),
@@ -496,7 +497,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "fetch attachment" in {
+    "fetch attachment" taggedAs ToMigrateTag in {
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
         .mapString { (content, result) =>
@@ -527,7 +528,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "update attachment with JSON" in {
+    "update attachment with JSON" taggedAs ToMigrateTag in {
       val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment2.json"))
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "s3attachment.json"))).toEntity()
@@ -542,7 +543,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "fetch updated attachment" in {
+    "fetch updated attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment2.json")
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
@@ -557,7 +558,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fetch previous revision of attachment" in {
+    "fetch previous revision of attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(
@@ -588,7 +589,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "fetch second attachment" in {
+    "fetch second attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment2")
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:s3attachment2", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
@@ -602,12 +603,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "delete the attachment" in {
+    "delete the attachment" taggedAs ToMigrateTag in {
       cl(Req(DELETE, s"$kgBase/files/$fullId/attachment:s3attachment.json?rev=2", headersJsonUser))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "fetch attachment metadata" in {
+    "fetch attachment metadata" taggedAs ToMigrateTag in {
 
       val expected = jsonContentOf(
         "/kg/files/attachment-metadata.json",
@@ -645,7 +646,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
 
-    "add ACLs for custom storage" in {
+    "add ACLs for custom storage" taggedAs ToMigrateTag in {
       forAll(List("s3/read", "s3/write")) { perm =>
         val json = jsonContentOf(
           "/iam/add.json",
@@ -689,7 +690,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "fetch attachment" in {
+    "fetch attachment" taggedAs ToMigrateTag in {
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
         .mapString { (content, result) =>
@@ -726,7 +727,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "update attachment with JSON" in {
+    "update attachment with JSON" taggedAs ToMigrateTag in {
       val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment2.json"))
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "extattachment.json"))).toEntity()
@@ -741,7 +742,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "fetch updated attachment" in {
+    "fetch updated attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment2.json")
       cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
@@ -759,7 +760,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fetch previous revision of attachment" in {
+    "fetch previous revision of attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(Req(GET, s"$kgBase/files/$fullId/extattachment.json?rev=1", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
@@ -777,12 +778,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "delete the attachment" in {
+    "delete the attachment" taggedAs ToMigrateTag in {
       cl(Req(DELETE, s"$kgBase/files/$fullId/extattachment.json?rev=2", headersJsonUser))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "fetch attachment metadata" in {
+    "fetch attachment metadata" taggedAs ToMigrateTag in {
 
       val expected = jsonContentOf(
         "/kg/files/attachment-metadata.json",
@@ -820,7 +821,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
 
-    "add ACLs for custom storage" in {
+    "add ACLs for custom storage" taggedAs ToMigrateTag in {
       forAll(List("disk/extread", "disk/extwrite")) { perm =>
         val json = jsonContentOf(
           "/iam/add.json",
@@ -849,7 +850,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "uploading an attachment against the default storage" should {
 
-    "reject linking operations" in {
+    "reject linking operations" taggedAs ToMigrateTag in {
       val payload = Json.obj(
         "filename"  -> Json.fromString("logo.png"),
         "path"      -> Json.fromString("does/not/matter"),
@@ -872,7 +873,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "fetch attachment" in {
+    "fetch attachment" taggedAs ToMigrateTag in {
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
         .mapString { (content, result) =>
@@ -902,7 +903,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "update attachment with JSON" in {
+    "update attachment with JSON" taggedAs ToMigrateTag in {
       val entity = HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment2.json"))
       val multipartForm =
         FormData(BodyPart.Strict("file", entity, Map("filename" -> "attachment.json"))).toEntity()
@@ -912,7 +913,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "fetch updated attachment" in {
+    "fetch updated attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment2.json")
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment.json", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
@@ -927,7 +928,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "fetch previous revision of attachment" in {
+    "fetch previous revision of attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment.json")
       cl(
@@ -958,7 +959,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.Created)
     }
 
-    "attempt to upload a third attachment against an storage that does not exists" in {
+    "attempt to upload a third attachment against an storage that does not exists" taggedAs ToMigrateTag in {
       val entity = HttpEntity(ContentTypes.NoContentType, contentOf("/kg/files/attachment2").getBytes)
       val multipartForm =
         FormData(Multipart.FormData.BodyPart.Strict("file", entity, Map("filename" -> "attachment3"))).toEntity()
@@ -969,7 +970,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
 
-    "fetch second attachment" in {
+    "fetch second attachment" taggedAs ToMigrateTag in {
 
       val expectedContent = contentOf("/kg/files/attachment2")
       cl(Req(GET, s"$kgBase/files/$fullId/attachment:attachment2", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
@@ -983,12 +984,12 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
         }
     }
 
-    "delete the attachment" in {
+    "delete the attachment" taggedAs ToMigrateTag in {
       cl(Req(DELETE, s"$kgBase/files/$fullId/attachment:attachment.json?rev=2", headersJsonUser))
         .mapResp(_.status shouldEqual StatusCodes.OK)
     }
 
-    "fetch attachment metadata" in {
+    "fetch attachment metadata" taggedAs ToMigrateTag in {
 
       val expected = jsonContentOf(
         "/kg/files/attachment-metadata.json",
@@ -1023,7 +1024,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       ).mapResp(_.status shouldEqual StatusCodes.Forbidden)
     }
 
-    "add ACLs for custom storage" in {
+    "add ACLs for custom storage" taggedAs ToMigrateTag in {
       forAll(List("disk/read", "disk/write")) { perm =>
         val json = jsonContentOf(
           "/iam/add.json",
@@ -1053,14 +1054,14 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
   "deprecating a storage" should {
 
-    "deprecate a DiskStorage" in {
+    "deprecate a DiskStorage" taggedAs ToMigrateTag in {
       eventually {
         cl(Req(DELETE, s"$kgBase/storages/$fullId/nxv:mystorage?rev=1", headersJsonUser))
           .mapResp(_.status shouldEqual StatusCodes.OK)
       }
     }
 
-    "reject uploading a new file against the deprecated storage" in {
+    "reject uploading a new file against the deprecated storage" taggedAs ToMigrateTag in {
       val entity = HttpEntity(ContentTypes.NoContentType, new String("").getBytes)
       val multipartForm =
         FormData(Multipart.FormData.BodyPart.Strict("file", entity, Map("filename" -> "attachment3"))).toEntity()
@@ -1072,7 +1073,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
       }
     }
 
-    "fetch second attachment metadata" in {
+    "fetch second attachment metadata" taggedAs ToMigrateTag in {
 
       val expected = jsonContentOf(
         "/kg/files/attachment2-metadata.json",

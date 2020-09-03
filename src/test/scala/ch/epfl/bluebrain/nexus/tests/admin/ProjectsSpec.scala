@@ -8,10 +8,11 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
+import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import io.circe.Json
-import org.scalatest.{CancelAfterFailure, Inspectors}
 import org.scalatest.concurrent.Eventually
+import org.scalatest.{CancelAfterFailure, Inspectors}
 
 import scala.collection.immutable
 
@@ -29,14 +30,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
     val projId = genId()
     val id     = s"$orgId/$projId"
 
-    "fail to create project if the permissions are missing" in {
+    "fail to create project if the permissions are missing"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
         json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
       }
     }
 
-    "add organizations/create permissions for user" in {
+    "add organizations/create permissions for user"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create")
@@ -49,14 +50,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "fail to create if the HTTP verb used is POST" in {
+    "fail to create if the HTTP verb used is POST"  taggedAs ToMigrateTag in {
       cl(Req(POST, s"$adminBase/projects/$id", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.MethodNotAllowed
         json shouldEqual jsonContentOf("/admin/errors/method-not-supported.json")
       }
     }
 
-    "create organization" in {
+    "create organization"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity()))
         .mapResp(_.status shouldEqual StatusCodes.Created)
     }
@@ -68,12 +69,12 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       projectReqJson(nxv = "nxv", person = "person", description = description, base = base, vocab = vocab)
     val create = createJson.toEntity
 
-    "return not found when fetching a non existing project" in {
+    "return not found when fetching a non existing project"  taggedAs ToMigrateTag in {
       cl(Req(uri = s"$adminBase/projects/$orgId/${genId()}", headers = headersJsonUser))
         .mapResp(_.status shouldEqual StatusCodes.NotFound)
     }
 
-    "clean permissions and add projects/create permissions" in {
+    "clean permissions and add projects/create permissions"  taggedAs ToMigrateTag in {
       cleanAcls
       val json = jsonContentOf(
         "/iam/add.json",
@@ -84,14 +85,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
 
     }
 
-    "create project" in {
+    "create project"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, create)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(id, 1L)
       }
     }
 
-    "fail to create if project already exists" in {
+    "fail to create if project already exists"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
         json shouldEqual jsonContentOf(
@@ -105,7 +106,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "ensure that necessary permissions have been set in IAM" in {
+    "ensure that necessary permissions have been set in IAM"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/acls/$id", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl.head.permissions shouldEqual Set(
@@ -130,7 +131,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "fetch the project" in {
+    "fetch the project"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         validateProject(json, createJson)
@@ -138,7 +139,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "fetch project by UUID" in {
+    "fetch project by UUID"  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$adminBase/orgs/$orgId", headersServiceAccount)).mapJson { (orgJson, _) =>
         val orgUuid = orgJson.hcursor.get[String]("_uuid").rightValue
         cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (projJson, _) =>
@@ -151,13 +152,13 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "return not found when fetching a non existing revision of a project" in {
+    "return not found when fetching a non existing revision of a project"  taggedAs ToMigrateTag in {
       cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersJsonUser)).mapResp { result =>
         result.status shouldEqual StatusCodes.NotFound
       }
     }
 
-    "update project and fetch revisions" in {
+    "update project and fetch revisions"  taggedAs ToMigrateTag in {
       val descRev2  = s"$description update 1"
       val baseRev2  = s"${config.admin.uri.toString()}/${genString()}/"
       val vocabRev2 = s"${config.admin.uri.toString()}/${genString()}/"
@@ -221,7 +222,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "reject update  when wrong revision is provided" in {
+    "reject update  when wrong revision is provided"  taggedAs ToMigrateTag in {
 
       cl(Req(PUT, s"$adminBase/projects/$id?rev=4", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Conflict
@@ -229,7 +230,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "deprecate project" in {
+    "deprecate project"  taggedAs ToMigrateTag in {
       cl(Req(DELETE, s"$adminBase/projects/$id?rev=3", headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json.removeMetadata() shouldEqual createRespJson(id, 4L, deprecated = true)
@@ -247,7 +248,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "prevent fetching a project if permissions are missing" in {
+    "prevent fetching a project if permissions are missing"  taggedAs ToMigrateTag in {
       cleanAcls
       cl(Req(uri = s"$adminBase/projects/$id", headers = headersJsonUser)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Forbidden
@@ -261,14 +262,14 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
 
     "delete all ACLs for user" in cleanAcls
 
-    "return unauthorized access if user has no permissions on / " in {
+    "return unauthorized access if user has no permissions on / "  taggedAs ToMigrateTag in {
       cl(Req(GET, s"$adminBase/projects", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.OK
         json shouldEqual jsonContentOf("/admin/projects/empty-project-list.json")
       }
     }
 
-    "add projects/create permissions for user" in {
+    "add projects/create permissions for user"  taggedAs ToMigrateTag in {
       val json = jsonContentOf(
         "/iam/add.json",
         replSub + (quote("{perms}") -> "organizations/create\",\"projects/read")
@@ -308,7 +309,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       )
     }
 
-    "create projects" in {
+    "create projects"  taggedAs ToMigrateTag in {
       cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity())).mapJson { (json, result) =>
         result.status shouldEqual StatusCodes.Created
         json.removeMetadata() shouldEqual createRespJson(orgId, 1L, "orgs", "Organization")
@@ -337,7 +338,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "list projects" in {
+    "list projects"  taggedAs ToMigrateTag in {
       val expectedResults = Json.obj(
         "@context" -> Json.arr(
           Json.fromString("https://bluebrain.github.io/nexus/contexts/admin.json"),
@@ -354,7 +355,7 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
       }
     }
 
-    "list projects which user has access to" in {
+    "list projects which user has access to"  taggedAs ToMigrateTag in {
       cleanAcls
       val projectsToList = projectIds.slice(0, 2)
       val expectedResults = Json.obj(

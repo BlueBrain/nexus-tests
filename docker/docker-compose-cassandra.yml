@@ -1,0 +1,57 @@
+version: "3.3"
+services:
+  delta:
+    depends_on:
+      - keycloak
+      - elasticsearch
+      - cassandra
+      - blazegraph
+    image: bluebrain/nexus-delta:1.4.1
+    entrypoint: ["bin/wait-for-it.sh", "-s", "-t", "0", "cassandra:9042", "--", "./bin/delta",
+                 "-Xms1G",
+                 "-Xmx2G",
+                 "-Dapp.instance.interface=0.0.0.0",
+                 "-Dapp.http.interface=0.0.0.0",
+                 "-Dapp.http.public-uri=https://test.nexus.bbp.epfl.ch",
+                 "-Dapp.service-account-caller.realm=nexus-tests",
+                 "-Dapp.service-account-caller.subject=delta",
+                 "-Dapp.service-account-caller.groups.1=delta",
+                 "-Dapp.elastic-search.base=http://elasticsearch:9200",
+                 "-Dapp.sparql.base=http://localhost:9999/blazegraph",
+                 "-Dakka.persistence.cassandra.journal.keyspace-autocreate=true",
+                 "-Dakka.persistence.cassandra.journal.tables-autocreate=true",
+                 "-Dakka.persistence.cassandra.snapshot.keyspace-autocreate=true",
+                 "-Dakka.persistence.cassandra.snapshot.tables-autocreate=true",
+                 "-Ddatastax-java-driver.basic.contact-points.1=cassandra:9042",
+                 "-Dkamon.modules.prometheus-reporter.enabled=false",
+                 "-Dkamon.modules.jaeger.enabled=false"]
+    ports:
+      - "8080"
+
+  keycloak:
+    image: "jboss/keycloak:11.0.1"
+    environment:
+      KEYCLOAK_USER: "admin"
+      KEYCLOAK_PASSWORD: "admin"
+      KEYCLOAK_IMPORT: "/tmp/realm-export.json"
+      KEYCLOAK_FRONTEND_URL: "http://keycloak:8080/auth"
+    ports:
+      - "8080"
+    volumes:
+      - "./target/scala-2.13/classes/keycloak/realm-export.json:/tmp/realm-export.json"
+
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:7.5.1"
+    environment:
+      ES_JAVA_OPTS: "-Xmx2G"
+      discovery.type: "single-node"
+      bootstrap.memory_lock: "true"
+
+  cassandra:
+    image: "cassandra:3.11.6"
+    environment:
+      MAX_HEAP_SIZE: "2G"
+      HEAP_NEWSIZE: "256m"
+      CASSANDRA_BROADCAST_ADDRESS: cassandra
+  blazegraph:
+    image: bluebrain/blazegraph-nexus:2.1.5
