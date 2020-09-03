@@ -17,7 +17,7 @@ import ch.epfl.bluebrain.nexus.commons.http.HttpClient._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{CirceEq, Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.config.Settings
-import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, User}
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, AclUser}
 import com.typesafe.config.ConfigFactory
 import io.circe.parser._
 import io.circe.{Decoder, Json}
@@ -74,7 +74,7 @@ class BaseSpec
         val permissions = acls._results
           .map { acls =>
             val userAcls = acls.acl.filter {
-              case AclEntry(User(`realmLabel`, config.iam.testUserSub), _) => true
+              case AclEntry(AclUser(`realmLabel`, config.iam.testUserSub), _) => true
               case _                                                       => false
             }
             acls.copy(acl = userAcls)

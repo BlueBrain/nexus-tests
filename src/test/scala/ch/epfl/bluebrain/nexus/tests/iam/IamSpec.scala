@@ -173,7 +173,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl
           .find {
-            case AclEntry(User(_, config.iam.`testUserSub`), _) => true
+            case AclEntry(AclUser(_, config.iam.`testUserSub`), _) => true
             case _                                              => false
           }
           .value
@@ -202,7 +202,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
         result.status shouldEqual StatusCodes.OK
         acls._results.head.acl
           .find {
-            case AclEntry(User(`realmLabel`, config.iam.testUserSub), _) => true
+            case AclEntry(AclUser(`realmLabel`, config.iam.testUserSub), _) => true
             case _                                                       => false
           }
           .value
@@ -303,7 +303,7 @@ class IamSpec extends BaseSpec with Inspectors with CancelAfterFailure with Even
           .value
           .acl
           .find {
-            case AclEntry(User(`realmLabel`, config.iam.testUserSub), _) => true
+            case AclEntry(AclUser(`realmLabel`, config.iam.testUserSub), _) => true
             case _                                                       => false
           }
           .value

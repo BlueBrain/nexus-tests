@@ -14,6 +14,7 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.Resources
 import ch.epfl.bluebrain.nexus.tests.config.TestConfig
 import ch.epfl.bluebrain.nexus.tests.config.TestConfig.RemoteDeltaConfig
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, AclUser}
 import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import monix.bio.Task
@@ -72,8 +73,39 @@ trait NewBaseSpec extends AnyWordSpecLike
   override def beforeAll(): Unit = {
     super.beforeAll()
     ensureRealmExists
+    cleanAcls
     ()
   }
+
+  def cleanAcls: Assertion =
+    cl.get[AclListing](s"/acls/*/*?ancestors=true&self=false", Identity.ServiceAccount) {
+      (acls, response) =>
+        response.status shouldEqual StatusCodes.OK
+
+        val permissions = acls._results
+          .map { acls =>
+            val userAcls = acls.acl.filter {
+              case AclEntry(AclUser(`realmLabel`, Identity.ServiceAccount.id), _) => true
+              case _                                                       => false
+            }
+            acls.copy(acl = userAcls)
+          }
+          .filter(_.acl.nonEmpty)
+
+        permissions.foreach { acl =>
+          val body = jsonContentOf(
+            "/iam/subtract-permissions.json",
+              Map(
+                quote("{sub}") -> Identity.ServiceAccount.id,
+                quote("{perms}") -> acl.acl.head.permissions.mkString("\",\"")
+              )
+            )
+          cl.patch[Json](s"/acls${acl._path}?rev=${acl._rev}", body, Identity.ServiceAccount) {
+            (_, response) => response.status shouldEqual StatusCodes.OK
+          }
+        }
+        succeed
+    }
 
   def ensureRealmExists: Assertion = {
     val body =
@@ -116,6 +148,11 @@ trait NewBaseSpec extends AnyWordSpecLike
               (assertResponse: (A, HttpResponse) => Assertion)
               (implicit um: FromEntityUnmarshaller[A]): Assertion =
       request(PUT, url, Some(body), identity)(assertResponse)
+
+    def patch[A](url: String, body: Json, identity: Identity)
+              (assertResponse: (A, HttpResponse) => Assertion)
+              (implicit um: FromEntityUnmarshaller[A]): Assertion =
+      request(PATCH, url, Some(body), identity)(assertResponse)
 
     def get[A](url: String, identity: Identity)
               (assertResponse: (A, HttpResponse) => Assertion)
