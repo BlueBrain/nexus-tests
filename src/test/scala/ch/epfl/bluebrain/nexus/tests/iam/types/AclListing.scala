@@ -15,7 +15,7 @@ sealed trait Identity
 
 case object Anonymous extends Identity
 
-final case class AclUser(realm: String, subject: String) extends Identity
+final case class User(realm: String, subject: String) extends Identity
 final case class Authenticated(realm: String)            extends Identity
 final case class Group(realm: String, group: String)     extends Identity
 

@@ -13,33 +13,11 @@ import io.circe.Json
 class PermissionsSpec extends NewBaseSpec
   with Randomness {
 
+  import PermissionsSpec._
+
   "manage permissions" should {
     val permission1 = s"${genString(8)}/${genString(8)}"
     val permission2 = s"${genString(8)}/${genString(8)}"
-    val minimumPermissions = Set(
-      "acls/read",
-      "acls/write",
-      "events/read",
-      "files/write",
-      "organizations/create",
-      "organizations/read",
-      "organizations/write",
-      "permissions/read",
-      "permissions/write",
-      "projects/create",
-      "projects/read",
-      "projects/write",
-      "realms/read",
-      "realms/write",
-      "resolvers/write",
-      "resources/read",
-      "resources/write",
-      "schemas/write",
-      "views/query",
-      "views/write",
-      "storages/write",
-      "archives/write"
-    )
 
     "clear permissions" taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) {
@@ -153,4 +131,32 @@ class PermissionsSpec extends NewBaseSpec
       }
     }
   }
+}
+
+object PermissionsSpec {
+  val minimumPermissions = Set(
+    "acls/read",
+    "acls/write",
+    "events/read",
+    "files/write",
+    "organizations/create",
+    "organizations/read",
+    "organizations/write",
+    "permissions/read",
+    "permissions/write",
+    "projects/create",
+    "projects/read",
+    "projects/write",
+    "realms/read",
+    "realms/write",
+    "resolvers/write",
+    "resources/read",
+    "resources/write",
+    "schemas/write",
+    "views/query",
+    "views/write",
+    "storages/write",
+    "archives/write"
+  )
+
 }

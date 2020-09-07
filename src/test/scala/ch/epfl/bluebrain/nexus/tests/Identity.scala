@@ -2,22 +2,29 @@ package ch.epfl.bluebrain.nexus.tests
 
 sealed trait Identity extends Product with Serializable
 
-final case class User(name: String, password: String) extends Identity
 
-final case class Client(id: String, secret: String) extends Identity
 
 object Identity {
 
   case object Anonymous extends Identity
 
+  final case class UserCredentials(name: String, password: String) extends Identity
+
+  final case class ClientCredentials(id: String, name :String, secret: String) extends Identity
+
+  object ClientCredentials{
+    def apply(id: String, secret: String): ClientCredentials =
+      new ClientCredentials(id, s"service-account-$id", secret)
+  }
+
   // Users
-  val Alice: User = User("alice", "password")
+  val Alice: UserCredentials = UserCredentials("alice", "password")
 
-  val Bob: User = User("bob", "password")
+  val Bob: UserCredentials = UserCredentials("bob", "password")
 
-  def users: List[User] = Alice :: Bob :: Nil
+  def users: List[UserCredentials] = Alice :: Bob :: Nil
 
   // Client
-  val ServiceAccount: Client = Client("delta", "shhh")
+  val ServiceAccount: ClientCredentials = ClientCredentials("delta", "shhh")
 
 }

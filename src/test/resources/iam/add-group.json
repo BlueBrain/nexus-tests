@@ -4,7 +4,7 @@
     {
       "identity": {
         "@type": "Group",
-        "realm": "internal",
+        "realm": "{realm}",
         "group": "{group}"
       },
       "permissions": [

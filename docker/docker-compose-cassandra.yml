@@ -33,12 +33,9 @@ services:
     environment:
       KEYCLOAK_USER: "admin"
       KEYCLOAK_PASSWORD: "admin"
-      KEYCLOAK_IMPORT: "/tmp/realm-export.json"
       KEYCLOAK_FRONTEND_URL: "http://keycloak:8080/auth"
     ports:
       - "8080"
-    volumes:
-      - "./target/scala-2.13/classes/keycloak/realm-export.json:/tmp/realm-export.json"
 
   elasticsearch:
     image: "docker.elastic.co/elasticsearch/elasticsearch:7.5.1"

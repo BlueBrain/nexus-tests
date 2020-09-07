@@ -12,18 +12,22 @@ import ch.epfl.bluebrain.nexus.commons.http.HttpClient
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.Resources
-import ch.epfl.bluebrain.nexus.tests.config.TestConfig
-import ch.epfl.bluebrain.nexus.tests.config.TestConfig.RemoteDeltaConfig
-import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, AclUser}
+import ch.epfl.bluebrain.nexus.tests.Identity._
+import ch.epfl.bluebrain.nexus.tests.Optics._
+import ch.epfl.bluebrain.nexus.tests.config.TestsConfig
+import ch.epfl.bluebrain.nexus.tests.iam.PermissionsSpec
+import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
 import com.typesafe.config.ConfigFactory
+import com.typesafe.scalalogging.Logger
 import io.circe.Json
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{Assertion, BeforeAndAfterAll}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.{Assertion, BeforeAndAfterAll}
 
+import scala.collection.mutable
 import scala.concurrent.duration._
 
 trait NewBaseSpec extends AnyWordSpecLike
@@ -33,106 +37,104 @@ trait NewBaseSpec extends AnyWordSpecLike
   with ScalaFutures
   with Matchers {
 
-  private[tests] val config: TestConfig = TestConfig.load(ConfigFactory.load())
+  private val logger = Logger[this.type]
 
-  private[tests] val realmLabel = "internal"
+  private[tests] val config: TestsConfig = TestsConfig.load(ConfigFactory.load())
+
+  private[tests] val internalRealm = "internal"
+
+  val tokensMap: mutable.Map[Identity, Authorization]= collection.mutable.Map.empty[Identity, Authorization]
 
   private[tests] implicit val cl: UntypedHttpClient[Task] = HttpClient.untyped[Task]
+
+  val baseUrl: Uri = Uri(s"http://${System.getProperty("delta:8080")}/v1")
+
+  override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.patience, 300.millis)
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    Keycloak.importRealm(internalRealm, Identity.ServiceAccount, Identity.Alice :: Identity.Bob :: Nil)
+    authenticateUser(internalRealm, Identity.Alice, Identity.ServiceAccount)
+    authenticateUser(internalRealm, Identity.Bob, Identity.ServiceAccount)
+    authenticateClient(internalRealm, Identity.ServiceAccount)
+    initRealm(internalRealm, Identity.Anonymous)
+    initServiceAccountAcls()
+    ()
+  }
 
   private def toAuthorizationHeader(token: String) =
     Authorization(
       HttpCredentials.createOAuth2BearerToken(token)
     )
 
-  // Initializing the requirements according to the configuration
-  val (baseUrl: String, userTokens: Map[Identity, Authorization]) =
-    config match {
-      case r: RemoteDeltaConfig =>
-        // Urls and tokens are provided by the configuration
-        (
-          r.deltaUri,
-          r.userTokens.map { case (k, v) =>
-            User(k, "no_password") -> toAuthorizationHeader(v)
-          } ++ Map(Identity.ServiceAccount -> toAuthorizationHeader(r.serviceAccountToken))
-        )
-      case _ =>
-        // Using docker-compose, urls are available as system-properties
-        // And we retrieve tokens from the Keycloak that has been started
-        (
-          s"http://${System.getProperty("delta:8080")}/v1",
-          (
-            Identity.users.map { u =>
-              u -> toAuthorizationHeader(Keycloak.userToken(u, Identity.ServiceAccount))
-            } ++ Map(Identity.ServiceAccount -> toAuthorizationHeader(Keycloak.serviceAccountToken(Identity.ServiceAccount)))
-          ).toMap
-        )
-    }
-
-  override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.patience, 300.millis)
-
-  override def beforeAll(): Unit = {
-    super.beforeAll()
-    ensureRealmExists
-    cleanAcls
-    ()
+  private[tests] def authenticateUser(realm: String, user: UserCredentials, client: ClientCredentials) = {
+    tokensMap.addOne(user -> toAuthorizationHeader(
+      Keycloak.userToken(realm, user, client))
+    )
   }
 
-  def cleanAcls: Assertion =
-    cl.get[AclListing](s"/acls/*/*?ancestors=true&self=false", Identity.ServiceAccount) {
-      (acls, response) =>
-        response.status shouldEqual StatusCodes.OK
+  private[tests] def authenticateClient(realm: String, client: ClientCredentials) = {
+    tokensMap.addOne(client -> toAuthorizationHeader(
+      Keycloak.serviceAccountToken(realm, client))
+    )
+  }
 
-        val permissions = acls._results
-          .map { acls =>
-            val userAcls = acls.acl.filter {
-              case AclEntry(AclUser(`realmLabel`, Identity.ServiceAccount.id), _) => true
-              case _                                                       => false
-            }
-            acls.copy(acl = userAcls)
-          }
-          .filter(_.acl.nonEmpty)
-
-        permissions.foreach { acl =>
-          val body = jsonContentOf(
-            "/iam/subtract-permissions.json",
-              Map(
-                quote("{sub}") -> Identity.ServiceAccount.id,
-                quote("{perms}") -> acl.acl.head.permissions.mkString("\",\"")
-              )
-            )
-          cl.patch[Json](s"/acls${acl._path}?rev=${acl._rev}", body, Identity.ServiceAccount) {
-            (_, response) => response.status shouldEqual StatusCodes.OK
-          }
-        }
-        succeed
-    }
-
-  def ensureRealmExists: Assertion = {
-    val body =
-      jsonContentOf(
-        "/iam/realms/create.json",
-        Map(
-          quote("{realm}") -> config.realm
-        )
+  // Gives all permissions on / to ServiceAccount
+  private def initServiceAccountAcls() = {
+    val json = jsonContentOf(
+      "/iam/add.json",
+      Map(
+        quote("{realm}") -> internalRealm,
+        quote("{sub}") -> Identity.ServiceAccount.name,
+        quote("{perms}") -> PermissionsSpec.minimumPermissions.mkString("""","""")
       )
+    )
 
-    cl.get[Json](s"/realms/$realmLabel", Identity.Anonymous) {
+    cl.get[AclListing]("/acls/", Identity.ServiceAccount) { (acls, response) =>
+      response.status shouldEqual StatusCodes.OK
+      val rev = acls._results.head._rev
+
+      cl.patch[Json](s"/acls/?rev=$rev", json, Identity.ServiceAccount) {
+        (json, response) =>
+          response.status match {
+            case StatusCodes.Created => succeed
+            case StatusCodes.BadRequest =>
+              error.`@type`.getOption(json) shouldBe Some("NothingToBeUpdated")
+            case s => fail(s"We were not expecting $s when setting default acls for service account")
+          }
+      }
+    }
+  }
+
+  // Init the given realm
+  def initRealm(realm: String, identity: Identity): Assertion = {
+    cl.get[Json](s"/realms/$realm", identity) {
       (json, response) =>
-        val rev = json.hcursor.downField("_rev")
-          .as[Int]
-          .toOption
-        Some(response.status) should contain oneOf (StatusCodes.OK, StatusCodes.NotFound)
-        rev match {
-          case Some(r) =>
-            cl.put[Json](s"/realms/$realmLabel?rev=$r", body, Identity.Anonymous) {
-              (_, response) =>
-                response.status shouldEqual StatusCodes.OK
-            }
-          case None =>
-            cl.put[Json](s"/realms/$realmLabel", body, Identity.Anonymous) {
+        response.status match {
+          case StatusCodes.NotFound =>
+            logger.info(s"Realm $realm is absent, we create it")
+            val body =
+              jsonContentOf(
+                "/iam/realms/create.json",
+                Map(
+                  quote("{realm}") -> s"${config.realmSuffix(realm)}"
+                )
+              )
+            cl.put[Json](s"/realms/$realm", body, identity) {
               (_, response) =>
                 response.status shouldEqual StatusCodes.Created
             }
+            cl.get[Json](s"/realms/$realm", Identity.ServiceAccount) {
+              (_, response) =>
+                response.status shouldEqual StatusCodes.OK
+            }
+          case StatusCodes.Forbidden | StatusCodes.OK =>
+            logger.info(s"Realm $realm has already been created, we got status ${response.status}")
+            cl.get[Json](s"/realms/$realm", Identity.ServiceAccount) {
+              (_, response) =>
+                response.status shouldEqual StatusCodes.OK
+            }
+          case s => fail(s"$s wasn't expected here and we got this response: $json")
         }
     }
   }
@@ -174,7 +176,10 @@ trait NewBaseSpec extends AnyWordSpecLike
         HttpRequest(
           method = method,
           uri = s"$baseUrl$url",
-          headers = userTokens.get(identity).fold(List.empty[Authorization])(List(_)),
+          headers = identity match {
+            case Anonymous => Nil
+            case _ => tokensMap(identity) :: Nil
+          },
           entity = body.fold(HttpEntity.Empty)
           (j => HttpEntity(ContentTypes.`application/json`, j.noSpaces))
         )
@@ -183,9 +188,24 @@ trait NewBaseSpec extends AnyWordSpecLike
           um(res.entity)(global, materializer)
         }.map {
           assertResponse(_, res)
+        }.onErrorHandleWith { e =>
+          for {
+            // Deserializing to case class may fail, json should
+            // be fine in almost every case
+            json <- Task.deferFuture {
+              implicitly[FromEntityUnmarshaller[Json]].apply(res.entity)(global, materializer)
+            }.onErrorHandle {
+              _ => Json.Null
+            }
+            _   <- Task {
+              logger.error(s"Status ${res.status}", e)
+              logger.error(json.spaces2)
+            }
+          } yield {
+            fail(s"Something went wrong while processing the response for url: ${method.value} $url with identity $identity", e)
+          }
         }
       }.runSyncUnsafe()
-
   }
 }
 
