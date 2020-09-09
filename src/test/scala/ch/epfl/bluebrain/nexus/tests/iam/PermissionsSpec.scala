@@ -4,159 +4,147 @@ import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.StatusCodes
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.Randomness
+import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
 import ch.epfl.bluebrain.nexus.tests.Tags.{IamTag, PermissionsTag}
-import ch.epfl.bluebrain.nexus.tests.iam.types.Permissions
+import ch.epfl.bluebrain.nexus.tests.iam.types.{Permission, Permissions}
 import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec}
 import io.circe.Json
+import monix.bio.Task
+import monix.execution.Scheduler.Implicits.global
 
-class PermissionsSpec extends NewBaseSpec
-  with Randomness {
+import scala.collection.immutable.Iterable
 
-  import PermissionsSpec._
+class PermissionsSpec extends NewBaseSpec {
 
   "manage permissions" should {
-    val permission1 = s"${genString(8)}/${genString(8)}"
-    val permission2 = s"${genString(8)}/${genString(8)}"
+    val permission1 = Permission(genString(8), genString(8))
+    val permission2 = Permission(genString(8), genString(8))
+
+    def permissionsMap(permissions: Iterable[Permission]) =
+      Map(
+        quote("{perms}") -> permissions.map { _.value }.mkString("\",\"")
+      )
 
     "clear permissions" taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) {
         (permissions, response) =>
-          response.status shouldEqual StatusCodes.OK
-          if (permissions.permissions == minimumPermissions)
-            succeed
-          else
-            cl.delete[Json](s"/permissions?rev=${permissions._rev}", Identity.ServiceAccount){
-              (_, response) =>
-                response.status shouldEqual StatusCodes.OK
+          runTask {
+            response.status shouldEqual StatusCodes.OK
+            if (permissions.permissions == Permission.minimalPermissions)
+              Task(succeed)
+            else
+              cl.delete[Json](s"/permissions?rev=${permissions._rev}", Identity.ServiceAccount){
+                (_, response) =>
+                  response.status shouldEqual StatusCodes.OK
+          }
         }
-      }
+      }.runSyncUnsafe()
     }
 
     "add permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) {
         (permissions, response) =>
+        runTask {
           response.status shouldEqual StatusCodes.OK
           val body = jsonContentOf(
             "/iam/permissions/append.json",
-            Map(
-              quote("{perms}") -> List(permission1, permission2).mkString("\",\"")
+            permissionsMap(
+              List(permission1, permission2)
             )
           )
           cl.patch[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
             (_, response) => response.status shouldEqual StatusCodes.OK
           }
-      }
+        }
+      }.runSyncUnsafe()
     }
 
     "check added permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
         response.status shouldEqual StatusCodes.OK
-        permissions.permissions shouldEqual minimumPermissions + permission1 + permission2
-      }
+        permissions.permissions shouldEqual Permission.minimalPermissions + permission1 + permission2
+      }.runSyncUnsafe()
     }
 
     "subtract permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val body = jsonContentOf(
-          "/iam/permissions/subtract.json",
-          Map(
-            quote("{perms}") -> permission2
+        runTask {
+          response.status shouldEqual StatusCodes.OK
+          val body = jsonContentOf(
+            "/iam/permissions/subtract.json",
+            permissionsMap(permission2 :: Nil)
           )
-        )
-        cl.patch[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.OK
+          cl.patch[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
+            (_, response) => response.status shouldEqual StatusCodes.OK
+          }
         }
-      }
+      }.runSyncUnsafe()
     }
 
     "check subtracted permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
         response.status shouldEqual StatusCodes.OK
-        permissions.permissions shouldEqual minimumPermissions + permission1
+        permissions.permissions shouldEqual Permission.minimalPermissions + permission1
       }
     }
 
     "replace permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val body =
-          jsonContentOf(
-            "/iam/permissions/replace.json",
-            Map(
-              quote("{perms}") -> (minimumPermissions + permission1 + permission2).mkString("\",\"")
+        runTask {
+          response.status shouldEqual StatusCodes.OK
+          val body =
+            jsonContentOf(
+              "/iam/permissions/replace.json",
+              permissionsMap(
+                Permission.minimalPermissions + permission1 + permission2
+              )
             )
-          )
-        cl.put[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.OK
+          cl.put[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
+            (_, response) => response.status shouldEqual StatusCodes.OK
+          }
         }
-      }
+      }.runSyncUnsafe()
     }
 
     "check replaced permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
         response.status shouldEqual StatusCodes.OK
-        permissions.permissions shouldEqual minimumPermissions + permission1 + permission2
-      }
+        permissions.permissions shouldEqual Permission.minimalPermissions + permission1 + permission2
+      }.runSyncUnsafe()
     }
 
     "reject subtracting minimal permission"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val body = jsonContentOf(
-          "/iam/permissions/subtract.json",
-          Map(
-            quote("{perms}") -> minimumPermissions.head
+        runTask{
+          response.status shouldEqual StatusCodes.OK
+          val body = jsonContentOf(
+            "/iam/permissions/subtract.json",
+            permissionsMap(
+              Permission.minimalPermissions.take(1)
+            )
           )
-        )
-        cl.patch[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.BadRequest
+          cl.patch[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
+            (_, response) => response.status shouldEqual StatusCodes.BadRequest
+          }
         }
-      }
+      }.runSyncUnsafe()
     }
 
     "reject replacing minimal permission"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val body = jsonContentOf(
-          "/iam/permissions/replace.json",
-          Map(
-            quote("{perms}") -> minimumPermissions.subsets(1).next().mkString("\",\"")
+        runTask {
+          response.status shouldEqual StatusCodes.OK
+          val body = jsonContentOf(
+            "/iam/permissions/replace.json",
+            permissionsMap(
+              Permission.minimalPermissions.subsets(1).next()
+            )
           )
-        )
-        cl.put[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.BadRequest
+          cl.put[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
+            (_, response) => response.status shouldEqual StatusCodes.BadRequest
+          }
         }
-      }
+      }.runSyncUnsafe()
     }
   }
-}
-
-object PermissionsSpec {
-  val minimumPermissions = Set(
-    "acls/read",
-    "acls/write",
-    "events/read",
-    "files/write",
-    "organizations/create",
-    "organizations/read",
-    "organizations/write",
-    "permissions/read",
-    "permissions/write",
-    "projects/create",
-    "projects/read",
-    "projects/write",
-    "realms/read",
-    "realms/write",
-    "resolvers/write",
-    "resources/read",
-    "resources/write",
-    "schemas/write",
-    "views/query",
-    "views/write",
-    "storages/write",
-    "archives/write"
-  )
-
 }

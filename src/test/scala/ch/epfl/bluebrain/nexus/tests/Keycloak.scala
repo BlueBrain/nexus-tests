@@ -34,11 +34,11 @@ object Keycloak extends Keycloak with Resources {
 
   def importRealm(realm: String,
                   clientCredentials: ClientCredentials,
-                  userCredentials: List[UserCredentials])(implicit cl: UntypedHttpClient[Task],
+                  userCredentials: List[UserCredentials])(
+                              implicit cl: UntypedHttpClient[Task],
                               um: FromEntityUnmarshaller[Json],
-                              materializer: Materializer): StatusCode = {
-    val adminToken = userToken("master", keycloakAdmin, keycloakClient)
-
+                              materializer: Materializer): Task[StatusCode] = {
+    logger.info(s"Creating realm $realm in Keycloak...")
     val users = userCredentials.zipWithIndex.flatMap { case (u,i) =>
       Map(
         quote(s"{user$i}")          -> u.name,
@@ -55,18 +55,21 @@ object Keycloak extends Keycloak with Resources {
       ) ++ users
     )
 
-    cl(
-      HttpRequest(
-        method = POST,
-        uri = keycloakAdminUrl,
-        headers = Authorization(HttpCredentials.createOAuth2BearerToken(adminToken)) :: Nil,
-        entity = HttpEntity(ContentTypes.`application/json`, json.noSpaces)
-      )
-    ).tapError { t =>
-      Task { logger.error(s"Error while importing realm: $realm", t) }
-    }.map { res =>
-      res.status
-    }.runSyncUnsafe()
+    for {
+      adminToken <- userToken("master", keycloakAdmin, keycloakClient)
+      status   <- cl(
+        HttpRequest(
+          method = POST,
+          uri = keycloakAdminUrl,
+          headers = Authorization(HttpCredentials.createOAuth2BearerToken(adminToken)) :: Nil,
+          entity = HttpEntity(ContentTypes.`application/json`, json.noSpaces)
+        )
+      ).tapError { t =>
+        Task { logger.error(s"Error while importing realm: $realm", t) }
+      }.map { res =>
+        res.status
+      }
+    } yield status
   }
 
   private def realmEndpoint(realm: String) =
@@ -76,7 +79,8 @@ object Keycloak extends Keycloak with Resources {
                 user: UserCredentials,
                 client: ClientCredentials)(implicit cl: UntypedHttpClient[Task],
                                            um: FromEntityUnmarshaller[Json],
-                                           materializer: Materializer): String = {
+                                           materializer: Materializer): Task[String] = {
+    logger.info(s"Getting token for user ${user.name} for $realm")
     val clientFields = if(client.secret == "") {
       Map("client_id"     -> client.id)
     } else {
@@ -98,9 +102,9 @@ object Keycloak extends Keycloak with Resources {
       ).toEntity
     )
 
-    val response = cl(request).flatMap { res =>
+    cl(request).flatMap { res =>
       Task.deferFuture{ um(res.entity) }
-    }.onErrorRestartLoop((10, 20.second)) { (err, state, retry) =>
+    }.onErrorRestartLoop((10, 10.seconds)) { (err, state, retry) =>
       // We have a retry here as the first thing we do with keycloak is getting a token
       // And without a warmup, we can get an UnexpectedConnectionClosureException
       // because Keycloak is still starting
@@ -111,20 +115,23 @@ object Keycloak extends Keycloak with Resources {
         Task.raiseError(err)
     }.tapError { t =>
       Task { logger.error(s"Error while getting user token for realm: $realm and user:$user", t) }
-    }.runSyncUnsafe()
-    keycloak.access_token.getOption(response)
-      .getOrElse(
-        throw new IllegalArgumentException(
-          s"Couldn't get a token for user ${user.name}, we got response: $response"
+    }.map { response =>
+      keycloak.access_token.getOption(response)
+        .getOrElse(
+          throw new IllegalArgumentException(
+            s"Couldn't get a token for user ${user.name}, we got response: $response"
+          )
         )
-      )
+    }
+
   }
 
   def serviceAccountToken(realm: String,
                           client: ClientCredentials)(implicit cl: UntypedHttpClient[Task],
                                                      um: FromEntityUnmarshaller[Json],
-                                                     materializer: Materializer): String = {
-    val response = cl(
+                                                     materializer: Materializer): Task[String] = {
+    logger.info(s"Getting token for client ${client.name} for $realm")
+    cl(
       HttpRequest(
         method = POST,
         uri = realmEndpoint(realm),
@@ -139,13 +146,13 @@ object Keycloak extends Keycloak with Resources {
       Task.deferFuture{ um(res.entity) }
     }.tapError { t =>
       Task { logger.error(s"Error while getting user token for realm: $realm and client: $client", t) }
-    }.runSyncUnsafe()
-
-    keycloak.access_token.getOption(response)
-      .getOrElse(
-        throw new IllegalArgumentException(
-          s"Couldn't get a token for client ${client.id}, we got response: $response"
+    }.map { response =>
+      keycloak.access_token.getOption(response)
+        .getOrElse(
+          throw new IllegalArgumentException(
+            s"Couldn't get a token for client ${client.id}, we got response: $response"
+          )
         )
-      )
+    }
   }
 }

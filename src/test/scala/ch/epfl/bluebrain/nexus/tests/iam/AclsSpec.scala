@@ -3,18 +3,19 @@ package ch.epfl.bluebrain.nexus.tests.iam
 import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.StatusCodes
+import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.Randomness
+import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Tags.{AclsTag, IamTag}
-import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, User}
-import ch.epfl.bluebrain.nexus.tests.{Identity, Keycloak, NewBaseSpec}
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Permission, User}
+import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec}
 import io.circe.Json
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.OptionValues
 
 class AclsSpec extends NewBaseSpec
-  with OptionValues
-  with Randomness {
+  with OptionValues {
 
   private val testRealm   = "acls" + genString()
   private val testClient = Identity.ClientCredentials(genString(), genString())
@@ -23,11 +24,12 @@ class AclsSpec extends NewBaseSpec
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    Keycloak.importRealm(testRealm, testClient, Marge :: Homer :: Nil) shouldEqual StatusCodes.Created
-    authenticateClient(testRealm, testClient)
-    authenticateUser(testRealm, Marge, testClient)
-    initRealm(testRealm, Identity.ServiceAccount)
-    ()
+    initRealm(
+      testRealm,
+      Identity.ServiceAccount,
+      testClient,
+      Marge :: Homer :: Nil
+    ).runSyncUnsafe()
   }
 
   "manage acls" should {
@@ -46,26 +48,21 @@ class AclsSpec extends NewBaseSpec
         (org, project)
       }
 
-    def permissionsMap(permissions: String) =
+    val defaultPermissions = Permission.Projects.list.toSet
+    val restrictedPermissions = defaultPermissions.filterNot(_ == Permission.Projects.Write)
+
+    def permissionsMap(permissions: Permission*) =
       Map(
         quote("{realm}") -> testRealm,
         quote("{sub}") -> Marge.name,
-        quote("{perms}") -> permissions
+        quote("{perms}") -> permissions.map(_.value).mkString("""","""")
       )
 
     "add permissions for user on /"  taggedAs (IamTag, AclsTag) in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        permissionsMap("""projects/create","projects/read","projects/write""")
-      )
-      cl.get[AclListing]("/acls/", Identity.ServiceAccount) { (acls, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val rev = acls._results.head._rev
-
-        cl.patch[Json](s"/acls/?rev=$rev", json, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.OK
-        }
-      }
+      addPermissions("/",
+        Marge, testRealm,
+        defaultPermissions
+      ).runSyncUnsafe()
     }
 
     "fetch permissions for user"  taggedAs (IamTag, AclsTag) in {
@@ -77,26 +74,28 @@ class AclsSpec extends NewBaseSpec
             case _                                 => false
           }
           .value
-          .permissions shouldEqual Set("projects/create", "projects/read", "projects/write")
-      }
+          .permissions shouldEqual defaultPermissions
+      }.runSyncUnsafe()
     }
 
     "delete some permissions for user"  taggedAs (IamTag, AclsTag) in {
       cl.get[Json](s"/acls/", Identity.ServiceAccount) { (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val acls = json
-          .as[AclListing]
-          .getOrElse(throw new RuntimeException(s"Couldn't decode ${json.noSpaces} to AclListing"))
+        runTask {
+          response.status shouldEqual StatusCodes.OK
+          val acls = json
+            .as[AclListing]
+            .getOrElse(throw new RuntimeException(s"Couldn't decode ${json.noSpaces} to AclListing"))
 
-        val rev = acls._results.head._rev
-        val body = jsonContentOf(
-          "/iam/subtract-permissions.json",
-          permissionsMap("projects/write")
-        )
-        cl.patch[Json](s"/acls/?rev=$rev", body, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.OK
+          val rev = acls._results.head._rev
+          val body = jsonContentOf(
+            "/iam/subtract-permissions.json",
+            permissionsMap(Permission.Projects.Write)
+          )
+          cl.patch[Json](s"/acls/?rev=$rev", body, Identity.ServiceAccount) {
+            (_, response) => response.status shouldEqual StatusCodes.OK
+          }
         }
-      }
+      }.runSyncUnsafe()
     }
 
     "check if permissions were removed"  taggedAs (IamTag, AclsTag) in {
@@ -108,40 +107,36 @@ class AclsSpec extends NewBaseSpec
             case _                                          => false
           }
           .value
-          .permissions shouldEqual Set("projects/create", "projects/read")
-      }
+          .permissions shouldEqual restrictedPermissions
+      }.runSyncUnsafe()
     }
 
     "add permissions for user on paths with depth1"  taggedAs (IamTag, AclsTag) in {
-      val body = jsonContentOf(
-        "/iam/add.json",
-        permissionsMap("""projects/create","projects/read","projects/write""")
-      )
-
-      orgs.foreach { org =>
-        cl.put[Json](s"/acls/$org", body, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
-        }
-      }
+      orgs.traverse { org =>
+        addPermissions(
+          s"/$org",
+          Marge,
+          testRealm,
+          defaultPermissions
+        )
+      }.runSyncUnsafe()
     }
 
     "add permissions for user on /orgpath/projectpath1 and /orgpath/projectpath2" taggedAs (IamTag, AclsTag) in {
-      val body = jsonContentOf(
-        "/iam/add.json",
-        permissionsMap("""projects/create","projects/read","projects/write""")
-      )
-
-      crossProduct.foreach { case (org, project) =>
-        cl.patch[Json](  s"/acls/$org/$project", body, Identity.ServiceAccount) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
-        }
-      }
+      crossProduct.traverse { case (org, project) =>
+        addPermissions(
+          s"/$org/$project",
+          Marge,
+          testRealm,
+          defaultPermissions
+        )
+      }.runSyncUnsafe()
     }
 
     def assertPermissions(acls:AclListing,
                          org: String,
                          project: String,
-                         expectedPermissions: Set[String]) =
+                         expectedPermissions: Set[Permission]) =
       acls._results
         .find(_._path == s"/$org/$project")
         .value
@@ -154,13 +149,11 @@ class AclsSpec extends NewBaseSpec
       cl.get[AclListing]( "/acls/*/*", Marge) {
         (acls, response) =>
           response.status shouldEqual StatusCodes.OK
-          val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
-
           crossProduct.foreach { case (org, project) =>
-            assertPermissions(acls, org, project, expectedPermissions)
+            assertPermissions(acls, org, project, defaultPermissions)
           }
           succeed
-      }
+      }.runSyncUnsafe()
     }
 
     "list permissions on /orgpath1/*"  taggedAs (IamTag, AclsTag) in {
@@ -168,21 +161,17 @@ class AclsSpec extends NewBaseSpec
         (acls, response) =>
           response.status shouldEqual StatusCodes.OK
           acls._total shouldEqual 2
-          val expectedPermissions = Set("projects/create", "projects/read", "projects/write")
           projects.foreach { project =>
-            assertPermissions(acls, orgPath1, project, expectedPermissions)
+            assertPermissions(acls, orgPath1, project, defaultPermissions)
           }
           succeed
-      }
+      }.runSyncUnsafe()
     }
 
     "list permissions on /*/* with ancestors"  taggedAs (IamTag, AclsTag) in {
       cl.get[AclListing]( "/acls/*/*?ancestors=true", Marge) {
         (acls, response) =>
           response.status shouldEqual StatusCodes.OK
-          val createRead = Set("projects/create", "projects/read")
-          val createReadWrite = Set("projects/create", "projects/read", "projects/write")
-
           acls._results
             .find(_._path == "/")
             .value
@@ -192,7 +181,7 @@ class AclsSpec extends NewBaseSpec
               case _                                         => false
             }
             .value
-            .permissions shouldEqual createRead
+            .permissions shouldEqual restrictedPermissions
 
           orgs.foreach { org =>
             acls._results
@@ -200,15 +189,15 @@ class AclsSpec extends NewBaseSpec
               .value
               .acl
               .head
-              .permissions shouldEqual createReadWrite
+              .permissions shouldEqual defaultPermissions
           }
 
           crossProduct.foreach { case (org, project) =>
-            assertPermissions(acls, org, project, createReadWrite)
+            assertPermissions(acls, org, project, defaultPermissions)
           }
 
           succeed
-      }
+      }.runSyncUnsafe()
     }
   }
 }

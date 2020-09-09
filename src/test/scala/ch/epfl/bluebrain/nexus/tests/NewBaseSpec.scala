@@ -3,20 +3,20 @@ package ch.epfl.bluebrain.nexus.tests
 import java.util.regex.Pattern.quote
 
 import akka.http.javadsl.model.headers.HttpCredentials
-import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Authorization
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
+import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.Resources
+import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
+import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
 import ch.epfl.bluebrain.nexus.tests.Identity._
 import ch.epfl.bluebrain.nexus.tests.Optics._
+import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
 import ch.epfl.bluebrain.nexus.tests.config.TestsConfig
-import ch.epfl.bluebrain.nexus.tests.iam.PermissionsSpec
-import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permission}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import io.circe.Json
@@ -27,39 +27,47 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 
 trait NewBaseSpec extends AnyWordSpecLike
   with BeforeAndAfterAll
   with Resources
+  with Randomness
   with ScalatestRouteTest
   with ScalaFutures
   with Matchers {
 
   private val logger = Logger[this.type]
 
-  private[tests] val config: TestsConfig = TestsConfig.load(ConfigFactory.load())
+  implicit val config: TestsConfig = load[TestsConfig](ConfigFactory.load(), "tests")
 
   private[tests] val internalRealm = "internal"
 
-  val tokensMap: mutable.Map[Identity, Authorization]= collection.mutable.Map.empty[Identity, Authorization]
-
   private[tests] implicit val cl: UntypedHttpClient[Task] = HttpClient.untyped[Task]
-
-  val baseUrl: Uri = Uri(s"http://${System.getProperty("delta:8080")}/v1")
 
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.patience, 300.millis)
 
+  def runTask[A](t: Task[A]): Assertion =
+    t.map { _ => succeed }
+      .runSyncUnsafe()
+
   override def beforeAll(): Unit = {
     super.beforeAll()
-    Keycloak.importRealm(internalRealm, Identity.ServiceAccount, Identity.Alice :: Identity.Bob :: Nil)
-    authenticateUser(internalRealm, Identity.Alice, Identity.ServiceAccount)
-    authenticateUser(internalRealm, Identity.Bob, Identity.ServiceAccount)
-    authenticateClient(internalRealm, Identity.ServiceAccount)
-    initRealm(internalRealm, Identity.Anonymous)
-    initServiceAccountAcls()
-    ()
+    val setup = for {
+      _ <- initRealm(
+        internalRealm,
+        Identity.Anonymous,
+        Identity.ServiceAccount,
+        Identity.users
+      )
+      _ <- addPermissions(
+        "/",
+        Identity.ServiceAccount,
+        internalRealm,
+        Permission.minimalPermissions
+      )
+    } yield ()
+    setup.runSyncUnsafe()
   }
 
   private def toAuthorizationHeader(token: String) =
@@ -67,148 +75,139 @@ trait NewBaseSpec extends AnyWordSpecLike
       HttpCredentials.createOAuth2BearerToken(token)
     )
 
-  private[tests] def authenticateUser(realm: String, user: UserCredentials, client: ClientCredentials) = {
-    tokensMap.addOne(user -> toAuthorizationHeader(
-      Keycloak.userToken(realm, user, client))
-    )
+  private[tests] def authenticateUser(realm: String, user: UserCredentials, client: ClientCredentials): Task[Unit] = {
+    Keycloak.userToken(realm, user, client).map { token =>
+      tokensMap.put(user, toAuthorizationHeader(token))
+      ()
+    }
   }
 
-  private[tests] def authenticateClient(realm: String, client: ClientCredentials) = {
-    tokensMap.addOne(client -> toAuthorizationHeader(
-      Keycloak.serviceAccountToken(realm, client))
-    )
+  private[tests] def authenticateClient(realm: String, client: ClientCredentials): Task[Unit] = {
+    Keycloak.serviceAccountToken(realm, client).map { token =>
+        tokensMap.put(client, toAuthorizationHeader(token))
+      ()
+    }
   }
 
-  // Gives all permissions on / to ServiceAccount
-  private def initServiceAccountAcls() = {
+  /**
+   * Init a new realm both in Keycloak and in Delta and
+   * Retrieve tokens for the new clients and users
+   *
+   * @param realm the name of the realm to create
+   * @param identity the identity responsible of creating the realm in delta
+   * @param client the service account to create for the realm
+   * @param users the users to create in the realm
+   * @return
+   */
+  def initRealm(realm: String,
+                identity: Identity,
+                client: ClientCredentials,
+                users: List[UserCredentials]): Task[Unit] = {
+    def createRealmInDelta: Task[Assertion] = cl.get[Json](s"/realms/$realm", identity) {
+      (json, response) =>
+        runTask {
+          response.status match {
+            case StatusCodes.NotFound =>
+              logger.info(s"Realm $realm is absent, we create it")
+              val body =
+                jsonContentOf(
+                  "/iam/realms/create.json",
+                  Map(
+                    quote("{realm}") -> s"${config.realmSuffix(realm)}"
+                  )
+                )
+              for {
+                _ <- cl.put[Json](s"/realms/$realm", body, identity) {
+                  (_, response) => response.status shouldEqual StatusCodes.Created
+                }
+                _ <- cl.get[Json](s"/realms/$realm", Identity.ServiceAccount) {
+                  (_, response) =>
+                    response.status shouldEqual StatusCodes.OK
+                }
+              } yield ()
+            case StatusCodes.Forbidden | StatusCodes.OK =>
+              logger.info(s"Realm $realm has already been created, we got status ${response.status}")
+              cl.get[Json](s"/realms/$realm", Identity.ServiceAccount) {
+                (_, response) =>
+                  response.status shouldEqual StatusCodes.OK
+              }
+            case s =>
+              Task (
+                fail(s"$s wasn't expected here and we got this response: $json")
+              )
+          }
+        }
+    }
+
+    for {
+      // Create the realm in Keycloak
+      _ <- Keycloak.importRealm(realm, client, users)
+      // Get the tokens and cache them in the map
+      _ <- users.traverse { user => authenticateUser(realm, user, client) }
+      _ <- authenticateClient(realm, client)
+      // Creating the realm in delta
+      _ <- Task { logger.info(s"Creating realm $realm in the delta instance") }
+      _ <- createRealmInDelta
+    } yield ()
+  }
+
+  def addPermission(path: String,
+                     target: Authenticated,
+                     realm: String,
+                     permission: Permission): Task[Assertion] =
+    addPermissions(path, target, realm, Set(permission))
+
+  def addPermissions(path: String,
+                     target: Authenticated,
+                     realm: String,
+                     permissions: Set[Permission]): Task[Assertion] = {
+    path should not startWith("/acls")
+
+    val permissionsMap = Map(
+      quote("{realm}") -> realm,
+      quote("{sub}") -> target.name,
+      quote("{perms}") -> permissions.map(_.value).mkString("""","""")
+    )
+
     val json = jsonContentOf(
       "/iam/add.json",
-      Map(
-        quote("{realm}") -> internalRealm,
-        quote("{sub}") -> Identity.ServiceAccount.name,
-        quote("{perms}") -> PermissionsSpec.minimumPermissions.mkString("""","""")
-      )
+      permissionsMap
     )
 
-    cl.get[AclListing]("/acls/", Identity.ServiceAccount) { (acls, response) =>
-      response.status shouldEqual StatusCodes.OK
-      val rev = acls._results.head._rev
+    def assertResponse(json: Json, response: HttpResponse) =
+      response.status match {
+        case StatusCodes.Created | StatusCodes.OK =>
+          logger.info(s"Permissions has been successfully added for ${target.name} on $path")
+          succeed
+        case StatusCodes.BadRequest =>
+          val errorType = error.`@type`.getOption(json)
+          logger.warn(
+            s"We got a bad request when adding permissions for ${target.name} on $path with error type $errorType"
+          )
+          errorType.value shouldBe "NothingToBeUpdated"
+        case s => fail(s"We were not expecting $s when setting acls on $path for realm $realm for ${target.name}")
+      }
 
-      cl.patch[Json](s"/acls/?rev=$rev", json, Identity.ServiceAccount) {
-        (json, response) =>
-          response.status match {
-            case StatusCodes.Created => succeed
-            case StatusCodes.BadRequest =>
-              error.`@type`.getOption(json) shouldBe Some("NothingToBeUpdated")
-            case s => fail(s"We were not expecting $s when setting default acls for service account")
-          }
+    cl.get[AclListing](s"/acls$path", Identity.ServiceAccount) { (acls, response) =>
+      runTask {
+        response.status shouldEqual StatusCodes.OK
+        val rev = acls._results.headOption
+        rev match {
+          case Some(r) =>
+            cl.patch[Json](s"/acls$path?rev=${r._rev}", json, Identity.ServiceAccount) {
+              assertResponse
+            }
+          case None    =>
+            cl.put[Json](s"/acls$path", json, Identity.ServiceAccount) {
+              assertResponse
+            }
+        }
       }
     }
   }
 
-  // Init the given realm
-  def initRealm(realm: String, identity: Identity): Assertion = {
-    cl.get[Json](s"/realms/$realm", identity) {
-      (json, response) =>
-        response.status match {
-          case StatusCodes.NotFound =>
-            logger.info(s"Realm $realm is absent, we create it")
-            val body =
-              jsonContentOf(
-                "/iam/realms/create.json",
-                Map(
-                  quote("{realm}") -> s"${config.realmSuffix(realm)}"
-                )
-              )
-            cl.put[Json](s"/realms/$realm", body, identity) {
-              (_, response) =>
-                response.status shouldEqual StatusCodes.Created
-            }
-            cl.get[Json](s"/realms/$realm", Identity.ServiceAccount) {
-              (_, response) =>
-                response.status shouldEqual StatusCodes.OK
-            }
-          case StatusCodes.Forbidden | StatusCodes.OK =>
-            logger.info(s"Realm $realm has already been created, we got status ${response.status}")
-            cl.get[Json](s"/realms/$realm", Identity.ServiceAccount) {
-              (_, response) =>
-                response.status shouldEqual StatusCodes.OK
-            }
-          case s => fail(s"$s wasn't expected here and we got this response: $json")
-        }
-    }
-  }
-
-  private[tests] implicit class HttpClientOps(val httpClient: UntypedHttpClient[Task]) {
-
-    def post[A](url: String, body: Json, identity: Identity)
-               (assertResponse: (A, HttpResponse) => Assertion)
-               (implicit um: FromEntityUnmarshaller[A]): Assertion =
-      request(POST, url, Some(body), identity)(assertResponse)
-
-    def put[A](url: String, body: Json, identity: Identity)
-              (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A]): Assertion =
-      request(PUT, url, Some(body), identity)(assertResponse)
-
-    def patch[A](url: String, body: Json, identity: Identity)
-              (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A]): Assertion =
-      request(PATCH, url, Some(body), identity)(assertResponse)
-
-    def get[A](url: String, identity: Identity)
-              (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A]): Assertion =
-      request(GET, url, None, identity)(assertResponse)
-
-    def delete[A](url: String, identity: Identity)
-                 (assertResponse: (A, HttpResponse) => Assertion)
-                 (implicit um: FromEntityUnmarshaller[A]): Assertion =
-      request(DELETE, url, None, identity)(assertResponse)
-
-    def request[A](method: HttpMethod,
-                   url: String,
-                   body: Option[Json],
-                   identity: Identity)
-                  (assertResponse: (A, HttpResponse) => Assertion)
-                  (implicit um: FromEntityUnmarshaller[A]): Assertion =
-      httpClient(
-        HttpRequest(
-          method = method,
-          uri = s"$baseUrl$url",
-          headers = identity match {
-            case Anonymous => Nil
-            case _ => tokensMap(identity) :: Nil
-          },
-          entity = body.fold(HttpEntity.Empty)
-          (j => HttpEntity(ContentTypes.`application/json`, j.noSpaces))
-        )
-      ).flatMap { res =>
-        Task.deferFuture {
-          um(res.entity)(global, materializer)
-        }.map {
-          assertResponse(_, res)
-        }.onErrorHandleWith { e =>
-          for {
-            // Deserializing to case class may fail, json should
-            // be fine in almost every case
-            json <- Task.deferFuture {
-              implicitly[FromEntityUnmarshaller[Json]].apply(res.entity)(global, materializer)
-            }.onErrorHandle {
-              _ => Json.Null
-            }
-            _   <- Task {
-              logger.error(s"Status ${res.status}", e)
-              logger.error(json.spaces2)
-            }
-          } yield {
-            fail(s"Something went wrong while processing the response for url: ${method.value} $url with identity $identity", e)
-          }
-        }
-      }.runSyncUnsafe()
-  }
-}
-
-object NewBaseSpec {
+  private[tests] def genId(length: Int = 15): String =
+    genString(length = length, Vector.range('a', 'z') ++ Vector.range('0', '9'))
 
 }
+

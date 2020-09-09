@@ -15,7 +15,7 @@ import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
-import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permissions}
+import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permission, Permissions}
 import io.circe.Json
 import org.apache.commons.codec.Charsets
 import org.apache.jena.ext.com.google.common.io.BaseEncoding
@@ -72,7 +72,10 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     "add necessary permissions for custom storage" taggedAs ToMigrateTag in {
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
-        if (permissions.permissions.contains("some-read") && permissions.permissions.contains("some-write"))
+        if (
+          //permissions.permissions.contains("some-read") && permissions.permissions.contains("some-write")
+          true
+        )
           succeed
         else {
           val body = jsonContentOf(
@@ -140,7 +143,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
-        if (!Set("disk/read", "disk/write").subsetOf(permissions.permissions)) {
+        if (!Set(Permission("disk","read"), Permission("disk","write")).subsetOf(permissions.permissions)) {
           val body = jsonContentOf(
             "/iam/permissions/append.json",
             Map(
@@ -230,7 +233,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
-        if (!Set("disk/extread", "disk/extwrite").subsetOf(permissions.permissions)) {
+        if (!Set(Permission("disk","extread"), Permission("disk","extwrite")).subsetOf(permissions.permissions)) {
           val body = jsonContentOf(
             "/iam/permissions/append.json",
             Map(
@@ -302,7 +305,7 @@ class StorageSpec extends BaseSpec with Eventually with Inspectors with CancelAf
 
       cl(Req(GET, s"$iamBase/permissions", headersServiceAccount)).mapDecoded[Permissions] { (permissions, result) =>
         result.status shouldEqual StatusCodes.OK
-        if (!Set("s3/read", "s3/write").subsetOf(permissions.permissions)) {
+        if (!Set(Permission("s3","read"), Permission("s3","write")).subsetOf(permissions.permissions)) {
           val body = jsonContentOf(
             "/iam/permissions/append.json",
             Map(

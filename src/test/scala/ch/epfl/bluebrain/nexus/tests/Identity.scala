@@ -8,9 +8,13 @@ object Identity {
 
   case object Anonymous extends Identity
 
-  final case class UserCredentials(name: String, password: String) extends Identity
+  sealed trait Authenticated extends Identity {
+    def name: String
+  }
 
-  final case class ClientCredentials(id: String, name :String, secret: String) extends Identity
+  final case class UserCredentials(name: String, password: String) extends Authenticated
+
+  final case class ClientCredentials(id: String, name :String, secret: String) extends Authenticated
 
   object ClientCredentials{
     def apply(id: String, secret: String): ClientCredentials =

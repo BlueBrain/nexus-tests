@@ -14,5 +14,7 @@ object Tags extends Tags {
   object PermissionsTag extends Tag("Permissions")
   object AclsTag extends Tag("Acls")
 
+  object OrgsTag extends Tag("Orgs")
+
   object ToMigrateTag extends Tag("ToMigrate")
 }

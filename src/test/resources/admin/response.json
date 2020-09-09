@@ -3,10 +3,10 @@
     "https://bluebrain.github.io/nexus/contexts/admin.json",
     "https://bluebrain.github.io/nexus/contexts/resource.json"
   ],
-  "@id" : "{adminBase}/{type}/{orgId}",
+  "@id" : "{deltaBase}/{type}/{orgId}",
   "@type" : "{@type}",
   "_rev" : {rev},
   "_deprecated" : {deprecated},
-  "_createdBy": "{iamBase}/realms/internal/users/{user}",
-  "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+  "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+  "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
 }
