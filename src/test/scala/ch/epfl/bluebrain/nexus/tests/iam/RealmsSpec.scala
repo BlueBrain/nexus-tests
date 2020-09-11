@@ -7,29 +7,34 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.{IamTag, RealmsTag}
-import ch.epfl.bluebrain.nexus.tests.{Identity, Keycloak, NewBaseSpec}
+import ch.epfl.bluebrain.nexus.tests.{Identity, Keycloak, NewBaseSpec, Realm}
 import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
 import monix.execution.Scheduler.Implicits.global
 import io.circe.Json
 
 class RealmsSpec extends NewBaseSpec {
 
-  private val testRealm   = "realm" + genString()
+  private val testRealm   = Realm("realm" + genString())
   private val testRealmUri = config.realmSuffix(testRealm)
 
-  private val testClient = Identity.ClientCredentials(genString(), genString())
+  private val testClient = Identity.ClientCredentials(
+    genString(),
+    genString(), testRealm
+  )
 
   override def beforeAll(): Unit = {
     super.beforeAll()
 
+    // Users are needed by the template and we are not interested in it
+    // for this suite of tests
     val users = List(
-      UserCredentials(genString(), genString()),
-      UserCredentials(genString(), genString())
+      UserCredentials(genString(), genString(), testRealm),
+      UserCredentials(genString(), genString(), testRealm)
     )
 
     val setup = for {
         _ <- Keycloak.importRealm(testRealm, testClient, users).map { _ shouldEqual StatusCodes.Created }
-        _ <- authenticateClient(testRealm, testClient)
+        _ <- authenticateClient(testClient)
       } yield ()
 
     setup.runSyncUnsafe()
@@ -46,14 +51,14 @@ class RealmsSpec extends NewBaseSpec {
         )
       )
 
-      cl.put[Json](s"/realms/$testRealm", body, Identity.ServiceAccount) {
+      cl.put[Json](s"/realms/${testRealm.name}", body, Identity.ServiceAccount) {
         (json, _) =>
           filterRealmKeys(json) shouldEqual jsonContentOf(
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> testRealmUri,
               quote("{deltaBase}")  -> config.deltaUri.toString(),
-              quote("{label}")      -> testRealm,
+              quote("{label}")      -> testRealm.name,
               quote("{rev}")        -> "1",
               quote("{deprecated}") -> "false"
             )
@@ -69,14 +74,14 @@ class RealmsSpec extends NewBaseSpec {
         )
       )
 
-      cl.put[Json](s"/realms/$testRealm?rev=$rev", body, Identity.ServiceAccount) {
+      cl.put[Json](s"/realms/${testRealm.name}?rev=$rev", body, Identity.ServiceAccount) {
         (json, _) =>
           filterRealmKeys(json) shouldEqual jsonContentOf(
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> testRealmUri,
               quote("{deltaBase}")  -> config.deltaUri.toString(),
-              quote("{label}")      -> testRealm,
+              quote("{label}")      -> testRealm.name,
               quote("{rev}")        -> s"${rev + 1}",
               quote("{deprecated}") -> "false"
             )
@@ -85,7 +90,7 @@ class RealmsSpec extends NewBaseSpec {
     }
 
     "fetch realm" taggedAs (IamTag, RealmsTag) in {
-      cl.get[Json](s"/realms/$testRealm", Identity.ServiceAccount) {
+      cl.get[Json](s"/realms/${testRealm.name}", Identity.ServiceAccount) {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
           filterRealmKeys(json) shouldEqual jsonContentOf(
@@ -94,7 +99,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{realm}")     -> testRealmUri,
               quote("{deltaBase}") -> config.deltaUri.toString(),
               quote("{rev}")       -> s"${rev + 1}",
-              quote("{label}")     -> testRealm
+              quote("{label}")     -> testRealm.name
             )
           )
       }.runSyncUnsafe()
@@ -109,7 +114,7 @@ class RealmsSpec extends NewBaseSpec {
           )
         )
 
-      cl.put[Json](s"/realms/$testRealm?rev=${rev + 1}", body, Identity.ServiceAccount) {
+      cl.put[Json](s"/realms/${testRealm.name}?rev=${rev + 1}", body, Identity.ServiceAccount) {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
           filterRealmKeys(json) shouldEqual jsonContentOf(
@@ -117,7 +122,7 @@ class RealmsSpec extends NewBaseSpec {
             Map(
               quote("{realm}") -> testRealmUri,
               quote("{deltaBase}") -> config.deltaUri.toString(),
-              quote("{label}") -> testRealm,
+              quote("{label}") -> testRealm.name,
               quote("{rev}") -> s"${rev + 2}",
               quote("{deprecated}") -> "false"
             )
@@ -126,7 +131,7 @@ class RealmsSpec extends NewBaseSpec {
     }
 
     "fetch updated realm" taggedAs (IamTag, RealmsTag) in {
-      cl.get[Json](s"/realms/$testRealm", Identity.ServiceAccount) {
+      cl.get[Json](s"/realms/${testRealm.name}", Identity.ServiceAccount) {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
           filterRealmKeys(json) shouldEqual jsonContentOf(
@@ -135,14 +140,14 @@ class RealmsSpec extends NewBaseSpec {
               quote("{realm}")      -> testRealmUri,
               quote("{deltaBase}")  -> config.deltaUri.toString(),
               quote("{rev}")        -> s"${rev + 2}",
-              quote("{label}")      -> testRealm
+              quote("{label}")      -> testRealm.name
             )
           )
       }.runSyncUnsafe()
     }
 
     "deprecate realm" taggedAs (IamTag, RealmsTag) in {
-      cl.delete[Json](s"/realms/$testRealm?rev=${rev + 2}", Identity.ServiceAccount) {
+      cl.delete[Json](s"/realms/${testRealm.name}?rev=${rev + 2}", Identity.ServiceAccount) {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
           filterRealmKeys(json) shouldEqual jsonContentOf(
@@ -150,7 +155,7 @@ class RealmsSpec extends NewBaseSpec {
             Map(
               quote("{realm}")      -> testRealmUri,
               quote("{deltaBase}")  -> config.deltaUri.toString(),
-              quote("{label}")      -> testRealm,
+              quote("{label}")      -> testRealm.name,
               quote("{rev}")        -> s"${rev + 3}",
               quote("{deprecated}") -> "true"
             )
@@ -159,7 +164,7 @@ class RealmsSpec extends NewBaseSpec {
     }
 
     "fetch deprecated realm" taggedAs (IamTag, RealmsTag) in {
-      cl.get[Json](s"/realms/$testRealm", Identity.ServiceAccount) {
+      cl.get[Json](s"/realms/${testRealm.name}", Identity.ServiceAccount) {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
           filterRealmKeys(json) shouldEqual jsonContentOf(
@@ -168,7 +173,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{realm}")     -> testRealmUri,
               quote("{deltaBase}") -> config.deltaUri.toString(),
               quote("{rev}")       -> s"${rev + 3}",
-              quote("{label}")     -> testRealm
+              quote("{label}")     -> testRealm.name
             )
           )
       }.runSyncUnsafe()

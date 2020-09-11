@@ -3,30 +3,24 @@ package ch.epfl.bluebrain.nexus.tests.admin
 import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.StatusCodes
-import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
 import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
-import ch.epfl.bluebrain.nexus.tests.Identity.{Authenticated, UserCredentials}
+import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.OrgsTag
-import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
-import ch.epfl.bluebrain.nexus.tests.config.PrefixesConfig
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permission}
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec}
-import com.typesafe.config.ConfigFactory
+import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, NewBaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.OptionValues
 
 class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
 
-  private val testRealm   = "orgs" + genString()
-  private val testClient = Identity.ClientCredentials(genString(), genString())
-  private val Fry = UserCredentials(genString(), genString())
-  private val Leela = UserCredentials(genString(), genString())
-
-  val prefixesConfig: PrefixesConfig = load[PrefixesConfig](ConfigFactory.load(), "prefixes")
+  private val testRealm   = Realm("orgs" + genString())
+  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Fry = UserCredentials(genString(), genString(), testRealm)
+  private val Leela = UserCredentials(genString(), genString(), testRealm)
 
   private[tests] val errorCtx = Map(quote("{error-context}") -> prefixesConfig.errorContext.toString)
 
@@ -42,36 +36,41 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     ).runSyncUnsafe()
   }
 
+  private val UnauthorizedAccess = ExpectedResponse(
+    StatusCodes.Forbidden,
+    jsonContentOf("/iam/errors/unauthorized-access.json")
+  )
+
+  private val Conflict = ExpectedResponse(
+    StatusCodes.Conflict,
+    jsonContentOf("/admin/errors/org-incorrect-revision.json")
+  )
+
   "creating an organization" should {
     "fail if the permissions are missing" taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/${genId()}", Json.obj(), Fry){
-        (json, response) =>
-          response.status shouldEqual StatusCodes.Forbidden
-          json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
-      }.runSyncUnsafe()
+      adminDsl.createOrganization(
+        genId(),
+        "Description",
+        Fry,
+        Some(UnauthorizedAccess)
+      ).runSyncUnsafe()
     }
 
     "add necessary permissions for user" taggedAs OrgsTag in {
-      addPermission(
+      aclDsl.addPermission(
         "/",
         Fry,
-        testRealm,
         Organizations.Create
       ).runSyncUnsafe()
     }
 
     val id = genId()
     "succeed if payload is correct"  taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/$id", orgPayload(id), Fry) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.Created
-          filterMetadataKeys(json) shouldEqual createRespJson(
-            id,
-            1L, "orgs",
-            "Organization",
-            Fry
-          )
-      }.runSyncUnsafe()
+       adminDsl.createOrganization(
+         id,
+         "Description",
+         Fry
+       ).runSyncUnsafe()
     }
 
     "check if permissions have been created for user" taggedAs OrgsTag in {
@@ -84,44 +83,37 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     "fail if organization already exists"  taggedAs OrgsTag in {
       val duplicate = genId()
 
-      val expected = List(
-        StatusCodes.Created -> createRespJson(
-          duplicate,
-          1L,
-          "orgs",
-          "Organization",
-          Fry
-        ),
-        StatusCodes.Conflict -> jsonContentOf(
-          "/admin/errors/org-already-exists.json",
-          Map(quote("{orgId}") -> duplicate)
-        )
-      )
+      adminDsl.createOrganization(
+        duplicate,
+        "Description",
+        Fry
+      ).runSyncUnsafe()
 
-      expected.traverse { case (status, expectedJson) =>
-        cl.put[Json](s"/orgs/$duplicate", orgPayload(duplicate), Fry) {
-          (json, response) =>
-            response.status shouldEqual status
-            filterMetadataKeys(json) shouldEqual expectedJson
-        }
-      }.runSyncUnsafe()
+      adminDsl.createOrganization(
+        duplicate,
+        "Description",
+        Fry,
+        Some(
+          ExpectedResponse(
+            StatusCodes.Conflict,
+            jsonContentOf(
+              "/admin/errors/org-already-exists.json",
+              Map(quote("{orgId}") -> duplicate)
+            )
+          )
+        )
+      ).runSyncUnsafe()
     }
   }
 
   "fetching an organization" should {
     val id = genId()
     "fail if the permissions are missing"  taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/$id", orgPayload(s"Description $id"), Fry) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.Created
-          filterMetadataKeys(json) shouldEqual createRespJson(
-            id,
-            1L,
-            "orgs",
-            "Organization",
-            Fry
-          )
-      }.runSyncUnsafe()
+      adminDsl.createOrganization(
+        id,
+        s"Description $id",
+        Fry
+      ).runSyncUnsafe()
 
       cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>
         response.status shouldEqual StatusCodes.Forbidden
@@ -130,10 +122,9 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     }
 
     "add orgs/read permissions for user"  taggedAs OrgsTag in {
-      addPermission(
+      aclDsl.addPermission(
         "/",
         Leela,
-        testRealm,
         Organizations.Read
       ).runSyncUnsafe()
     }
@@ -166,10 +157,9 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
 
     val nonExistent = genId()
     "add orgs/read permissions for non-existing organization"  taggedAs OrgsTag in {
-      addPermission(
+      aclDsl.addPermission(
         s"/$nonExistent",
         Leela,
-        testRealm,
         Organizations.Create
       ).runSyncUnsafe()
     }
@@ -183,88 +173,82 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
 
   "updating an organization" should {
     val id = genString()
-    val create = orgPayload(s"$id organization")
+    val description = s"$id organization"
 
     "fail if the permissions are missing"  taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/$id", create, Leela) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.Forbidden
-          json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
-      }.runSyncUnsafe()
+      adminDsl.createOrganization(
+        id,
+        description,
+        Leela,
+        Some(UnauthorizedAccess)
+      ).runSyncUnsafe()
     }
 
     "add orgs/create permissions for user"  taggedAs OrgsTag in {
-      addPermission(
+      aclDsl.addPermission(
         s"/$id",
         Leela,
-        testRealm,
         Organizations.Create
       ).runSyncUnsafe()
     }
 
     "create organization" taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/$id", create, Leela) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.Created
-          filterMetadataKeys(json) shouldEqual createRespJson(
-            id,
-            1L,
-            "orgs",
-            "Organization",
-            Leela)
-      }.runSyncUnsafe()
+      adminDsl.createOrganization(
+        id,
+        description,
+        Leela
+      ).runSyncUnsafe()
     }
 
     "fail when wrong revision is provided"  taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/$id?rev=4", create, Leela) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.Conflict
-          json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json", errorCtx)
-      }.runSyncUnsafe()
+      adminDsl.updateOrganization(
+        id,
+        description,
+        Leela,
+        4L,
+        Some(Conflict)
+      ).runSyncUnsafe()
     }
 
     val nonExistent = genId()
     "add orgs/write permissions for non-existing organization" taggedAs OrgsTag in {
-      addPermission(
+      aclDsl.addPermission(
         s"/$nonExistent",
         Leela,
-        testRealm,
         Organizations.Write
       ).runSyncUnsafe()
     }
 
     "fail when organization does not exist"  taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/$nonExistent?rev=1", create, Leela) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.NotFound
-          json shouldEqual jsonContentOf("/admin/errors/not-exists.json", Map(quote("{orgId}") -> nonExistent))
-      }.runSyncUnsafe()
+      val notFound = ExpectedResponse(
+        StatusCodes.NotFound,
+        jsonContentOf("/admin/errors/not-exists.json", Map(quote("{orgId}") -> nonExistent))
+      )
+      adminDsl.updateOrganization(
+        nonExistent,
+        description,
+        Leela,
+        1L,
+        Some(notFound)
+      ).runSyncUnsafe()
     }
 
     "succeed and fetch revisions"  taggedAs OrgsTag in {
       val updatedName = s"$id organization update 1"
-      cl.put[Json](s"/orgs/$id?rev=1", orgPayload(updatedName), Leela) { (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        filterMetadataKeys(json) shouldEqual createRespJson(
-          id,
-          2L,
-          "orgs",
-          "Organization",
-          Leela
-        )
-      }.runSyncUnsafe()
+      adminDsl.updateOrganization(
+        id,
+        updatedName,
+        Leela,
+        1L
+      ).runSyncUnsafe()
 
       val updatedName2 = s"$id organization update 2"
-      cl.put[Json](s"/orgs/$id?rev=2", orgPayload(updatedName2), Leela) { (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        filterMetadataKeys(json) shouldEqual createRespJson(
-          id,
-          3L,
-          "orgs",
-          "Organization",
-          Leela
-        )
-      }.runSyncUnsafe()
+      adminDsl.updateOrganization(
+        id,
+        updatedName2,
+        Leela,
+        2L
+      ).runSyncUnsafe()
 
       cl.get[Json](s"/orgs/$id", Leela) { (lastVersion, response) =>
         runTask {
@@ -294,25 +278,19 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     val name = genString()
 
     "add orgs/create permissions for user" taggedAs OrgsTag in {
-      addPermission(
+      aclDsl.addPermission(
         s"/$id",
         Leela,
-        testRealm,
         Organizations.Create
       ).runSyncUnsafe()
     }
 
     "create the organization" taggedAs OrgsTag in {
-      cl.put[Json](s"/orgs/$id", orgPayload(name), Leela) { (json, response) =>
-        response.status shouldEqual StatusCodes.Created
-        filterMetadataKeys(json) shouldEqual createRespJson(
-          id,
-          1L,
-          "orgs",
-          "Organization",
-          Leela
-        )
-      }.runSyncUnsafe()
+      adminDsl.createOrganization(
+        id,
+        name,
+        Leela
+      ).runSyncUnsafe()
     }
 
     "fail when wrong revision is provided" taggedAs OrgsTag in {
@@ -332,7 +310,7 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     "succeed if organization exists"  taggedAs OrgsTag in {
       cl.delete[Json](s"/orgs/$id?rev=1", Leela) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
-        filterMetadataKeys(json) shouldEqual createRespJson(
+        filterMetadataKeys(json) shouldEqual adminDsl.createRespJson(
           id,
           2L,
           "orgs",
@@ -343,37 +321,12 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
       }.runSyncUnsafe()
       cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
-        admin.validate(json, "Organization", "orgs", id, name, 2L, id, true)
+        admin.validate(json, "Organization", "orgs", id, name, 2L, id, deprecated = true)
       }.runSyncUnsafe()
       cl.get[Json](s"/orgs/$id?rev=1", Leela) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         admin.validate(json, "Organization", "orgs", id, name, 1L, id)
       }.runSyncUnsafe()
     }
-  }
-
-  private[tests] def orgPayload(description: String = genString()): Json = {
-    val rep = Map(quote("{description}") -> description)
-    jsonContentOf("/admin/orgs/payload.json", rep)
-  }
-
-  private[tests] def createRespJson(id: String,
-                                    rev: Long,
-                                    tpe: String = "projects",
-                                    `@type`: String = "Project",
-                                    authenticated: Authenticated,
-                                    deprecated: Boolean = false): Json = {
-    val resp = prefixesConfig.coreContextMap ++ Map(
-      quote("{id}")         -> id,
-      quote("{type}")       -> tpe,
-      quote("{@type}")      -> `@type`,
-      quote("{rev}")        -> rev.toString,
-      quote("{deltaBase}")  -> config.deltaUri.toString(),
-      quote("{realm}")      -> testRealm,
-      quote("{user}")       -> authenticated.name,
-      quote("{orgId}")      -> id,
-      quote("{deprecated}") -> deprecated.toString
-    )
-    jsonContentOf("/admin/response.json", resp)
   }
 }

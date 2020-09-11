@@ -29,10 +29,11 @@ object Keycloak extends Keycloak with Resources {
   private val keycloakUrl      = s"http://${System.getProperty("keycloak:8080")}/auth"
   private val keycloakAdminUrl = s"$keycloakUrl/admin/realms"
   // Defined in docker-compose file
-  private val keycloakAdmin    = UserCredentials("admin", "admin")
-  private val keycloakClient   = ClientCredentials("admin-cli", "")
+  private val adminRealm       = Realm("master")
+  private val keycloakAdmin    = UserCredentials("admin", "admin", adminRealm)
+  private val keycloakClient   = ClientCredentials("admin-cli", "", adminRealm)
 
-  def importRealm(realm: String,
+  def importRealm(realm: Realm,
                   clientCredentials: ClientCredentials,
                   userCredentials: List[UserCredentials])(
                               implicit cl: UntypedHttpClient[Task],
@@ -49,14 +50,14 @@ object Keycloak extends Keycloak with Resources {
     val json = jsonContentOf(
       "/iam/keycloak/import.json",
       Map(
-        quote("{realm}")  -> realm,
+        quote("{realm}")  -> realm.name,
         quote("{client}") -> clientCredentials.id,
         quote("{client_secret}") -> clientCredentials.secret,
       ) ++ users
     )
 
     for {
-      adminToken <- userToken("master", keycloakAdmin, keycloakClient)
+      adminToken <- userToken(keycloakAdmin, keycloakClient)
       status   <- cl(
         HttpRequest(
           method = POST,
@@ -72,15 +73,14 @@ object Keycloak extends Keycloak with Resources {
     } yield status
   }
 
-  private def realmEndpoint(realm: String) =
-    Uri(s"$keycloakUrl/realms/$realm/protocol/openid-connect/token")
+  private def realmEndpoint(realm: Realm) =
+    Uri(s"$keycloakUrl/realms/${realm.name}/protocol/openid-connect/token")
 
-  def userToken(realm: String,
-                user: UserCredentials,
+  def userToken(user: UserCredentials,
                 client: ClientCredentials)(implicit cl: UntypedHttpClient[Task],
                                            um: FromEntityUnmarshaller[Json],
                                            materializer: Materializer): Task[String] = {
-    logger.info(s"Getting token for user ${user.name} for $realm")
+    logger.info(s"Getting token for user ${user.name} for ${user.realm}")
     val clientFields = if(client.secret == "") {
       Map("client_id"     -> client.id)
     } else {
@@ -92,7 +92,7 @@ object Keycloak extends Keycloak with Resources {
 
     val request = HttpRequest(
       method = POST,
-      uri = realmEndpoint(realm),
+      uri = realmEndpoint(user.realm),
       entity = akka.http.scaladsl.model.FormData(
         Map(
           "username"      -> user.name,
@@ -114,7 +114,7 @@ object Keycloak extends Keycloak with Resources {
       else
         Task.raiseError(err)
     }.tapError { t =>
-      Task { logger.error(s"Error while getting user token for realm: $realm and user:$user", t) }
+      Task { logger.error(s"Error while getting user token for realm: ${user.realm} and user:$user", t) }
     }.map { response =>
       keycloak.access_token.getOption(response)
         .getOrElse(
@@ -126,15 +126,14 @@ object Keycloak extends Keycloak with Resources {
 
   }
 
-  def serviceAccountToken(realm: String,
-                          client: ClientCredentials)(implicit cl: UntypedHttpClient[Task],
+  def serviceAccountToken(client: ClientCredentials)(implicit cl: UntypedHttpClient[Task],
                                                      um: FromEntityUnmarshaller[Json],
                                                      materializer: Materializer): Task[String] = {
-    logger.info(s"Getting token for client ${client.name} for $realm")
+    logger.info(s"Getting token for client ${client.name} for ${client.realm}")
     cl(
       HttpRequest(
         method = POST,
-        uri = realmEndpoint(realm),
+        uri = realmEndpoint(client.realm),
         headers = Authorization(HttpCredentials.createBasicHttpCredentials(client.id, client.secret)) :: Nil,
         entity = akka.http.scaladsl.model.FormData(
           Map(
@@ -145,7 +144,7 @@ object Keycloak extends Keycloak with Resources {
     ).flatMap { res =>
       Task.deferFuture{ um(res.entity) }
     }.tapError { t =>
-      Task { logger.error(s"Error while getting user token for realm: $realm and client: $client", t) }
+      Task { logger.error(s"Error while getting user token for realm: ${client.realm} and client: $client", t) }
     }.map { response =>
       keycloak.access_token.getOption(response)
         .getOrElse(

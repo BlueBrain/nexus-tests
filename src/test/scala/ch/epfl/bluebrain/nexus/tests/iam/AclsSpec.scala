@@ -9,7 +9,7 @@ import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Tags.{AclsTag, IamTag}
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Permission, User}
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec}
+import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.OptionValues
@@ -17,10 +17,10 @@ import org.scalatest.OptionValues
 class AclsSpec extends NewBaseSpec
   with OptionValues {
 
-  private val testRealm   = "acls" + genString()
-  private val testClient = Identity.ClientCredentials(genString(), genString())
-  private val Marge = UserCredentials(genString(), genString())
-  private val Homer = UserCredentials(genString(), genString())
+  private val testRealm   = Realm("acls" + genString())
+  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Marge = UserCredentials(genString(), genString(), testRealm)
+  private val Homer = UserCredentials(genString(), genString(), testRealm)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -53,14 +53,14 @@ class AclsSpec extends NewBaseSpec
 
     def permissionsMap(permissions: Permission*) =
       Map(
-        quote("{realm}") -> testRealm,
+        quote("{realm}") -> testRealm.name,
         quote("{sub}") -> Marge.name,
         quote("{perms}") -> permissions.map(_.value).mkString("""","""")
       )
 
     "add permissions for user on /"  taggedAs (IamTag, AclsTag) in {
-      addPermissions("/",
-        Marge, testRealm,
+      aclDsl.addPermissions("/",
+        Marge,
         defaultPermissions
       ).runSyncUnsafe()
     }
@@ -103,7 +103,7 @@ class AclsSpec extends NewBaseSpec
         response.status shouldEqual StatusCodes.OK
         acls._results.head.acl
           .find {
-            case AclEntry(User(`testRealm`, Marge.name), _) => true
+            case AclEntry(User(testRealm.name, Marge.name), _) => true
             case _                                          => false
           }
           .value
@@ -113,10 +113,9 @@ class AclsSpec extends NewBaseSpec
 
     "add permissions for user on paths with depth1"  taggedAs (IamTag, AclsTag) in {
       orgs.traverse { org =>
-        addPermissions(
+        aclDsl.addPermissions(
           s"/$org",
           Marge,
-          testRealm,
           defaultPermissions
         )
       }.runSyncUnsafe()
@@ -124,10 +123,9 @@ class AclsSpec extends NewBaseSpec
 
     "add permissions for user on /orgpath/projectpath1 and /orgpath/projectpath2" taggedAs (IamTag, AclsTag) in {
       crossProduct.traverse { case (org, project) =>
-        addPermissions(
+        aclDsl.addPermissions(
           s"/$org/$project",
           Marge,
-          testRealm,
           defaultPermissions
         )
       }.runSyncUnsafe()
@@ -177,7 +175,7 @@ class AclsSpec extends NewBaseSpec
             .value
             .acl
             .find {
-              case AclEntry(User(`testRealm`, Marge.name), _) => true
+              case AclEntry(User(testRealm.name, Marge.name), _) => true
               case _                                         => false
             }
             .value

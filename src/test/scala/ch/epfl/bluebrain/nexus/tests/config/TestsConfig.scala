@@ -5,6 +5,7 @@ import java.util.regex.Pattern.quote
 
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.Uri.Host
+import ch.epfl.bluebrain.nexus.tests.Realm
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -12,7 +13,7 @@ case class TestsConfig(deltaUri: Uri,
                              realmUri: Uri,
                              patience: FiniteDuration) {
 
-  def realmSuffix(realm: String) = s"$realmUri/$realm"
+  def realmSuffix(realm: Realm) = s"$realmUri/${realm.name}"
 }
 
 final case class PrefixesConfig(iamCoreContext: Uri,
