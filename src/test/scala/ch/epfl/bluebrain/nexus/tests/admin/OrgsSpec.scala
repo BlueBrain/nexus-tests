@@ -9,7 +9,6 @@ import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.OrgsTag
-import ch.epfl.bluebrain.nexus.tests.iam.types.{AclListing, Permission}
 import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, NewBaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
@@ -41,7 +40,7 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     jsonContentOf("/iam/errors/unauthorized-access.json")
   )
 
-  private val Conflict = ExpectedResponse(
+  private val OrganizationConflict = ExpectedResponse(
     StatusCodes.Conflict,
     jsonContentOf("/admin/errors/org-incorrect-revision.json")
   )
@@ -74,10 +73,8 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     }
 
     "check if permissions have been created for user" taggedAs OrgsTag in {
-      cl.get[AclListing](s"/acls/$id", Fry) { (acls, response) =>
-        response.status shouldEqual StatusCodes.OK
-        acls._results.head.acl.head.permissions shouldEqual Permission.organizationPermissions
-      }
+      aclDsl.checkAdminAcls(s"/$id", Fry)
+        .runSyncUnsafe()
     }
 
     "fail if organization already exists"  taggedAs OrgsTag in {
@@ -206,7 +203,7 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
         description,
         Leela,
         4L,
-        Some(Conflict)
+        Some(OrganizationConflict)
       ).runSyncUnsafe()
     }
 

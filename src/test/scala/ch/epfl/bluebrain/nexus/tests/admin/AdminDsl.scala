@@ -12,6 +12,7 @@ import ch.epfl.bluebrain.nexus.tests.ExpectedResponse
 import ch.epfl.bluebrain.nexus.tests.Identity.Authenticated
 import ch.epfl.bluebrain.nexus.tests.Optics.filterMetadataKeys
 import ch.epfl.bluebrain.nexus.tests.config.{PrefixesConfig, TestsConfig}
+import com.typesafe.scalalogging.Logger
 import io.circe.Json
 import monix.bio.Task
 import org.scalatest.Assertion
@@ -21,6 +22,8 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
                config: TestsConfig)
               (implicit cl: UntypedHttpClient[Task],
                materializer: Materializer) extends Randomness with Resources with Matchers {
+
+  private val logger = Logger[this.type]
 
   def orgPayload(description: String = genString()): Json = {
     val rep = Map(quote("{description}") -> description)
@@ -47,6 +50,12 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
     jsonContentOf("/admin/response.json", resp)
   }
 
+  private def queryParams(revision: Long) = if(revision == 0L) {
+    ""
+  } else {
+    s"?rev=$revision"
+  }
+
   def createOrganization(id: String,
                          description: String,
                          authenticated: Authenticated,
@@ -63,12 +72,7 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
                          authenticated: Authenticated,
                          revision: Long,
                          expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] = {
-    val queryParams = if(revision == 0L) {
-      ""
-    } else {
-      s"?rev=$revision"
-    }
-    cl.put[Json](s"/orgs/$id$queryParams", orgPayload(description), authenticated) { (json, response) =>
+    cl.put[Json](s"/orgs/$id${queryParams(revision)}", orgPayload(description), authenticated) { (json, response) =>
       expectedResponse match {
         case Some(e) =>
           response.status shouldEqual e.statusCode
@@ -89,5 +93,57 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
       }
     }
   }
+
+  private[tests] val startPool = Vector.range('a', 'z')
+  private[tests] val pool      = Vector.range('a', 'z') ++ Vector.range('0', '9') :+ '_' :+ '-'
+
+  private[tests] def randomProjectPrefix = genString(1, startPool) + genString(genInt(10), pool)
+
+  def projectPayload(path: String = "/admin/projects/create.json",
+                     nxv: String = randomProjectPrefix,
+                     person: String = randomProjectPrefix,
+                     description: String = genString(),
+                     base: String = s"${genString()}/",
+                     vocab: String = s"${genString()}/"): Json = {
+    val rep = Map(
+      quote("{nxv-prefix}")    -> nxv,
+      quote("{person-prefix}") -> person,
+      quote("{description}")   -> description,
+      quote("{base}")          -> s"${config.deltaUri.toString()}/$base",
+      quote("{vocab}")         -> s"${config.deltaUri.toString()}/$vocab"
+    )
+    jsonContentOf(path, rep)
+  }
+
+  def createProject(id: String,
+                    json: Json,
+                    authenticated: Authenticated,
+                    expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] =
+    updateProject(id, json, authenticated, 0L, expectedResponse)
+
+  def updateProject(id: String,
+                    payload: Json,
+                    authenticated: Authenticated,
+                    revision: Long,
+                    expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] =
+    cl.put[Json](s"/projects/$id${queryParams(revision)}", payload, authenticated) { (json, response) =>
+      logger.info(s"Creating/updating project $id at revision $revision")
+      expectedResponse match {
+        case Some(e) =>
+          response.status shouldEqual e.statusCode
+          json shouldEqual e.json
+        case None =>
+          if(revision == 0L)
+            response.status shouldEqual StatusCodes.Created
+          else
+            response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) shouldEqual createRespJson(
+            id,
+            revision + 1L,
+            authenticated = authenticated
+          )
+      }
+
+    }
 
 }

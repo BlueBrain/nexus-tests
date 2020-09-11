@@ -33,6 +33,7 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
                      target: Authenticated,
                      permissions: Set[Permission]): Task[Assertion] = {
     path should not startWith "/acls"
+    logger.info(s"Addings permissions to $path for ${target.name}")
 
     val permissionsMap = Map(
       quote("{realm}") -> target.realm.name,
@@ -74,6 +75,16 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
             }
         }
       }.runSyncUnsafe()
+    }
+  }
+
+  def checkAdminAcls(path: String, authenticated: Authenticated): Task[Assertion] = {
+    logger.info(s"Gettings acls for $path using ${authenticated.name}")
+    cl.get[AclListing](s"/acls$path", authenticated) { (acls, response) =>
+      response.status shouldEqual StatusCodes.OK
+      val acl = acls._results.headOption.value
+      val entry = acl.acl.headOption.value
+      entry.permissions shouldEqual Permission.adminPermissions
     }
   }
 

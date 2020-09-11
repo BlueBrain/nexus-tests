@@ -111,7 +111,7 @@ trait NewBaseSpec extends AnyWordSpecLike
         runTask {
           response.status match {
             case StatusCodes.NotFound =>
-              logger.info(s"Realm $realm is absent, we create it")
+              logger.info(s"Realm ${realm.name} is absent, we create it")
               val body =
                 jsonContentOf(
                   "/iam/realms/create.json",
@@ -129,7 +129,7 @@ trait NewBaseSpec extends AnyWordSpecLike
                 }
               } yield ()
             case StatusCodes.Forbidden | StatusCodes.OK =>
-              logger.info(s"Realm $realm has already been created, we got status ${response.status}")
+              logger.info(s"Realm ${realm.name} has already been created, we got status ${response.status}")
               cl.get[Json](s"/realms/${realm.name}", Identity.ServiceAccount) {
                 (_, response) =>
                   response.status shouldEqual StatusCodes.OK
@@ -149,7 +149,7 @@ trait NewBaseSpec extends AnyWordSpecLike
       _ <- users.traverse { user => authenticateUser(user, client) }
       _ <- authenticateClient(client)
       // Creating the realm in delta
-      _ <- Task { logger.info(s"Creating realm $realm in the delta instance") }
+      _ <- Task { logger.info(s"Creating realm ${realm.name} in the delta instance") }
       _ <- createRealmInDelta
     } yield ()
   }

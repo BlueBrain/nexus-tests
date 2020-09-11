@@ -17,7 +17,7 @@ services:
                  "-Dapp.service-account-caller.subject=service-account-delta",
                  "-Dapp.service-account-caller.groups.1=delta",
                  "-Dapp.elastic-search.base=http://elasticsearch:9200",
-                 "-Dapp.sparql.base=http://localhost:9999/blazegraph",
+                 "-Dapp.sparql.base=http://blazegraph:9999/blazegraph",
                  "-Dakka.persistence.cassandra.journal.keyspace-autocreate=true",
                  "-Dakka.persistence.cassandra.journal.tables-autocreate=true",
                  "-Dakka.persistence.cassandra.snapshot.keyspace-autocreate=true",

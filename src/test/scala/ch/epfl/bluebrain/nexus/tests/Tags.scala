@@ -15,6 +15,7 @@ object Tags extends Tags {
   object AclsTag extends Tag("Acls")
 
   object OrgsTag extends Tag("Orgs")
+  object ProjectsTag extends Tag("Projects")
 
   object ToMigrateTag extends Tag("ToMigrate")
 }

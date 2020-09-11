@@ -158,7 +158,7 @@ object Permission {
       Storages.list ++
       Archives.list).toSet
 
-  val organizationPermissions: Set[Permission] =
+  val adminPermissions: Set[Permission] =
     (Acls.list ++
       Files.list ++
       Organizations.list ++
