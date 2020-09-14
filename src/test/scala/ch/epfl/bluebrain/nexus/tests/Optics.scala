@@ -10,14 +10,16 @@ trait Optics extends Matchers with OptionValues
 
 object Optics extends Optics {
 
-  def removeKeys(keys: Set[String]): Json => Json =
+  def filterKey(key: String): Json => Json = filterKeys(Set(key))
+
+  def filterKeys(keys: Set[String]): Json => Json =
     keys.map { root.at(_).set(None) }.reduce(_ andThen _)
 
   private val realmKeysToIgnore = Set("_createdAt", "_createdBy", "_updatedAt", "_updatedBy")
-  val filterRealmKeys: Json => Json = removeKeys(realmKeysToIgnore)
+  val filterRealmKeys: Json => Json = filterKeys(realmKeysToIgnore)
 
   private val metadataKeys = Set("_uuid", "_createdAt", "_updatedAt", "_organizationUuid")
-  val filterMetadataKeys: Json => Json = removeKeys(metadataKeys)
+  val filterMetadataKeys: Json => Json = filterKeys(metadataKeys)
 
   val filterResultMetadata = root._results.arr.modify( _.map(filterMetadataKeys))
 

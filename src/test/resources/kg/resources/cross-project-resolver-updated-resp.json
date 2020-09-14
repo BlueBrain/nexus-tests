@@ -16,7 +16,7 @@
   ],
   "identities": [
     {
-      "@id": "{iamBase}/realms/internal/users/{user}",
+      "@id": "{iamBase}/realms/{realm}/users/{user}",
       "@type": "User",
       "realm": "internal",
       "subject": "{user}"
@@ -28,8 +28,8 @@
   "_self": "{resources}/example-id",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
   "_project": "{project-parent}",
-  "_createdBy": "{iamBase}/realms/internal/users/{user}",
-  "_updatedBy": "{iamBase}/realms/internal/users/{user}",
+  "_createdBy": "{iamBase}/realms/{realm}/users/{user}",
+  "_updatedBy": "{iamBase}/realms/{realm}/users/{user}",
   "_rev": 2,
   "_deprecated": false
 }

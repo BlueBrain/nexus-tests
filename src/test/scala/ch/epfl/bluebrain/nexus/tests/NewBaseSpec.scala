@@ -18,6 +18,7 @@ import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
 import ch.epfl.bluebrain.nexus.tests.config.{PrefixesConfig, TestsConfig}
 import ch.epfl.bluebrain.nexus.tests.iam.AclDsl
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission
+import ch.epfl.bluebrain.nexus.tests.kg.KgDsl
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import io.circe.Json
@@ -48,6 +49,7 @@ trait NewBaseSpec extends AnyWordSpecLike
 
   val aclDsl = new AclDsl()
   val adminDsl = new AdminDsl(prefixesConfig, config)
+  val kgDsl = new KgDsl(config)
 
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.patience, 300.millis)
 

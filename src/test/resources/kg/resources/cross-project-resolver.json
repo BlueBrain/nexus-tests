@@ -8,7 +8,7 @@
   "identities": [
     {
       "@type": "User",
-      "realm": "internal",
+      "realm": "{realm}",
       "subject": "{user}"
     }
   ],

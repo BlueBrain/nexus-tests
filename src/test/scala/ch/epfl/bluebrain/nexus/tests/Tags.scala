@@ -19,6 +19,7 @@ object Tags extends Tags {
 
   object KgTag extends Tag("Kg")
   object ArchivesTag extends Tag("Archives")
+  object ResourcesTag extends Tag("Resources")
 
   object AppInfoTag extends Tag("AppInfo")
 

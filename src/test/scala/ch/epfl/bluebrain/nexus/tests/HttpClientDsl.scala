@@ -4,7 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.Authorization
+import akka.http.scaladsl.model.headers.{Accept, Authorization}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.Materializer
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
@@ -32,27 +32,32 @@ object HttpClientDsl extends HttpClientDsl {
 
     def post[A](url: String, body: Json, identity: Identity)
                (assertResponse: (A, HttpResponse) => Assertion)
-               (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+               (implicit um: FromEntityUnmarshaller[A],
+                extraHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil): Task[Assertion] =
       request(POST, url, Some(body), identity)(assertResponse)
 
     def put[A](url: String, body: Json, identity: Identity)
               (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+              (implicit um: FromEntityUnmarshaller[A],
+               extraHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil): Task[Assertion] =
       request(PUT, url, Some(body), identity)(assertResponse)
 
     def patch[A](url: String, body: Json, identity: Identity)
                 (assertResponse: (A, HttpResponse) => Assertion)
-                (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+                (implicit um: FromEntityUnmarshaller[A],
+                 extraHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil): Task[Assertion] =
       request(PATCH, url, Some(body), identity)(assertResponse)
 
     def get[A](url: String, identity: Identity)
               (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+              (implicit um: FromEntityUnmarshaller[A],
+               extraHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil): Task[Assertion] =
       request(GET, url, None, identity)(assertResponse)
 
     def delete[A](url: String, identity: Identity)
                  (assertResponse: (A, HttpResponse) => Assertion)
-                 (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+                 (implicit um: FromEntityUnmarshaller[A],
+                  extraHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil): Task[Assertion] =
       request(DELETE, url, None, identity)(assertResponse)
 
     def request[A](method: HttpMethod,
@@ -60,14 +65,15 @@ object HttpClientDsl extends HttpClientDsl {
                    body: Option[Json],
                    identity: Identity)
                   (assertResponse: (A, HttpResponse) => Assertion)
-                  (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+                  (implicit um: FromEntityUnmarshaller[A],
+                   extraHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil): Task[Assertion] =
       httpClient(
         HttpRequest(
           method = method,
           uri = s"$baseUrl$url",
           headers = identity match {
-            case Anonymous => Nil
-            case _ => tokensMap.get(identity) :: Nil
+            case Anonymous => extraHeaders
+            case _ => tokensMap.get(identity) +: extraHeaders
           },
           entity = body.fold(HttpEntity.Empty)
           (j => HttpEntity(ContentTypes.`application/json`, j.noSpaces))
@@ -84,7 +90,9 @@ object HttpClientDsl extends HttpClientDsl {
             json <- Task.deferFuture {
               implicitly[FromEntityUnmarshaller[Json]].apply(res.entity)(global, materializer)
             }.onErrorHandle {
-              _ => Json.Null
+              _ =>
+                logger.error("We can't even deserialize in json")
+                Json.Null
             }
             _   <- Task {
               logger.error(s"Status ${res.status}", e)
