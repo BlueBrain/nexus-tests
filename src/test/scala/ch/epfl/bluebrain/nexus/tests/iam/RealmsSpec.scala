@@ -8,7 +8,7 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.{IamTag, RealmsTag}
 import ch.epfl.bluebrain.nexus.tests.{Identity, Keycloak, NewBaseSpec, Realm}
-import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import monix.execution.Scheduler.Implicits.global
 import io.circe.Json
 

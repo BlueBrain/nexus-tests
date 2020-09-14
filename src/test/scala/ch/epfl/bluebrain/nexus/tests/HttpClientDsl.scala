@@ -17,9 +17,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 
-trait DeltaHttpClient extends Matchers
+trait HttpClientDsl extends Matchers
 
-object DeltaHttpClient extends DeltaHttpClient {
+object HttpClientDsl extends HttpClientDsl {
 
   private val logger = Logger[this.type]
 

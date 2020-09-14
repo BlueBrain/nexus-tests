@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.stream.Materializer
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.Identity
 import ch.epfl.bluebrain.nexus.tests.Identity.Authenticated

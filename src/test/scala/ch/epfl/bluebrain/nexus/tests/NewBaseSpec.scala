@@ -11,7 +11,7 @@ import ch.epfl.bluebrain.nexus.commons.http.HttpClient
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
-import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity._
 import ch.epfl.bluebrain.nexus.tests.admin.AdminDsl
 import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
@@ -80,6 +80,7 @@ trait NewBaseSpec extends AnyWordSpecLike
 
   private[tests] def authenticateUser(user: UserCredentials, client: ClientCredentials): Task[Unit] = {
     Keycloak.userToken(user, client).map { token =>
+      logger.info(s"Token for user ${user.name} is: $token")
       tokensMap.put(user, toAuthorizationHeader(token))
       ()
     }
