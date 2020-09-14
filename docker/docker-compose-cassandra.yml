@@ -6,9 +6,9 @@ services:
       - elasticsearch
       - cassandra
       - blazegraph
+      - storage-service
     image: bluebrain/nexus-delta:1.4.1
     entrypoint: ["bin/wait-for-it.sh", "-s", "-t", "0", "cassandra:9042", "--", "./bin/delta",
-                 "-Xms1G",
                  "-Xmx2G",
                  "-Dapp.instance.interface=0.0.0.0",
                  "-Dapp.http.interface=0.0.0.0",
@@ -18,11 +18,30 @@ services:
                  "-Dapp.service-account-caller.groups.1=delta",
                  "-Dapp.elastic-search.base=http://elasticsearch:9200",
                  "-Dapp.sparql.base=http://blazegraph:9999/blazegraph",
+                 "-Dapp.storage.remote-disk.default-endpoint=http://storage-service:8080",
                  "-Dakka.persistence.cassandra.journal.keyspace-autocreate=true",
                  "-Dakka.persistence.cassandra.journal.tables-autocreate=true",
                  "-Dakka.persistence.cassandra.snapshot.keyspace-autocreate=true",
                  "-Dakka.persistence.cassandra.snapshot.tables-autocreate=true",
                  "-Ddatastax-java-driver.basic.contact-points.1=cassandra:9042",
+                 "-Dkamon.modules.prometheus-reporter.enabled=false",
+                 "-Dkamon.modules.jaeger.enabled=false"]
+    ports:
+      - "8080"
+
+  storage-service:
+    image: bluebrain/nexus-storage:1.4.1
+    entrypoint: ["./bin/storage",
+                 "-Dapp.instance.interface=0.0.0.0",
+                 "-Dapp.http.interface=0.0.0.0",
+                 "-Dapp.http.public-uri=http://storage.tests.nexus.ocp.bbp.epfl.ch",
+                 "-Dapp.subject.anonymous=false",
+                 "-Dapp.subject.realm=internal",
+                 "-Dapp.subject.name=service-account-delta",
+                 "-Dapp.storage.root-volume=/tmp",
+                 "-Dapp.storage.fixer-enabled=false",
+                 "-Dapp.delta.public-iri=https://test.nexus.bbp.epfl.ch",
+                 "-Dapp.delta.internal-iri=http://delta:8080",
                  "-Dkamon.modules.prometheus-reporter.enabled=false",
                  "-Dkamon.modules.jaeger.enabled=false"]
     ports:
