@@ -1,5 +1,5 @@
 {
-  "@id": "{adminBase}/projects/{id}",
+  "@id": "{deltaUri}/projects/{id}",
   "@type": "Project",
   "description": "{projId}",
   "base": "http:example.com/{projId}/",
@@ -18,6 +18,6 @@
   "_organizationLabel": "{orgId}",
   "_rev": 1,
   "_deprecated": false,
-  "_createdBy": "{iamBase}/realms/internal/users/{user}",
-  "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+  "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+  "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}"
 }

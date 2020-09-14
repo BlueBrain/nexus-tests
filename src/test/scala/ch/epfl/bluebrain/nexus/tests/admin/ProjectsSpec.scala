@@ -2,100 +2,121 @@ package ch.epfl.bluebrain.nexus.tests.admin
 
 import java.util.regex.Pattern.quote
 
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
+import akka.http.scaladsl.model.StatusCodes
+import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.EitherValues
-import ch.epfl.bluebrain.nexus.rdf.syntax._
-import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
-import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
+import ch.epfl.bluebrain.nexus.tests.DeltaHttpClient._
+import ch.epfl.bluebrain.nexus.tests.Identity.{Authenticated, UserCredentials}
+import ch.epfl.bluebrain.nexus.tests.Optics._
+import ch.epfl.bluebrain.nexus.tests.Tags.ProjectsTag
+import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, NewBaseSpec, Realm}
 import io.circe.Json
-import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, Inspectors}
+import monix.execution.Scheduler.Implicits.global
 
-import scala.collection.immutable
+class ProjectsSpec extends NewBaseSpec {
 
-class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
+  private val testRealm   = Realm("projects" + genString())
+  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Bojack = UserCredentials(genString(), genString(), testRealm)
+  private val PrincessCarolyn = UserCredentials(genString(), genString(), testRealm)
 
-  private def validateProject(response: Json, payload: Json) = {
-    response.getString("base") shouldEqual payload.getString("base")
-    response.getString("vocab") shouldEqual payload.getString("vocab")
-    response.getJson("apiMappings") shouldEqual payload.getJson("apiMappings")
+  import ch.epfl.bluebrain.nexus.tests.iam.types.Permission._
+
+  private val UnauthorizedAccess = ExpectedResponse(
+    StatusCodes.Forbidden,
+    jsonContentOf("/iam/errors/unauthorized-access.json")
+  )
+
+  private val MethodNotAllowed = ExpectedResponse(
+    StatusCodes.MethodNotAllowed,
+    jsonContentOf("/admin/errors/method-not-supported.json")
+  )
+
+  private val ProjectConflict = ExpectedResponse(
+    StatusCodes.Conflict,
+    jsonContentOf("/admin/errors/project-incorrect-revision.json")
+  )
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    initRealm(
+      testRealm,
+      Identity.ServiceAccount,
+      testClient,
+      Bojack :: PrincessCarolyn :: Nil
+    ).runSyncUnsafe()
   }
 
   "projects API" should {
 
-    val orgId  = genId()
+    val orgId = genId()
     val projId = genId()
-    val id     = s"$orgId/$projId"
+    val id = s"$orgId/$projId"
 
-    "fail to create project if the permissions are missing"  taggedAs ToMigrateTag in {
-      cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Forbidden
-        json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
-      }
+    "fail to create project if the permissions are missing"  taggedAs ProjectsTag in {
+      adminDsl.createProject(
+        orgId,
+        projId,
+        Json.obj(),
+        Bojack,
+        Some(UnauthorizedAccess)
+      ).runSyncUnsafe()
     }
 
-    "add organizations/create permissions for user"  taggedAs ToMigrateTag in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create")
-      ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val rev = acls._results.head._rev
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
-      }
+    "add organizations/create permissions for user"  taggedAs ProjectsTag in {
+      aclDsl.addPermissions(
+        "/",
+        Bojack,
+        Set(Organizations.Create, Projects.Create)
+      ).runSyncUnsafe()
     }
 
-    "fail to create if the HTTP verb used is POST"  taggedAs ToMigrateTag in {
-      cl(Req(POST, s"$adminBase/projects/$id", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.MethodNotAllowed
-        json shouldEqual jsonContentOf("/admin/errors/method-not-supported.json")
-      }
+    "fail to create if the HTTP verb used is POST"  taggedAs ProjectsTag in {
+      cl.post[Json](s"/projects/$id", Json.obj(), Bojack) { (json, response) =>
+        response.status shouldEqual MethodNotAllowed.statusCode
+        json shouldEqual MethodNotAllowed.json
+      }.runSyncUnsafe()
     }
 
-    "create organization"  taggedAs ToMigrateTag in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity()))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+    "create organization"  taggedAs ProjectsTag in {
+      adminDsl.createOrganization(
+        orgId,
+        "Description",
+        Bojack
+      ).runSyncUnsafe()
     }
 
     val description = s"$id project"
-    val base        = s"${config.kg.uri.toString()}/resources/$id/_/"
-    val vocab       = s"${config.kg.uri.toString()}/vocabs/$id/"
-    val createJson =
-      projectReqJson(nxv = "nxv", person = "person", description = description, base = base, vocab = vocab)
-    val create = createJson.toEntity
+    val base        = s"${config.deltaUri.toString()}/resources/$id/_/"
+    val vocab       = s"${config.deltaUri.toString()}/vocabs/$id/"
 
-    "return not found when fetching a non existing project"  taggedAs ToMigrateTag in {
-      cl(Req(uri = s"$adminBase/projects/$orgId/${genId()}", headers = headersJsonUser))
-        .mapResp(_.status shouldEqual StatusCodes.NotFound)
+    val createJson = adminDsl.projectPayload(
+      nxv = "nxv",
+      person = "person",
+      description = description,
+      base = base,
+      vocab = vocab
+    )
+
+    "return not found when fetching a non existing project"  taggedAs ProjectsTag in {
+      cl.get[Json](s"/projects/$orgId/${genId()}", Bojack) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
+      }.runSyncUnsafe()
     }
 
-    "clean permissions and add projects/create permissions"  taggedAs ToMigrateTag in {
-      cleanAcls
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "projects/create")
-      ).toEntity
-      cl(Req(PATCH, s"$iamBase/acls/$orgId", headersServiceAccount, json))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
+    "create project" taggedAs ProjectsTag in {
+      adminDsl.createProject(
+        orgId,
+        projId,
+        createJson,
+        Bojack
+      ).runSyncUnsafe()
     }
 
-    "create project"  taggedAs ToMigrateTag in {
-      cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, create)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Created
-        json.removeMetadata() shouldEqual createRespJson(id, 1L)
-      }
-    }
-
-    "fail to create if project already exists"  taggedAs ToMigrateTag in {
-      cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf(
+    "fail to create if project already exists"  taggedAs ProjectsTag in {
+      val conflict = ExpectedResponse(
+        StatusCodes.Conflict,
+        jsonContentOf(
           "/admin/errors/project-already-exists.json",
           Map(
             quote("{projLabel}") -> projId,
@@ -103,242 +124,218 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
             quote("{projId}")    -> id
           )
         )
-      }
+      )
+
+      adminDsl.createProject(
+        orgId,
+        projId,
+        Json.obj(),
+        Bojack,
+        Some(conflict)
+      ).runSyncUnsafe()
     }
 
-    "ensure that necessary permissions have been set in IAM"  taggedAs ToMigrateTag in {
-      cl(Req(GET, s"$iamBase/acls/$id", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        acls._results.head.acl.head.permissions shouldEqual Set(
-          "acls/read",
-          "acls/write",
-          "files/write",
-          "organizations/create",
-          "organizations/read",
-          "organizations/write",
-          "projects/create",
-          "projects/read",
-          "projects/write",
-          "resolvers/write",
-          "resources/read",
-          "resources/write",
-          "schemas/write",
-          "views/write",
-          "views/query",
-          "storages/write",
-          "archives/write"
-        )
-      }
+    "ensure that necessary permissions have been set"  taggedAs ProjectsTag in {
+      aclDsl.checkAdminAcls(s"/$id", Bojack)
+        .runSyncUnsafe()
     }
 
-    "fetch the project"  taggedAs ToMigrateTag in {
-      cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateProject(json, createJson)
-        validateAdminResource(json, "Project", "projects", id, description, 1L, projId)
-      }
+    "fetch the project"  taggedAs ProjectsTag in {
+      cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        admin.validateProject(json, createJson)
+        admin.validate(json, "Project", "projects", id, description, 1L, projId)
+      }.runSyncUnsafe()
     }
 
-    "fetch project by UUID"  taggedAs ToMigrateTag in {
-      cl(Req(GET, s"$adminBase/orgs/$orgId", headersServiceAccount)).mapJson { (orgJson, _) =>
-        val orgUuid = orgJson.hcursor.get[String]("_uuid").rightValue
-        cl(Req(GET, s"$adminBase/projects/$id", headersUser)).mapJson { (projJson, _) =>
-          val projectUuid = projJson.hcursor.get[String]("_uuid").rightValue
-          cl(Req(GET, s"$adminBase/projects/$orgUuid/$projectUuid", headersUser)).mapJson { (json, result) =>
-            result.status shouldEqual StatusCodes.OK
-            json shouldEqual projJson
+    "fetch project by UUID"  taggedAs ProjectsTag in {
+      cl.get[Json](s"/orgs/$orgId", Bojack) { (orgJson, _) =>
+        runTask {
+          val orgUuid = admin._uuid.getOption(orgJson).value
+          cl.get[Json](s"/projects/$id", Bojack) { (projectJson, _) =>
+            runTask {
+                val projectUuid = admin._uuid.getOption(projectJson).value
+                cl.get[Json](s"/projects/$orgUuid/$projectUuid", Bojack) { (json, response) =>
+                  response.status shouldEqual StatusCodes.OK
+                  json shouldEqual projectJson
+                }
+            }
           }
         }
-      }
+      }.runSyncUnsafe()
     }
 
-    "return not found when fetching a non existing revision of a project"  taggedAs ToMigrateTag in {
-      cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersJsonUser)).mapResp { result =>
-        result.status shouldEqual StatusCodes.NotFound
-      }
+    "return not found when fetching a non existing revision of a project" taggedAs ProjectsTag in {
+      cl.get[Json](s"/projects/$id?rev=3", Bojack) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
+      }.runSyncUnsafe()
     }
 
-    "update project and fetch revisions"  taggedAs ToMigrateTag in {
+    "update project and fetch revisions"  taggedAs ProjectsTag in {
       val descRev2  = s"$description update 1"
-      val baseRev2  = s"${config.admin.uri.toString()}/${genString()}/"
-      val vocabRev2 = s"${config.admin.uri.toString()}/${genString()}/"
-      val updateRev2Json =
-        projectReqJson(
-          "/admin/projects/update.json",
-          "nxv",
-          "person",
-          description = descRev2,
-          base = baseRev2,
-          vocab = vocabRev2
-        )
-      val updateRev2 = updateRev2Json.toEntity
-      cl(Req(PUT, s"$adminBase/projects/$id?rev=1", headersJsonUser, updateRev2)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeMetadata() shouldEqual createRespJson(id, 2L)
-      }
+      val baseRev2  = s"${config.deltaUri.toString()}/${genString()}/"
+      val vocabRev2 = s"${config.deltaUri.toString()}/${genString()}/"
+      val updateRev2Json = adminDsl.projectPayload(
+        "/admin/projects/update.json",
+        "nxv",
+        "person",
+        description = descRev2,
+        base = baseRev2,
+        vocab = vocabRev2
+      )
 
       val descRev3  = s"$description update 2"
-      val baseRev3  = s"${config.admin.uri.toString()}/${genString()}/"
-      val vocabRev3 = s"${config.admin.uri.toString()}/${genString()}/"
+      val baseRev3  = s"${config.deltaUri.toString()}/${genString()}/"
+      val vocabRev3 = s"${config.deltaUri.toString()}/${genString()}/"
+      val updateRev3Json = adminDsl.projectPayload(
+        "/admin/projects/update.json",
+        "nxv",
+        "person",
+        description = descRev3,
+        base = baseRev3,
+        vocab = vocabRev3
+      )
 
-      val updateRev3Json =
-        projectReqJson(
-          "/admin/projects/update.json",
-          "nxv",
-          "person",
-          description = descRev3,
-          base = baseRev3,
-          vocab = vocabRev3
-        )
-      val updateRev3 = updateRev3Json.toEntity
-      updateRev2.dataBytes
-      cl(Req(PUT, s"$adminBase/projects/$id?rev=2", headersJsonUser, updateRev3)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeMetadata() shouldEqual createRespJson(id, 3L)
-      }
-
-      cl(Req(uri = s"$adminBase/projects/$id", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateProject(json, updateRev3Json)
-        validateAdminResource(json, "Project", "projects", id, descRev3, 3L, projId)
-      }
-
-      cl(Req(uri = s"$adminBase/projects/$id?rev=3", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateProject(json, updateRev3Json)
-        validateAdminResource(json, "Project", "projects", id, descRev3, 3L, projId)
-      }
-
-      cl(Req(uri = s"$adminBase/projects/$id?rev=2", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateProject(json, updateRev2Json)
-        validateAdminResource(json, "Project", "projects", id, descRev2, 2L, projId)
-      }
-
-      cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateProject(json, createJson)
-        validateAdminResource(json, "Project", "projects", id, description, 1L, projId)
-      }
+      {
+        for {
+          _ <- adminDsl.updateProject(
+            orgId,
+            projId,
+            updateRev2Json,
+            Bojack,
+            1L
+          )
+          _ <- adminDsl.updateProject(
+            orgId,
+            projId,
+            updateRev3Json,
+            Bojack,
+            2L
+          )
+          _ <- cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            admin.validateProject(json, updateRev3Json)
+            admin.validate(json, "Project", "projects", id, descRev3, 3L, projId)
+          }
+          _ <- cl.get[Json](s"/projects/$id?rev=3", Bojack) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            admin.validateProject(json, updateRev3Json)
+            admin.validate(json, "Project", "projects", id, descRev3, 3L, projId)
+          }
+          _ <- cl.get[Json](s"/projects/$id?rev=2", Bojack) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            admin.validateProject(json, updateRev2Json)
+            admin.validate(json, "Project", "projects", id, descRev2, 2L, projId)
+          }
+          _ <- cl.get[Json](s"/projects/$id?rev=1", Bojack) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            admin.validateProject(json, createJson)
+            admin.validate(json, "Project", "projects", id, description, 1L, projId)
+          }
+        } yield {}
+      }.runSyncUnsafe()
     }
 
-    "reject update  when wrong revision is provided"  taggedAs ToMigrateTag in {
-
-      cl(Req(PUT, s"$adminBase/projects/$id?rev=4", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/project-incorrect-revision.json")
-      }
+    "reject update  when wrong revision is provided" taggedAs ProjectsTag in {
+      cl.put[Json](s"/projects/$id?rev=4", Json.obj(), Bojack) { (json, response) =>
+        response.status shouldEqual ProjectConflict.statusCode
+        json shouldEqual ProjectConflict.json
+      }.runSyncUnsafe()
     }
 
-    "deprecate project"  taggedAs ToMigrateTag in {
-      cl(Req(DELETE, s"$adminBase/projects/$id?rev=3", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeMetadata() shouldEqual createRespJson(id, 4L, deprecated = true)
-      }
+    "deprecate project" taggedAs ProjectsTag in {
+      cl.delete[Json](s"/projects/$id?rev=3", Bojack) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        filterMetadataKeys(json) shouldEqual adminDsl.createRespJson(
+          id, 4L,
+          authenticated = Bojack,
+          deprecated = true)
+      }.runSyncUnsafe()
 
-      cl(Req(uri = s"$adminBase/projects/$id", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Project", "projects", id, s"$description update 2", 4L, projId, deprecated = true)
-      }
+      cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        admin.validate(json, "Project", "projects", id, s"$description update 2", 4L, projId, deprecated = true)
+      }.runSyncUnsafe()
 
-      cl(Req(uri = s"$adminBase/projects/$id?rev=1", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateProject(json, createJson)
-        validateAdminResource(json, "Project", "projects", id, description, 1L, projId)
-      }
+      cl.get[Json](s"/projects/$id?rev=1", Bojack) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        admin.validate(json, "Project", "projects", id, description, 1L, projId)
+      }.runSyncUnsafe()
     }
-
-    "prevent fetching a project if permissions are missing"  taggedAs ToMigrateTag in {
-      cleanAcls
-      cl(Req(uri = s"$adminBase/projects/$id", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Forbidden
-        json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
-      }
-    }
-
   }
 
   "listing projects" should {
-
-    "delete all ACLs for user" in cleanAcls
-
-    "return unauthorized access if user has no permissions on / "  taggedAs ToMigrateTag in {
-      cl(Req(GET, s"$adminBase/projects", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json shouldEqual jsonContentOf("/admin/projects/empty-project-list.json")
-      }
+    "return unauthorized access if user has no permissions on / " taggedAs ProjectsTag in {
+      cl.get[Json]("/projects", PrincessCarolyn) { (json, response) =>
+        response.status shouldEqual UnauthorizedAccess.statusCode
+        json shouldEqual UnauthorizedAccess.json
+      }.runSyncUnsafe()
     }
 
-    "add projects/create permissions for user"  taggedAs ToMigrateTag in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create\",\"projects/read")
-      ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val rev = acls._results.head._rev
-
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
-      }
-
+    "return an empty list if no project is accessible" taggedAs ProjectsTag in {
+      aclDsl.addPermissions(
+        s"/${genString()}",
+        PrincessCarolyn,
+        Set(Organizations.Create, Projects.Read)
+      ).runSyncUnsafe()
+      cl.get[Json]("/projects", PrincessCarolyn) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        json shouldEqual jsonContentOf("/admin/projects/empty-project-list.json")
+      }.runSyncUnsafe()
     }
 
     val orgId = genId()
 
-    val projectIds: immutable.Seq[String] =
+    val projectIds: List[(String, String)] =
       (1 to 5).map { _ =>
-        s"$orgId/${genId()}"
-      }.sorted
+        (orgId, genId())
+      }.sorted.toList
 
-    def projectListingResults(ids: Seq[String]): Json = {
+    def projectListingResults(ids: Seq[(String, String)], target: Authenticated): Json = {
       Json.arr(
-        ids.map { id =>
+        ids.map { case (orgId, projectId) =>
           jsonContentOf(
             "/admin/projects/listing-item.json",
             Map(
-              quote("{adminBase}") -> adminBase.toString(),
-              quote("{id}")        -> id,
-              quote("{projId}")    -> id.split("/")(1),
-              quote("{orgId}")     -> id.split("/")(0),
-              quote("{iamBase}")   -> config.iam.uri.toString(),
-              quote("{user}")      -> config.iam.testUserSub
+              quote("{deltaUri}") -> config.deltaUri.toString(),
+              quote("{id}")        -> s"$orgId/$projectId",
+              quote("{projId}")    -> projectId,
+              quote("{orgId}")     -> orgId,
+              quote("{user}")      -> target.name,
+              quote("{realm}")     -> target.realm.name
             )
           )
         }: _*
       )
     }
 
-    "create projects"  taggedAs ToMigrateTag in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity())).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Created
-        json.removeMetadata() shouldEqual createRespJson(orgId, 1L, "orgs", "Organization")
-      }
-
-      forAll(projectIds) { id =>
-        val projId = id.split("/")(1)
-        cl(
-          Req(
-            PUT,
-            s"$adminBase/projects/$id",
-            headersJsonUser,
-            projectReqJson(
-              nxv = s"nxv-$projId",
-              person = s"person-$projId",
-              description = projId,
-              base = s"http:example.com/$projId/",
-              vocab = s"http:example.com/$projId/vocab/"
-            ).toEntity
+    "create projects"  taggedAs ProjectsTag in {
+      {
+        for {
+          _ <- adminDsl.createOrganization(
+            orgId,
+            "Description",
+            Bojack
           )
-        ).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.Created
-          json.removeMetadata() shouldEqual createRespJson(id, 1L)
-        }
-
-      }
+          _ <- projectIds.traverse { case (orgId, projId) =>
+            adminDsl.createProject(
+              orgId,
+              projId,
+              adminDsl.projectPayload(
+                nxv = s"nxv-$projId",
+                person = s"person-$projId",
+                description = projId,
+                base = s"http:example.com/$projId/",
+                vocab = s"http:example.com/$projId/vocab/"
+              ),
+              Bojack
+            )
+          }
+        } yield {}
+      }.runSyncUnsafe()
     }
 
-    "list projects"  taggedAs ToMigrateTag in {
+    "list projects" taggedAs ProjectsTag in {
       val expectedResults = Json.obj(
         "@context" -> Json.arr(
           Json.fromString("https://bluebrain.github.io/nexus/contexts/admin.json"),
@@ -346,17 +343,16 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           Json.fromString("https://bluebrain.github.io/nexus/contexts/search.json")
         ),
         "_total"   -> Json.fromInt(projectIds.size),
-        "_results" -> projectListingResults(projectIds)
+        "_results" -> projectListingResults(projectIds, Bojack)
       )
 
-      cl(Req(uri = s"$adminBase/projects/$orgId", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        removeSearchMetadata(json) shouldEqual expectedResults
-      }
+      cl.get[Json](s"/projects/$orgId", Bojack) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        filterResultMetadata(json) shouldEqual expectedResults
+      }.runSyncUnsafe()
     }
 
-    "list projects which user has access to"  taggedAs ToMigrateTag in {
-      cleanAcls
+    "list projects which user has access to" taggedAs ProjectsTag in {
       val projectsToList = projectIds.slice(0, 2)
       val expectedResults = Json.obj(
         "@context" -> Json.arr(
@@ -365,35 +361,22 @@ class ProjectsSpec extends BaseSpec with Eventually with Inspectors with CancelA
           Json.fromString("https://bluebrain.github.io/nexus/contexts/search.json")
         ),
         "_total"   -> Json.fromInt(projectsToList.size),
-        "_results" -> projectListingResults(projectsToList)
+        "_results" -> projectListingResults(projectsToList, Bojack)
       )
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "projects/read")
-      ).toEntity
 
-      projectsToList.foreach { projectId =>
-        cl(Req(PATCH, s"$iamBase/acls/$projectId", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
-      }
+      projectsToList.traverse { case (orgId, projectId) =>
+        aclDsl.addPermission(
+          s"/$orgId/$projectId",
+          PrincessCarolyn,
+          Projects.Read
+        )
+      }.runSyncUnsafe()
 
-      cl(Req(uri = s"$adminBase/projects/$orgId", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        removeSearchMetadata(json) shouldEqual expectedResults
-      }
+      cl.get[Json](s"/projects/$orgId", PrincessCarolyn) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        filterResultMetadata(json) shouldEqual expectedResults
+      }.runSyncUnsafe()
     }
   }
 
-  def removeSearchMetadata(json: Json): Json =
-    json.hcursor
-      .downField("_results")
-      .withFocus(
-        _.mapArray(
-          _.map(
-            _.removeKeys("_createdAt", "_updatedAt", "_uuid", "_organizationUuid")
-          )
-        )
-      )
-      .top
-      .value
 }

@@ -103,31 +103,33 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
                      nxv: String = randomProjectPrefix,
                      person: String = randomProjectPrefix,
                      description: String = genString(),
-                     base: String = s"${genString()}/",
-                     vocab: String = s"${genString()}/"): Json = {
+                     base: String = s"${config.deltaUri.toString()}/${genString()}/",
+                     vocab: String = s"${config.deltaUri.toString()}/${genString()}/"): Json = {
     val rep = Map(
       quote("{nxv-prefix}")    -> nxv,
       quote("{person-prefix}") -> person,
       quote("{description}")   -> description,
-      quote("{base}")          -> s"${config.deltaUri.toString()}/$base",
-      quote("{vocab}")         -> s"${config.deltaUri.toString()}/$vocab"
+      quote("{base}")          -> base,
+      quote("{vocab}")         -> vocab
     )
     jsonContentOf(path, rep)
   }
 
-  def createProject(id: String,
+  def createProject(orgId: String,
+                    projectId: String,
                     json: Json,
                     authenticated: Authenticated,
                     expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] =
-    updateProject(id, json, authenticated, 0L, expectedResponse)
+    updateProject(orgId, projectId, json, authenticated, 0L, expectedResponse)
 
-  def updateProject(id: String,
+  def updateProject(orgId: String,
+                    projectId: String,
                     payload: Json,
                     authenticated: Authenticated,
                     revision: Long,
                     expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] =
-    cl.put[Json](s"/projects/$id${queryParams(revision)}", payload, authenticated) { (json, response) =>
-      logger.info(s"Creating/updating project $id at revision $revision")
+    cl.put[Json](s"/projects/$orgId/$projectId${queryParams(revision)}", payload, authenticated) { (json, response) =>
+      logger.info(s"Creating/updating project $orgId/$projectId at revision $revision")
       expectedResponse match {
         case Some(e) =>
           response.status shouldEqual e.statusCode
@@ -138,7 +140,7 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
           else
             response.status shouldEqual StatusCodes.OK
           filterMetadataKeys(json) shouldEqual createRespJson(
-            id,
+            s"$orgId/$projectId",
             revision + 1L,
             authenticated = authenticated
           )
