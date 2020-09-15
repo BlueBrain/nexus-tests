@@ -21,7 +21,10 @@ object Optics extends Optics {
   private val metadataKeys = Set("_uuid", "_createdAt", "_updatedAt", "_organizationUuid")
   val filterMetadataKeys: Json => Json = filterKeys(metadataKeys)
 
-  val filterResultMetadata = root._results.arr.modify( _.map(filterMetadataKeys))
+  val filterResultMetadata: Json => Json = root._results.arr.modify( _.map(filterMetadataKeys))
+
+  val filterSearchMetadata: Json => Json = filterKey("_next") andThen filterResultMetadata
+
 
   object admin {
     val `@id` = root.`@id`.string
@@ -68,6 +71,11 @@ object Optics extends Optics {
 
   object error {
     val `@type` = root.`@type`.string
+  }
+
+  object resources {
+    val _next = root._next.string
+    val _results = root._results.arr
   }
 
 }

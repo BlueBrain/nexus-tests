@@ -15,8 +15,8 @@
       "_project": "{project}",
       "_rev": 4,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/2",
@@ -28,8 +28,8 @@
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/3",
@@ -41,8 +41,8 @@
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/4",
@@ -54,8 +54,8 @@
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
     },
     {
       "@id": "https://dev.nexus.test.com/simplified-resource/5",
@@ -67,8 +67,8 @@
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
     }
   ]
 }

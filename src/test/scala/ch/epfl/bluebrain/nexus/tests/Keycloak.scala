@@ -18,9 +18,7 @@ import monix.bio.Task
 
 import scala.concurrent.duration._
 
-trait Keycloak
-
-object Keycloak extends Keycloak with Resources {
+object Keycloak extends Resources {
 
   import monix.execution.Scheduler.Implicits.global
 

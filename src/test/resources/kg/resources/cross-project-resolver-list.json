@@ -11,15 +11,15 @@
         "https://bluebrain.github.io/nexus/vocabulary/Resolver",
         "https://bluebrain.github.io/nexus/vocabulary/InProject"
       ],
-      "_incoming": "{kgBase}/resolvers/{projId}/defaultResolver/incoming",
-      "_outgoing": "{kgBase}/resolvers/{projId}/defaultResolver/outgoing",
-      "_self": "{kgBase}/resolvers/{projId}/defaultResolver",
+      "_incoming": "{deltaBase}/resolvers/{projId}/defaultResolver/incoming",
+      "_outgoing": "{deltaBase}/resolvers/{projId}/defaultResolver/outgoing",
+      "_self": "{deltaBase}/resolvers/{projId}/defaultResolver",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
     },
     {
       "@id": "http://example.com/id",
@@ -27,15 +27,15 @@
         "https://bluebrain.github.io/nexus/vocabulary/CrossProject",
         "https://bluebrain.github.io/nexus/vocabulary/Resolver"
       ],
-      "_incoming": "{kgBase}/resolvers/{projId}/http%3A%2F%2Fexample.com%2Fid/incoming",
-      "_outgoing": "{kgBase}/resolvers/{projId}/http%3A%2F%2Fexample.com%2Fid/outgoing",
-      "_self": "{kgBase}/resolvers/{projId}/http%3A%2F%2Fexample.com%2Fid",
+      "_incoming": "{deltaBase}/resolvers/{projId}/http%3A%2F%2Fexample.com%2Fid/incoming",
+      "_outgoing": "{deltaBase}/resolvers/{projId}/http%3A%2F%2Fexample.com%2Fid/outgoing",
+      "_self": "{deltaBase}/resolvers/{projId}/http%3A%2F%2Fexample.com%2Fid",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/resolver.json",
       "_project": "{project}",
       "_rev": 2,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
     }
   ]
 }

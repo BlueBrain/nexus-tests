@@ -18,7 +18,7 @@
     {
       "@id": "{iamBase}/realms/{realm}/users/{user}",
       "@type": "User",
-      "realm": "internal",
+      "realm": "{realm}",
       "subject": "{user}"
     }
   ],
