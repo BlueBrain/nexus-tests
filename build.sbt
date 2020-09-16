@@ -33,6 +33,7 @@ val akkaHttpVersion     = "10.1.10"
 val alpakkaVersion      = "1.1.2"
 val catsVersion         = "2.0.0"
 val circeVersion        = "0.13.0"
+val fs2Version          = "2.4.4"
 val logbackVersion      = "1.2.3"
 val monixBioVersion     = "1.0.0"
 val pureconfigVersion   = "0.12.1"
@@ -51,6 +52,7 @@ lazy val akkaHttpTestKit = "com.typesafe.akka"          %% "akka-http-testkit"  
 lazy val akkaStream      = "com.typesafe.akka"          %% "akka-stream"             % akkaVersion
 lazy val akkaTestKit     = "com.typesafe.akka"          %% "akka-testkit"            % akkaVersion
 lazy val circeOptics     = "io.circe"                   %% "circe-optics"            % circeVersion
+lazy val fs2             = "co.fs2"                     %% "fs2-core"                % fs2Version
 lazy val logback         = "ch.qos.logback"             % "logback-classic"          % logbackVersion
 lazy val monixBio        = "io.monix"                   %% "monix-bio"               % monixBioVersion
 lazy val pureconfig      = "com.github.pureconfig"      %% "pureconfig"              % pureconfigVersion
@@ -78,6 +80,7 @@ lazy val root = project
       akkaHttpCore,
       akkaStream,
       circeOptics,
+      fs2,
       logback,
       monixBio,
       pureconfig,
