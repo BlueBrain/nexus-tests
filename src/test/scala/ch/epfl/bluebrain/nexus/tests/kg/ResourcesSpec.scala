@@ -131,14 +131,12 @@ class ResourcesSpec extends NewBaseSpec
       cl.get[Json](s"/resources/$id1/test-schema/test-resource:1", Rick) { (json, response) =>
         val expected = jsonContentOf(
           "/kg/resources/simple-resource-response.json",
-          Map(
+          replacements(
+            Rick,
             quote("{priority}")  -> "5",
             quote("{rev}")       -> "1",
             quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-            quote("{project}")   -> s"${config.deltaUri}/projects/$id1",
-            quote("{deltaBase}")   -> config.deltaUri.toString(),
-            quote("{realm}")     -> Rick.realm.name,
-            quote("{user}")      -> Rick.name
+            quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
           )
         )
         response.status shouldEqual StatusCodes.OK
@@ -163,10 +161,9 @@ class ResourcesSpec extends NewBaseSpec
     val resolverPayload =
       jsonContentOf(
         "/kg/resources/cross-project-resolver.json",
-        Map(
-          quote("{project}") -> id1,
-          quote("{user}")  -> Rick.name,
-          quote("{realm}")  -> Rick.realm.name
+        replacements(
+          Rick,
+          quote("{project}") -> id1
         )
       )
 
@@ -211,13 +208,11 @@ class ResourcesSpec extends NewBaseSpec
     "fetch the update" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
           "/kg/resources/cross-project-resolver-updated-resp.json",
-          Map(
+          replacements(
+            Rick,
             quote("{project}")        -> id1,
             quote("{resources}")      -> s"${config.deltaUri}/resolvers/$id2",
-            quote("{project-parent}") -> s"${config.deltaUri}/projects/$id2",
-            quote("{iamBase}")        -> config.deltaUri.toString(),
-            quote("{realm}")          -> Rick.realm.name,
-            quote("{user}")           -> Rick.name
+            quote("{project-parent}") -> s"${config.deltaUri}/projects/$id2"
           )
         )
 
@@ -230,12 +225,10 @@ class ResourcesSpec extends NewBaseSpec
     "wait for the cross-project resolver to be indexed" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
         "/kg/resources/cross-project-resolver-list.json",
-        Map(
-          quote("{deltaBase}")  -> config.deltaUri.toString(),
+        replacements(
+          Rick,
           quote("{projId}")  -> s"$id2",
-          quote("{project}") -> s"${config.deltaUri}/projects/$id2",
-          quote("{realm}")   -> Rick.realm.name,
-          quote("{user}")    -> Rick.name
+          quote("{project}") -> s"${config.deltaUri}/projects/$id2"
         )
       )
 
@@ -304,14 +297,12 @@ class ResourcesSpec extends NewBaseSpec
     "fetch the update" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "3",
           quote("{rev}")       -> "2",
           quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-          quote("{project}")   -> s"${config.deltaUri}/projects/$id1",
-          quote("{deltaBase}")   -> config.deltaUri.toString(),
-          quote("{realm}")     -> Rick.realm.name,
-          quote("{user}")      -> Rick.name
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
       List(
@@ -328,14 +319,12 @@ class ResourcesSpec extends NewBaseSpec
     "fetch previous revision" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "5",
           quote("{rev}")       -> "1",
           quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-          quote("{project}")   -> s"${config.deltaUri}/projects/$id1",
-          quote("{deltaBase}")   -> config.deltaUri.toString(),
-          quote("{realm}")     -> Rick.realm.name,
-          quote("{user}")      -> Rick.name
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
 
@@ -372,14 +361,12 @@ class ResourcesSpec extends NewBaseSpec
     "fetch a tagged value" taggedAs ResourcesTag in {
       val expectedTag1 = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "3",
           quote("{rev}")       -> "2",
           quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-          quote("{project}")   -> s"${config.deltaUri}/projects/$id1",
-          quote("{deltaBase}")   -> config.deltaUri.toString(),
-          quote("{realm}")     -> Rick.realm.name,
-          quote("{user}")      -> Rick.name
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
 
@@ -391,14 +378,12 @@ class ResourcesSpec extends NewBaseSpec
 
       val expectedTag2 = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "5",
           quote("{rev}")       -> "1",
           quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-          quote("{project}")   -> s"${config.deltaUri}/projects/$id1",
-          quote("{deltaBase}")   -> config.deltaUri.toString(),
-          quote("{realm}")     -> Rick.realm.name,
-          quote("{user}")      -> Rick.name
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
 
@@ -413,13 +398,12 @@ class ResourcesSpec extends NewBaseSpec
   "listing resources" should {
 
     "list default resources" taggedAs ResourcesTag in {
-      val mapping = Map(
+      val mapping = replacements(
+        Rick,
         quote("{project-label}") -> id1,
-        quote("{project}")       -> s"${config.deltaUri}/projects/$id1",
-        quote("{deltaBase}")     -> config.deltaUri.toString(),
-        quote("{realm}")         -> Rick.realm.name,
-        quote("{user}")          -> Rick.name
+        quote("{project}")       -> s"${config.deltaUri}/projects/$id1"
       )
+
       val resources = List(
         "resolvers" -> jsonContentOf("/kg/listings/default-resolver.json", mapping),
         "views"     -> jsonContentOf("/kg/listings/default-view.json", mapping),
@@ -449,12 +433,10 @@ class ResourcesSpec extends NewBaseSpec
     "list the resources" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
         "/kg/listings/response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-          quote("{project}")   -> s"${config.deltaUri}/projects/$id1",
-          quote("{deltaBase}")   -> config.deltaUri.toString(),
-          quote("{realm}")     -> Rick.realm.name,
-          quote("{user}")      -> Rick.name
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
 
@@ -502,12 +484,10 @@ class ResourcesSpec extends NewBaseSpec
       val expected = resources._results.getOption(
         jsonContentOf(
           "/kg/listings/response.json",
-          Map(
+          replacements(
+            Rick,
             quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-            quote("{project}")   -> s"${config.deltaUri}/projects/$id1",
-            quote("{deltaBase}")   -> config.deltaUri.toString(),
-            quote("{realm}")     -> Rick.realm.name,
-            quote("{user}")      -> Rick.name
+            quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
           )
         )
       ).value

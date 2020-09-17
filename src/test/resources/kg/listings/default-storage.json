@@ -11,15 +11,15 @@
         "https://bluebrain.github.io/nexus/vocabulary/Storage",
         "https://bluebrain.github.io/nexus/vocabulary/DiskStorage"
       ],
-      "_incoming": "{deltaBase}/storages/{project-label}/defaultStorage/incoming",
-      "_outgoing": "{deltaBase}/storages/{project-label}/defaultStorage/outgoing",
-      "_self": "{deltaBase}/storages/{project-label}/defaultStorage",
+      "_incoming": "{deltaUri}/storages/{project-label}/defaultStorage/incoming",
+      "_outgoing": "{deltaUri}/storages/{project-label}/defaultStorage/outgoing",
+      "_self": "{deltaUri}/storages/{project-label}/defaultStorage",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/storage.json",
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
-      "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}"
+      "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}"
     }
   ]
 }

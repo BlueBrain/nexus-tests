@@ -151,10 +151,10 @@ class ProjectsSpec extends NewBaseSpec {
     "fetch project by UUID"  taggedAs ProjectsTag in {
       cl.get[Json](s"/orgs/$orgId", Bojack) { (orgJson, _) =>
         runTask {
-          val orgUuid = admin._uuid.getOption(orgJson).value
+          val orgUuid = _uuid.getOption(orgJson).value
           cl.get[Json](s"/projects/$id", Bojack) { (projectJson, _) =>
             runTask {
-                val projectUuid = admin._uuid.getOption(projectJson).value
+                val projectUuid = _uuid.getOption(projectJson).value
                 cl.get[Json](s"/projects/$orgUuid/$projectUuid", Bojack) { (json, response) =>
                   response.status shouldEqual StatusCodes.OK
                   json shouldEqual projectJson
@@ -265,19 +265,7 @@ class ProjectsSpec extends NewBaseSpec {
   }
 
   "listing projects" should {
-    "return unauthorized access if user has no permissions on / " taggedAs ProjectsTag in {
-      cl.get[Json]("/projects", PrincessCarolyn) { (json, response) =>
-        response.status shouldEqual UnauthorizedAccess.statusCode
-        json shouldEqual UnauthorizedAccess.json
-      }.runSyncUnsafe()
-    }
-
     "return an empty list if no project is accessible" taggedAs ProjectsTag in {
-      aclDsl.addPermissions(
-        s"/${genString()}",
-        PrincessCarolyn,
-        Set(Organizations.Create, Projects.Read)
-      ).runSyncUnsafe()
       cl.get[Json]("/projects", PrincessCarolyn) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         json shouldEqual jsonContentOf("/admin/projects/empty-project-list.json")
@@ -296,13 +284,11 @@ class ProjectsSpec extends NewBaseSpec {
         ids.map { case (orgId, projectId) =>
           jsonContentOf(
             "/admin/projects/listing-item.json",
-            Map(
-              quote("{deltaUri}") -> config.deltaUri.toString(),
+            replacements(
+              target,
               quote("{id}")        -> s"$orgId/$projectId",
               quote("{projId}")    -> projectId,
-              quote("{orgId}")     -> orgId,
-              quote("{user}")      -> target.name,
-              quote("{realm}")     -> target.realm.name
+              quote("{orgId}")     -> orgId
             )
           )
         }: _*

@@ -157,6 +157,13 @@ trait NewBaseSpec extends AnyWordSpecLike
     } yield ()
   }
 
+  private[tests] def replacements(authenticated: Authenticated, otherReplacements: (String, String)*) =
+    Map(
+      quote("{deltaUri}")      -> config.deltaUri.toString(),
+      quote("{realm}")          -> authenticated.realm.name,
+      quote("{user}")           -> authenticated.name
+    ) ++ otherReplacements.toMap
+
   private[tests] def genId(length: Int = 15): String =
     genString(length = length, Vector.range('a', 'z') ++ Vector.range('0', '9'))
 

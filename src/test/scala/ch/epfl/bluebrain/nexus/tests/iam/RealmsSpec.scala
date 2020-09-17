@@ -57,7 +57,7 @@ class RealmsSpec extends NewBaseSpec {
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> testRealmUri,
-              quote("{deltaBase}")  -> config.deltaUri.toString(),
+              quote("{deltaUri}")  -> config.deltaUri.toString(),
               quote("{label}")      -> testRealm.name,
               quote("{rev}")        -> "1",
               quote("{deprecated}") -> "false"
@@ -80,7 +80,7 @@ class RealmsSpec extends NewBaseSpec {
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> testRealmUri,
-              quote("{deltaBase}")  -> config.deltaUri.toString(),
+              quote("{deltaUri}")  -> config.deltaUri.toString(),
               quote("{label}")      -> testRealm.name,
               quote("{rev}")        -> s"${rev + 1}",
               quote("{deprecated}") -> "false"
@@ -97,7 +97,7 @@ class RealmsSpec extends NewBaseSpec {
             "/iam/realms/fetch-response.json",
             Map(
               quote("{realm}")     -> testRealmUri,
-              quote("{deltaBase}") -> config.deltaUri.toString(),
+              quote("{deltaUri}") -> config.deltaUri.toString(),
               quote("{rev}")       -> s"${rev + 1}",
               quote("{label}")     -> testRealm.name
             )
@@ -121,7 +121,7 @@ class RealmsSpec extends NewBaseSpec {
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}") -> testRealmUri,
-              quote("{deltaBase}") -> config.deltaUri.toString(),
+              quote("{deltaUri}") -> config.deltaUri.toString(),
               quote("{label}") -> testRealm.name,
               quote("{rev}") -> s"${rev + 2}",
               quote("{deprecated}") -> "false"
@@ -138,7 +138,7 @@ class RealmsSpec extends NewBaseSpec {
             "/iam/realms/fetch-updated-response.json",
             Map(
               quote("{realm}")      -> testRealmUri,
-              quote("{deltaBase}")  -> config.deltaUri.toString(),
+              quote("{deltaUri}")  -> config.deltaUri.toString(),
               quote("{rev}")        -> s"${rev + 2}",
               quote("{label}")      -> testRealm.name
             )
@@ -154,7 +154,7 @@ class RealmsSpec extends NewBaseSpec {
             "/iam/realms/ref-response.json",
             Map(
               quote("{realm}")      -> testRealmUri,
-              quote("{deltaBase}")  -> config.deltaUri.toString(),
+              quote("{deltaUri}")  -> config.deltaUri.toString(),
               quote("{label}")      -> testRealm.name,
               quote("{rev}")        -> s"${rev + 3}",
               quote("{deprecated}") -> "true"
@@ -171,7 +171,7 @@ class RealmsSpec extends NewBaseSpec {
             "/iam/realms/fetch-deprecated-response.json",
             Map(
               quote("{realm}")     -> testRealmUri,
-              quote("{deltaBase}") -> config.deltaUri.toString(),
+              quote("{deltaUri}") -> config.deltaUri.toString(),
               quote("{rev}")       -> s"${rev + 3}",
               quote("{label}")     -> testRealm.name
             )

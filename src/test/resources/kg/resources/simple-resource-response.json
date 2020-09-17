@@ -17,8 +17,8 @@
   "_self" : "{resources}/test-schema/test-resource:1",
   "_project" : "{project}",
   "_constrainedBy": "https://dev.nexus.test.com/test-schema",
-  "_createdBy": "{deltaBase}/realms/{realm}/users/{user}",
-  "_updatedBy": "{deltaBase}/realms/{realm}/users/{user}",
+  "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+  "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}",
   "_rev": {rev},
   "_deprecated": false
 }

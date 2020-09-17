@@ -32,9 +32,6 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
   def addPermissions(path: String,
                      target: Authenticated,
                      permissions: Set[Permission]): Task[Assertion] = {
-    path should not startWith "/acls"
-    logger.info(s"Addings permissions to $path for ${target.name}")
-
     val permissionsMap = Map(
       quote("{realm}") -> target.realm.name,
       quote("{sub}") -> target.name,
@@ -46,18 +43,42 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
       permissionsMap
     )
 
+    addPermissions(path, json, target.name)
+  }
+
+  def addPermissionAnonymous(path: String,
+                             permission: Permission): Task[Assertion] =
+    addPermissionsAnonymous(path, Set(permission))
+
+  def addPermissionsAnonymous(path: String,
+                              permissions: Set[Permission]): Task[Assertion] = {
+    val json = jsonContentOf("/iam/add_annon.json",
+      Map(
+        quote("{perms}") -> permissions.map(_.value).mkString("""","""")
+      )
+    )
+
+    addPermissions(path, json, "Anonymous")
+  }
+
+  def addPermissions(path: String,
+                     payload: Json,
+                     targetName: String): Task[Assertion] = {
+    path should not startWith "/acls"
+    logger.info(s"Addings permissions to $path for ${targetName}")
+
     def assertResponse(json: Json, response: HttpResponse) =
       response.status match {
         case StatusCodes.Created | StatusCodes.OK =>
-          logger.info(s"Permissions has been successfully added for ${target.name} on $path")
+          logger.info(s"Permissions has been successfully added for $targetName on $path")
           succeed
         case StatusCodes.BadRequest =>
           val errorType = error.`@type`.getOption(json)
           logger.warn(
-            s"We got a bad request when adding permissions for ${target.name} on $path with error type $errorType"
+            s"We got a bad request when adding permissions for $targetName on $path with error type $errorType"
           )
           errorType.value shouldBe "NothingToBeUpdated"
-        case s => fail(s"We were not expecting $s when setting acls on $path for realm ${target.realm.name} for ${target.name}")
+        case s => fail(s"We were not expecting $s when setting acls on $path for $targetName")
       }
 
     cl.get[AclListing](s"/acls$path", Identity.ServiceAccount) { (acls, response) =>
@@ -66,11 +87,11 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
         val rev = acls._results.headOption
         rev match {
           case Some(r) =>
-            cl.patch[Json](s"/acls$path?rev=${r._rev}", json, Identity.ServiceAccount) {
+            cl.patch[Json](s"/acls$path?rev=${r._rev}", payload, Identity.ServiceAccount) {
               assertResponse
             }
           case None    =>
-            cl.put[Json](s"/acls$path", json, Identity.ServiceAccount) {
+            cl.put[Json](s"/acls$path", payload, Identity.ServiceAccount) {
               assertResponse
             }
         }

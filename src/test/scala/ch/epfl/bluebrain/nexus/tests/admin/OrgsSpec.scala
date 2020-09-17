@@ -136,7 +136,7 @@ class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
     "fetch organization by UUID"  taggedAs OrgsTag in {
       cl.get[Json](s"/orgs/$id", Leela) { (jsonById, _) =>
         runTask {
-          val orgUuid = admin._uuid.getOption(jsonById).value
+          val orgUuid = _uuid.getOption(jsonById).value
 
           cl.get[Json](s"/orgs/$orgUuid", Leela) { (jsonByUuid, response) =>
             response.status shouldEqual StatusCodes.OK
