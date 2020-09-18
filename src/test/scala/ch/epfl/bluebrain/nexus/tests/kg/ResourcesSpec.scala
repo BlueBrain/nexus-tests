@@ -32,7 +32,6 @@ class ResourcesSpec extends NewBaseSpec
   private val projId2 = genId()
   private val id1     = s"$orgId/$projId1"
   private val id2     = s"$orgId/$projId2"
-  println(id1 + id2)
 
   override def beforeAll(): Unit = {
     super.beforeAll()

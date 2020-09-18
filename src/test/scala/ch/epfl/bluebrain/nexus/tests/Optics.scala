@@ -25,10 +25,14 @@ object Optics extends Optics {
 
   val filterSearchMetadata: Json => Json = filterKey("_next") andThen filterResultMetadata
 
+  val `@id` = root.`@id`.string
   val _uuid = root._uuid.string
 
+  val _total = root._total.long
+
+  val hits = root.hits.hits
+
   object admin {
-    val `@id` = root.`@id`.string
     val `@type` = root.`@type`.string
 
     val _label = root._label.string
@@ -77,7 +81,6 @@ object Optics extends Optics {
   object resources {
     val _next = root._next.string
     val _results = root._results.arr
-    val _total = root._total.long
   }
 
 }

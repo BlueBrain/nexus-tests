@@ -18,14 +18,13 @@
       "viewId": "nxv:defaultSparqlIndex"
     }
   ],
-  "_uuid": "{uuid}",
   "_incoming": "{resources}/incoming",
   "_outgoing": "{resources}/outgoing",
   "_self": "{resources}",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
   "_project": "{project-parent}",
-  "_createdBy": "{iamBase}/realms/internal/users/{user}",
-  "_updatedBy": "{iamBase}/realms/internal/users/{user}",
+  "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+  "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}",
   "_rev": 1,
   "_deprecated": false
 }

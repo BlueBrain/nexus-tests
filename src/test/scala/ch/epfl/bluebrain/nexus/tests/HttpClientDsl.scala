@@ -9,6 +9,7 @@ import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.Materializer
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
+import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.tests.Identity.Anonymous
 import com.typesafe.scalalogging.Logger
 import fs2._
@@ -30,66 +31,114 @@ object HttpClientDsl extends HttpClientDsl {
 
   val jsonHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil
 
+  val sparqlQueryHeaders: Seq[HttpHeader] = Accept(RdfMediaTypes.`application/sparql-query`) :: Nil
+
   private[tests] implicit class HttpClientOps(val httpClient: UntypedHttpClient[Task])
                                              (implicit materializer: Materializer) {
 
-    def post[A](url: String, body: Json, identity: Identity)
+    def post[A](url: String,
+                body: Json,
+                identity: Identity,
+                extraHeaders: Seq[HttpHeader] = jsonHeaders)
                (assertResponse: (A, HttpResponse) => Assertion)
-               (implicit um: FromEntityUnmarshaller[A],
-                extraHeaders: Seq[HttpHeader] = jsonHeaders): Task[Assertion] =
-      requestAssert(POST, url, Some(body), identity)(assertResponse)
+               (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+      requestAssert(POST, url, Some(body), identity, extraHeaders)(assertResponse)
 
-    def put[A](url: String, body: Json, identity: Identity)
+    def put[A](url: String,
+               body: Json,
+               identity: Identity,
+               extraHeaders: Seq[HttpHeader] = jsonHeaders)
               (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A],
-               extraHeaders: Seq[HttpHeader] = jsonHeaders): Task[Assertion] =
-      requestAssert(PUT, url, Some(body), identity)(assertResponse)
+              (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+      requestAssert(PUT, url, Some(body), identity, extraHeaders)(assertResponse)
 
-    def patch[A](url: String, body: Json, identity: Identity)
+    def patch[A](url: String,
+                 body: Json,
+                 identity: Identity,
+                 extraHeaders: Seq[HttpHeader] = jsonHeaders)
                 (assertResponse: (A, HttpResponse) => Assertion)
-                (implicit um: FromEntityUnmarshaller[A],
-                 extraHeaders: Seq[HttpHeader] = jsonHeaders): Task[Assertion] =
-      requestAssert(PATCH, url, Some(body), identity)(assertResponse)
+                (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+      requestAssert(PATCH, url, Some(body), identity, extraHeaders)(assertResponse)
 
-    def get[A](url: String, identity: Identity)
+    def get[A](url: String,
+               identity: Identity,
+               extraHeaders: Seq[HttpHeader] = jsonHeaders)
               (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A],
-               extraHeaders: Seq[HttpHeader] = jsonHeaders): Task[Assertion] =
-      requestAssert(GET, url, None, identity)(assertResponse)
+              (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+      requestAssert(GET, url, None, identity, extraHeaders)(assertResponse)
 
-    def delete[A](url: String, identity: Identity)
+    def delete[A](url: String,
+                  identity: Identity,
+                  extraHeaders: Seq[HttpHeader] = jsonHeaders)
                  (assertResponse: (A, HttpResponse) => Assertion)
-                 (implicit um: FromEntityUnmarshaller[A],
-                  extraHeaders: Seq[HttpHeader] = jsonHeaders): Task[Assertion] =
-      requestAssert(DELETE, url, None, identity)(assertResponse)
+                 (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+      requestAssert(DELETE, url, None, identity, extraHeaders)(assertResponse)
 
     def requestAssert[A](method: HttpMethod,
                          url: String,
                          body: Option[Json],
-                         identity: Identity)
+                         identity: Identity,
+                         extraHeaders: Seq[HttpHeader] = jsonHeaders)
                         (assertResponse: (A, HttpResponse) => Assertion)
-                        (implicit um: FromEntityUnmarshaller[A],
-                        extraHeaders: Seq[HttpHeader] = jsonHeaders): Task[Assertion] = {
+                        (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
       def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for url: ${method.value} $url with identity $identity", e)
-
-      request(
+      requestJson(
         method,
         s"$deltaUrl$url",
         body,
         identity,
         assertResponse,
-        onFail
+        onFail,
+        extraHeaders
       )
     }
 
-    def request[A, B](method: HttpMethod,
-                      url: String,
-                      body: Option[Json],
-                      identity: Identity,
-                      f: (A, HttpResponse) => B,
-                      handleError: Throwable => B)
-                      (implicit um: FromEntityUnmarshaller[A],
-                      extraHeaders: Seq[HttpHeader] = jsonHeaders): Task[B] =
+    def sparqlQuery[A](url: String,
+                       query: String,
+                       identity: Identity,
+                       extraHeaders: Seq[HttpHeader] = Nil)
+                      (assertResponse: (A, HttpResponse) => Assertion)
+                      (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
+      def onFail(e: Throwable): Assertion = fail(s"Something went wrong while processing the response for url: $url with identity $identity", e)
+      request(
+        POST,
+        s"$deltaUrl$url",
+        Some(query),
+        identity,
+        (s: String) => HttpEntity(RdfMediaTypes.`application/sparql-query`, s),
+        assertResponse,
+        onFail,
+        extraHeaders
+      )
+    }
+
+    def requestJson[A, R](method: HttpMethod,
+                          url: String,
+                          body: Option[Json],
+                          identity: Identity,
+                          f: (A, HttpResponse) => R,
+                          handleError: Throwable => R,
+                          extraHeaders: Seq[HttpHeader])
+                         (implicit um: FromEntityUnmarshaller[A]): Task[R] =
+      request(
+        method,
+        url,
+        body,
+        identity,
+        (j: Json) => HttpEntity(ContentTypes.`application/json`, j.noSpaces),
+        f,
+        handleError,
+        extraHeaders)
+
+    def request[A, B, R](method: HttpMethod,
+                         url: String,
+                         body: Option[B],
+                         identity: Identity,
+                         toEntity: B => HttpEntity.Strict,
+                         f: (A, HttpResponse) => R,
+                         handleError: Throwable => R,
+                         extraHeaders: Seq[HttpHeader])
+                        (implicit um: FromEntityUnmarshaller[A]): Task[R] =
       httpClient(
         HttpRequest(
           method = method,
@@ -98,8 +147,7 @@ object HttpClientDsl extends HttpClientDsl {
             case Anonymous => extraHeaders
             case _ => tokensMap.get(identity) +: extraHeaders
           },
-          entity = body.fold(HttpEntity.Empty)
-          (j => HttpEntity(ContentTypes.`application/json`, j.noSpaces))
+          entity = body.fold(HttpEntity.Empty)(toEntity)
         )
       ).flatMap { res =>
         Task.deferFuture {
@@ -130,18 +178,19 @@ object HttpClientDsl extends HttpClientDsl {
     def stream[A, B](url: String,
                      nextUrl: A => Option[String],
                      lens: A => B,
-                     identity: Identity)
-                    (implicit um: FromEntityUnmarshaller[A],
-                     extraHeaders: Seq[HttpHeader] = jsonHeaders): Stream[Task, B] = {
+                     identity: Identity,
+                     extraHeaders: Seq[HttpHeader] = jsonHeaders)
+                    (implicit um: FromEntityUnmarshaller[A]): Stream[Task, B] = {
       def onFail(e: Throwable) = throw new IllegalStateException(s"Something went wrong while processing the response for url: $url with identity $identity", e)
       Stream.unfoldLoopEval[Task, String, B](s"$deltaUrl$url") { currentUrl =>
-        request[A, A](
+        requestJson[A, A](
           GET,
           currentUrl,
           None,
           identity,
           (a: A, _: HttpResponse) => a,
-          onFail
+          onFail,
+          extraHeaders
         ).map { a =>
           (lens(a), nextUrl(a))
         }
