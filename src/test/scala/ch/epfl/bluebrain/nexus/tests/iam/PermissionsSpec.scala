@@ -10,7 +10,6 @@ import ch.epfl.bluebrain.nexus.tests.iam.types.{Permission, Permissions}
 import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec}
 import io.circe.Json
 import monix.bio.Task
-import monix.execution.Scheduler.Implicits.global
 
 import scala.collection.immutable.Iterable
 
@@ -38,7 +37,7 @@ class PermissionsSpec extends NewBaseSpec {
                   response.status shouldEqual StatusCodes.OK
           }
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "add permissions"  taggedAs (IamTag, PermissionsTag) in {
@@ -56,14 +55,14 @@ class PermissionsSpec extends NewBaseSpec {
             (_, response) => response.status shouldEqual StatusCodes.OK
           }
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "check added permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
         response.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual Permission.minimalPermissions + permission1 + permission2
-      }.runSyncUnsafe()
+      }
     }
 
     "subtract permissions"  taggedAs (IamTag, PermissionsTag) in {
@@ -78,7 +77,7 @@ class PermissionsSpec extends NewBaseSpec {
             (_, response) => response.status shouldEqual StatusCodes.OK
           }
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "check subtracted permissions"  taggedAs (IamTag, PermissionsTag) in {
@@ -103,14 +102,14 @@ class PermissionsSpec extends NewBaseSpec {
             (_, response) => response.status shouldEqual StatusCodes.OK
           }
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "check replaced permissions"  taggedAs (IamTag, PermissionsTag) in {
       cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
         response.status shouldEqual StatusCodes.OK
         permissions.permissions shouldEqual Permission.minimalPermissions + permission1 + permission2
-      }.runSyncUnsafe()
+      }
     }
 
     "reject subtracting minimal permission"  taggedAs (IamTag, PermissionsTag) in {
@@ -127,7 +126,7 @@ class PermissionsSpec extends NewBaseSpec {
             (_, response) => response.status shouldEqual StatusCodes.BadRequest
           }
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "reject replacing minimal permission"  taggedAs (IamTag, PermissionsTag) in {
@@ -144,7 +143,7 @@ class PermissionsSpec extends NewBaseSpec {
             (_, response) => response.status shouldEqual StatusCodes.BadRequest
           }
         }
-      }.runSyncUnsafe()
+      }
     }
   }
 }

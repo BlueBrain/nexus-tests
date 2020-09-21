@@ -24,18 +24,20 @@ import com.typesafe.scalalogging.Logger
 import io.circe.Json
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.wordspec.AsyncWordSpecLike
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
-trait NewBaseSpec extends AnyWordSpecLike
+trait NewBaseSpec extends AsyncWordSpecLike
   with BeforeAndAfterAll
   with Resources
   with Randomness
   with ScalatestRouteTest
+  with Eventually
   with ScalaFutures
   with Matchers {
 
@@ -52,6 +54,17 @@ trait NewBaseSpec extends AnyWordSpecLike
   val kgDsl = new KgDsl(config)
 
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.patience, 300.millis)
+
+  implicit def taskToFutureAssertion(task: Task[Assertion]): Future[Assertion] =
+    task.runToFuture
+
+  implicit def taskListToFutureAssertion(task: Task[List[Assertion]]): Future[Assertion] =
+    task.runToFuture.map(_ => succeed)(global)
+
+  def eventually(t: Task[Assertion]): Assertion =
+    eventually {
+      t.runSyncUnsafe()
+    }
 
   def runTask[A](t: Task[A]): Assertion =
     t.map { _ => succeed }

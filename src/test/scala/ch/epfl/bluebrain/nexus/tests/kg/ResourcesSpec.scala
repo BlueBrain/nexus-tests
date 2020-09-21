@@ -14,11 +14,10 @@ import ch.epfl.bluebrain.nexus.tests.Tags.ResourcesTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.Organizations
 import ch.epfl.bluebrain.nexus.tests.{HttpClientDsl, Identity, NewBaseSpec, Realm}
 import io.circe.Json
+import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.concurrent.Eventually
 
 class ResourcesSpec extends NewBaseSpec
-  with Eventually
   with EitherValues
   with CirceEq {
 
@@ -50,17 +49,15 @@ class ResourcesSpec extends NewBaseSpec
         "/",
         Rick,
         Organizations.Create
-      ).runSyncUnsafe()
+      )
     }
 
     "succeed if payload is correct" taggedAs ResourcesTag in {
-      {
-        for {
-          _ <- adminDsl.createOrganization(orgId, orgId, Rick)
-          _ <- adminDsl.createProject(orgId, projId1, kgDsl.projectJson(name = id1), Rick)
-          _ <- adminDsl.createProject(orgId, projId2, kgDsl.projectJson(name = id2), Rick)
-        } yield {}
-      }.runSyncUnsafe()
+      for {
+        _ <- adminDsl.createOrganization(orgId, orgId, Rick)
+        _ <- adminDsl.createProject(orgId, projId1, kgDsl.projectJson(name = id1), Rick)
+        _ <- adminDsl.createProject(orgId, projId2, kgDsl.projectJson(name = id2), Rick)
+      } yield succeed
     }
   }
 
@@ -71,7 +68,7 @@ class ResourcesSpec extends NewBaseSpec
       cl.put[Json](s"/schemas/$id1/test-schema", schemaPayload, Rick) {
         (_, response) =>
           response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      }
     }
 
     "creating a schema with property shape" taggedAs ResourcesTag in {
@@ -80,7 +77,7 @@ class ResourcesSpec extends NewBaseSpec
       cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) {
         (_, response) =>
           response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      }
     }
 
     "creating a schema that imports the property shape schema" taggedAs ResourcesTag in {
@@ -90,7 +87,7 @@ class ResourcesSpec extends NewBaseSpec
         cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) {
           (_, response) =>
             response.status shouldEqual StatusCodes.Created
-        }.runSyncUnsafe()
+        }
       }
     }
   }
@@ -106,11 +103,6 @@ class ResourcesSpec extends NewBaseSpec
           )
         )
 
-      cl.put[Json](s"/resources/$id1/test-schema/test-resource:1", payload, Rick) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
-
       val id2 = URLEncoder.encode("https://dev.nexus.test.com/test-schema-imports", "UTF-8")
       val payload2 = jsonContentOf(
           "/kg/resources/simple-resource.json",
@@ -120,10 +112,16 @@ class ResourcesSpec extends NewBaseSpec
           )
         )
 
-      cl.put[Json](s"/resources/$id1/$id2/test-resource:10", payload2, Rick) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      for {
+        _ <- cl.put[Json](s"/resources/$id1/test-schema/test-resource:1", payload, Rick) {
+          (_, response) =>
+            response.status shouldEqual StatusCodes.Created
+        }
+        _ <- cl.put[Json](s"/resources/$id1/$id2/test-resource:10", payload2, Rick) {
+          (_, response) =>
+            response.status shouldEqual StatusCodes.Created
+        }
+      } yield succeed
     }
 
     "fetch the payload wih metadata" taggedAs ResourcesTag in {
@@ -140,7 +138,7 @@ class ResourcesSpec extends NewBaseSpec
         )
         response.status shouldEqual StatusCodes.OK
         filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch the original payload" taggedAs ResourcesTag in {
@@ -152,7 +150,7 @@ class ResourcesSpec extends NewBaseSpec
           )
         response.status shouldEqual StatusCodes.OK
         json should equalIgnoreArrayOrder(expected)
-      }.runSyncUnsafe()
+      }
     }
   }
 
@@ -178,21 +176,21 @@ class ResourcesSpec extends NewBaseSpec
       cl.put[Json](s"/resources/$id2/test-schema/test-resource:1", payload, Rick) {
         (_, response) =>
           response.status shouldEqual StatusCodes.NotFound
-      }.runSyncUnsafe()
+      }
     }
 
     "fail to create a cross-project-resolver for proj2 if identities are missing" taggedAs ResourcesTag in {
       cl.post[Json](s"/resolvers/$id2", filterKey("identities")(resolverPayload), Rick) {
         (_, response) =>
           response.status shouldEqual StatusCodes.BadRequest
-      }.runSyncUnsafe()
+      }
     }
 
     "create a cross-project-resolver for proj2" taggedAs ResourcesTag in {
       cl.post[Json](s"/resolvers/$id2", resolverPayload, Rick) {
         (_, response) =>
           response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      }
     }
 
     "update a cross-project-resolver for proj2" taggedAs ResourcesTag in {
@@ -200,7 +198,7 @@ class ResourcesSpec extends NewBaseSpec
       eventually {
         cl.put[Json](s"/resolvers/$id2/example-id?rev=1", updated, Rick) { (_, response) =>
           response.status shouldEqual StatusCodes.OK
-        }.runSyncUnsafe()
+        }
       }
     }
 
@@ -218,7 +216,7 @@ class ResourcesSpec extends NewBaseSpec
       cl.get[Json](s"/resolvers/$id2/example-id", Rick) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
-      }.runSyncUnsafe()
+      }
     }
 
     "wait for the cross-project resolver to be indexed" taggedAs ResourcesTag in {
@@ -235,36 +233,36 @@ class ResourcesSpec extends NewBaseSpec
         cl.get[Json](s"/resolvers/$id2", Rick) { (json, response) =>
           response.status shouldEqual StatusCodes.OK
           filterSearchMetadata(json) shouldEqual expected
-        }.runSyncUnsafe()
+        }
       }
     }
 
     s"fetches a resource in project '$id1' through project '$id2' resolvers" taggedAs ResourcesTag in {
-      cl.get[Json](s"/schemas/$id1/test-schema", Rick) { (json, response1) =>
-        response1.status shouldEqual StatusCodes.OK
-        runTask {
-          for {
-            _ <- cl.get[Json](s"/resolvers/$id2/_/test-schema", Rick) { (jsonResolved, response2) =>
-              response2.status shouldEqual StatusCodes.OK
-              jsonResolved should equalIgnoreArrayOrder(json)
+      for {
+        _ <- cl.get[Json](s"/schemas/$id1/test-schema", Rick) { (json, response1) =>
+          response1.status shouldEqual StatusCodes.OK
+          runTask {
+            for {
+              _ <- cl.get[Json](s"/resolvers/$id2/_/test-schema", Rick) { (jsonResolved, response2) =>
+                response2.status shouldEqual StatusCodes.OK
+                jsonResolved should equalIgnoreArrayOrder(json)
+              }
+              _ <- cl.get[Json](s"/resolvers/$id2/example-id/test-schema", Rick) { (jsonResolved, response2) =>
+                response2.status shouldEqual StatusCodes.OK
+                jsonResolved should equalIgnoreArrayOrder(json)
+              }
+            } yield {
+              succeed
             }
-            _ <- cl.get[Json](s"/resolvers/$id2/example-id/test-schema", Rick) { (jsonResolved, response2) =>
-              response2.status shouldEqual StatusCodes.OK
-              jsonResolved should equalIgnoreArrayOrder(json)
-            }
-          } yield {
-            succeed
           }
         }
-      }.runSyncUnsafe()
-
-      cl.get[Json](s"/resolvers/$id2/example-id/test-schema-2", Rick) { (_, response) =>
-        response.status shouldEqual StatusCodes.NotFound
-      }.runSyncUnsafe()
-
-      cl.get[Json](s"/resolvers/$id2/_/test-schema-2", Rick) { (_, response) =>
-        response.status shouldEqual StatusCodes.NotFound
-      }.runSyncUnsafe()
+        _ <- cl.get[Json](s"/resolvers/$id2/example-id/test-schema-2", Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.NotFound
+        }
+        _ <- cl.get[Json](s"/resolvers/$id2/_/test-schema-2", Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.NotFound
+        }
+      } yield succeed
     }
 
     "resolve schema from the other project" taggedAs ResourcesTag in {
@@ -276,7 +274,7 @@ class ResourcesSpec extends NewBaseSpec
       eventually {
         cl.put[Json](s"/resources/$id2/test-schema/test-resource:1", payload, Rick) { (_, response) =>
           response.status shouldEqual StatusCodes.Created
-        }.runSyncUnsafe()
+        }
       }
     }
   }
@@ -290,7 +288,7 @@ class ResourcesSpec extends NewBaseSpec
 
       cl.put[Json](s"/resources/$id1/test-schema/test-resource:1?rev=1", payload, Rick) { (_, response) =>
         response.status shouldEqual StatusCodes.OK
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch the update" taggedAs ResourcesTag in {
@@ -312,7 +310,7 @@ class ResourcesSpec extends NewBaseSpec
           response.status shouldEqual StatusCodes.OK
           filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch previous revision" taggedAs ResourcesTag in {
@@ -335,7 +333,7 @@ class ResourcesSpec extends NewBaseSpec
           response.status shouldEqual StatusCodes.OK
           filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
         }
-      }.runSyncUnsafe()
+      }
     }
   }
 
@@ -344,16 +342,14 @@ class ResourcesSpec extends NewBaseSpec
       val tag1 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1"))
       val tag2 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.1", quote("{rev}") -> "2"))
 
-      {
-        for {
-          _ <- cl.post[Json](s"/resources/$id1/test-schema/test-resource:1/tags?rev=2", tag1, Rick) {
-            (_, response) => response.status shouldEqual StatusCodes.Created
-          }
-          _ <- cl.post[Json](s"/resources/$id1/_/test-resource:1/tags?rev=3", tag2, Rick) {
-            (_, response) => response.status shouldEqual StatusCodes.Created
-          }
-        } yield succeed
-      }.runSyncUnsafe()
+      for {
+        _ <- cl.post[Json](s"/resources/$id1/test-schema/test-resource:1/tags?rev=2", tag1, Rick) {
+          (_, response) => response.status shouldEqual StatusCodes.Created
+        }
+        _ <- cl.post[Json](s"/resources/$id1/_/test-resource:1/tags?rev=3", tag2, Rick) {
+          (_, response) => response.status shouldEqual StatusCodes.Created
+        }
+      } yield succeed
     }
 
 
@@ -369,12 +365,6 @@ class ResourcesSpec extends NewBaseSpec
         )
       )
 
-      cl.get[Json](s"/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", Rick) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag1)
-      }.runSyncUnsafe()
-
       val expectedTag2 = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
         replacements(
@@ -386,11 +376,18 @@ class ResourcesSpec extends NewBaseSpec
         )
       )
 
-      cl.get[Json](s"/resources/$id1/_/test-resource:1?tag=v1.0.0", Rick) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag2)
-      }.runSyncUnsafe()
+      for {
+        _ <- cl.get[Json](s"/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", Rick) {
+          (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag1)
+        }
+        _ <- cl.get[Json](s"/resources/$id1/_/test-resource:1?tag=v1.0.0", Rick) {
+          (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag2)
+        }
+      } yield succeed
     }
   }
 
@@ -414,7 +411,7 @@ class ResourcesSpec extends NewBaseSpec
             response.status shouldEqual StatusCodes.OK
             filterSearchMetadata(json) shouldEqual expected
           }
-      }.runSyncUnsafe()
+      }
     }
 
     "add more resource to the project" taggedAs ResourcesTag in {
@@ -426,7 +423,7 @@ class ResourcesSpec extends NewBaseSpec
         cl.put[Json](s"/resources/$id1/test-schema/test-resource:$resourceId", payload, Rick) { (_, response) =>
           response.status shouldEqual StatusCodes.Created
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "list the resources" taggedAs ResourcesTag in {
@@ -443,7 +440,7 @@ class ResourcesSpec extends NewBaseSpec
         cl.get[Json](s"/resources/$id1/test-schema", Rick) { (json, response) =>
           response.status shouldEqual StatusCodes.OK
           filterSearchMetadata(json) shouldEqual expected
-        }.runSyncUnsafe()
+        }
       }
     }
 
@@ -452,7 +449,7 @@ class ResourcesSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.BadRequest
           json shouldEqual jsonContentOf("/kg/listings/from-and-after-error.json")
-      }.runSyncUnsafe()
+      }
     }
 
     "return 400 when from is bigger than limit" taggedAs ResourcesTag in {
@@ -460,7 +457,7 @@ class ResourcesSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.BadRequest
           json shouldEqual jsonContentOf("/kg/listings/from-over-limit-error.json")
-      }.runSyncUnsafe()
+      }
     }
 
     "list responses using after" taggedAs ResourcesTag in {
@@ -478,7 +475,7 @@ class ResourcesSpec extends NewBaseSpec
         next,
         lens,
         Rick
-      ).compile.toList.runSyncUnsafe().flatten
+      ).compile.toList
 
       val expected = resources._results.getOption(
         jsonContentOf(
@@ -491,7 +488,9 @@ class ResourcesSpec extends NewBaseSpec
         )
       ).value
 
-      result shouldEqual expected
+      result.flatMap { l =>
+        Task.pure(l.flatten shouldEqual expected)
+      }
     }
 
     "create context" taggedAs ResourcesTag in {
@@ -499,7 +498,7 @@ class ResourcesSpec extends NewBaseSpec
 
       cl.put[Json](s"/resources/$id1/_/test-resource:mycontext", payload, Rick) { (_, response) =>
         response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      }
     }
   }
 
@@ -508,7 +507,7 @@ class ResourcesSpec extends NewBaseSpec
 
     cl.post[Json](s"/resources/$id1/", payload, Rick) { (_, response) =>
       response.status shouldEqual StatusCodes.Created
-    }.runSyncUnsafe()
+    }
   }
 
   "update context" taggedAs ResourcesTag in {
@@ -516,7 +515,7 @@ class ResourcesSpec extends NewBaseSpec
 
     cl.put[Json](s"/resources/$id1/_/test-resource:mycontext?rev=1", payload, Rick) { (_, response) =>
       response.status shouldEqual StatusCodes.OK
-    }.runSyncUnsafe()
+    }
   }
 
   "fetched previously created resource" taggedAs ResourcesTag in {

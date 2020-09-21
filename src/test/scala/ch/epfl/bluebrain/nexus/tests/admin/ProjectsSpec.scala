@@ -60,7 +60,7 @@ class ProjectsSpec extends NewBaseSpec {
         Json.obj(),
         Bojack,
         Some(UnauthorizedAccess)
-      ).runSyncUnsafe()
+      )
     }
 
     "add organizations/create permissions for user"  taggedAs ProjectsTag in {
@@ -68,14 +68,14 @@ class ProjectsSpec extends NewBaseSpec {
         "/",
         Bojack,
         Set(Organizations.Create, Projects.Create)
-      ).runSyncUnsafe()
+      )
     }
 
     "fail to create if the HTTP verb used is POST"  taggedAs ProjectsTag in {
       cl.post[Json](s"/projects/$id", Json.obj(), Bojack) { (json, response) =>
         response.status shouldEqual MethodNotAllowed.statusCode
         json shouldEqual MethodNotAllowed.json
-      }.runSyncUnsafe()
+      }
     }
 
     "create organization"  taggedAs ProjectsTag in {
@@ -83,7 +83,7 @@ class ProjectsSpec extends NewBaseSpec {
         orgId,
         "Description",
         Bojack
-      ).runSyncUnsafe()
+      )
     }
 
     val description = s"$id project"
@@ -101,7 +101,7 @@ class ProjectsSpec extends NewBaseSpec {
     "return not found when fetching a non existing project"  taggedAs ProjectsTag in {
       cl.get[Json](s"/projects/$orgId/${genId()}", Bojack) { (_, response) =>
         response.status shouldEqual StatusCodes.NotFound
-      }.runSyncUnsafe()
+      }
     }
 
     "create project" taggedAs ProjectsTag in {
@@ -110,7 +110,7 @@ class ProjectsSpec extends NewBaseSpec {
         projId,
         createJson,
         Bojack
-      ).runSyncUnsafe()
+      )
     }
 
     "fail to create if project already exists"  taggedAs ProjectsTag in {
@@ -132,12 +132,11 @@ class ProjectsSpec extends NewBaseSpec {
         Json.obj(),
         Bojack,
         Some(conflict)
-      ).runSyncUnsafe()
+      )
     }
 
     "ensure that necessary permissions have been set"  taggedAs ProjectsTag in {
       aclDsl.checkAdminAcls(s"/$id", Bojack)
-        .runSyncUnsafe()
     }
 
     "fetch the project"  taggedAs ProjectsTag in {
@@ -145,7 +144,7 @@ class ProjectsSpec extends NewBaseSpec {
         response.status shouldEqual StatusCodes.OK
         admin.validateProject(json, createJson)
         admin.validate(json, "Project", "projects", id, description, 1L, projId)
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch project by UUID"  taggedAs ProjectsTag in {
@@ -162,13 +161,13 @@ class ProjectsSpec extends NewBaseSpec {
             }
           }
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "return not found when fetching a non existing revision of a project" taggedAs ProjectsTag in {
       cl.get[Json](s"/projects/$id?rev=3", Bojack) { (_, response) =>
         response.status shouldEqual StatusCodes.NotFound
-      }.runSyncUnsafe()
+      }
     }
 
     "update project and fetch revisions"  taggedAs ProjectsTag in {
@@ -196,71 +195,69 @@ class ProjectsSpec extends NewBaseSpec {
         vocab = vocabRev3
       )
 
-      {
-        for {
-          _ <- adminDsl.updateProject(
-            orgId,
-            projId,
-            updateRev2Json,
-            Bojack,
-            1L
-          )
-          _ <- adminDsl.updateProject(
-            orgId,
-            projId,
-            updateRev3Json,
-            Bojack,
-            2L
-          )
-          _ <- cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            admin.validateProject(json, updateRev3Json)
-            admin.validate(json, "Project", "projects", id, descRev3, 3L, projId)
-          }
-          _ <- cl.get[Json](s"/projects/$id?rev=3", Bojack) { (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            admin.validateProject(json, updateRev3Json)
-            admin.validate(json, "Project", "projects", id, descRev3, 3L, projId)
-          }
-          _ <- cl.get[Json](s"/projects/$id?rev=2", Bojack) { (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            admin.validateProject(json, updateRev2Json)
-            admin.validate(json, "Project", "projects", id, descRev2, 2L, projId)
-          }
-          _ <- cl.get[Json](s"/projects/$id?rev=1", Bojack) { (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            admin.validateProject(json, createJson)
-            admin.validate(json, "Project", "projects", id, description, 1L, projId)
-          }
-        } yield {}
-      }.runSyncUnsafe()
+      for {
+        _ <- adminDsl.updateProject(
+          orgId,
+          projId,
+          updateRev2Json,
+          Bojack,
+          1L
+        )
+        _ <- adminDsl.updateProject(
+          orgId,
+          projId,
+          updateRev3Json,
+          Bojack,
+          2L
+        )
+        _ <- cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validateProject(json, updateRev3Json)
+          admin.validate(json, "Project", "projects", id, descRev3, 3L, projId)
+        }
+        _ <- cl.get[Json](s"/projects/$id?rev=3", Bojack) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validateProject(json, updateRev3Json)
+          admin.validate(json, "Project", "projects", id, descRev3, 3L, projId)
+        }
+        _ <- cl.get[Json](s"/projects/$id?rev=2", Bojack) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validateProject(json, updateRev2Json)
+          admin.validate(json, "Project", "projects", id, descRev2, 2L, projId)
+        }
+        _ <- cl.get[Json](s"/projects/$id?rev=1", Bojack) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validateProject(json, createJson)
+          admin.validate(json, "Project", "projects", id, description, 1L, projId)
+        }
+      } yield succeed
     }
 
     "reject update  when wrong revision is provided" taggedAs ProjectsTag in {
       cl.put[Json](s"/projects/$id?rev=4", Json.obj(), Bojack) { (json, response) =>
         response.status shouldEqual ProjectConflict.statusCode
         json shouldEqual ProjectConflict.json
-      }.runSyncUnsafe()
+      }
     }
 
     "deprecate project" taggedAs ProjectsTag in {
-      cl.delete[Json](s"/projects/$id?rev=3", Bojack) { (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        filterMetadataKeys(json) shouldEqual adminDsl.createRespJson(
-          id, 4L,
-          authenticated = Bojack,
-          deprecated = true)
-      }.runSyncUnsafe()
-
-      cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        admin.validate(json, "Project", "projects", id, s"$description update 2", 4L, projId, deprecated = true)
-      }.runSyncUnsafe()
-
-      cl.get[Json](s"/projects/$id?rev=1", Bojack) { (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        admin.validate(json, "Project", "projects", id, description, 1L, projId)
-      }.runSyncUnsafe()
+      for {
+        _ <- cl.delete[Json](s"/projects/$id?rev=3", Bojack) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) shouldEqual adminDsl.createRespJson(
+            id, 4L,
+            authenticated = Bojack,
+            deprecated = true)
+        }
+        _ <- cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validate(json, "Project", "projects", id, s"$description update 2", 4L, projId, deprecated = true)
+        }
+        _ <- cl.get[Json](s"/projects/$id?rev=1", Bojack) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validate(json, "Project", "projects", id, description, 1L, projId)
+        }
+      } yield succeed
     }
   }
 
@@ -269,7 +266,7 @@ class ProjectsSpec extends NewBaseSpec {
       cl.get[Json]("/projects", PrincessCarolyn) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         json shouldEqual jsonContentOf("/admin/projects/empty-project-list.json")
-      }.runSyncUnsafe()
+      }
     }
 
     val orgId = genId()
@@ -296,29 +293,27 @@ class ProjectsSpec extends NewBaseSpec {
     }
 
     "create projects"  taggedAs ProjectsTag in {
-      {
-        for {
-          _ <- adminDsl.createOrganization(
+      for {
+        _ <- adminDsl.createOrganization(
+          orgId,
+          "Description",
+          Bojack
+        )
+        _ <- projectIds.traverse { case (orgId, projId) =>
+          adminDsl.createProject(
             orgId,
-            "Description",
+            projId,
+            adminDsl.projectPayload(
+              nxv = s"nxv-$projId",
+              person = s"person-$projId",
+              description = projId,
+              base = s"http:example.com/$projId/",
+              vocab = s"http:example.com/$projId/vocab/"
+            ),
             Bojack
           )
-          _ <- projectIds.traverse { case (orgId, projId) =>
-            adminDsl.createProject(
-              orgId,
-              projId,
-              adminDsl.projectPayload(
-                nxv = s"nxv-$projId",
-                person = s"person-$projId",
-                description = projId,
-                base = s"http:example.com/$projId/",
-                vocab = s"http:example.com/$projId/vocab/"
-              ),
-              Bojack
-            )
-          }
-        } yield {}
-      }.runSyncUnsafe()
+        }
+      } yield succeed
     }
 
     "list projects" taggedAs ProjectsTag in {
@@ -335,7 +330,7 @@ class ProjectsSpec extends NewBaseSpec {
       cl.get[Json](s"/projects/$orgId", Bojack) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         filterResultMetadata(json) shouldEqual expectedResults
-      }.runSyncUnsafe()
+      }
     }
 
     "list projects which user has access to" taggedAs ProjectsTag in {
@@ -350,18 +345,19 @@ class ProjectsSpec extends NewBaseSpec {
         "_results" -> projectListingResults(projectsToList, Bojack)
       )
 
-      projectsToList.traverse { case (orgId, projectId) =>
-        aclDsl.addPermission(
-          s"/$orgId/$projectId",
-          PrincessCarolyn,
-          Projects.Read
-        )
-      }.runSyncUnsafe()
-
-      cl.get[Json](s"/projects/$orgId", PrincessCarolyn) { (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        filterResultMetadata(json) shouldEqual expectedResults
-      }.runSyncUnsafe()
+      for {
+        _ <- projectsToList.traverse { case (orgId, projectId) =>
+          aclDsl.addPermission(
+            s"/$orgId/$projectId",
+            PrincessCarolyn,
+            Projects.Read
+          )
+        }
+        _ <- cl.get[Json](s"/projects/$orgId", PrincessCarolyn) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterResultMetadata(json) shouldEqual expectedResults
+        }
+      } yield succeed
     }
   }
 

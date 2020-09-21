@@ -6,19 +6,17 @@ import akka.http.scaladsl.model.StatusCodes
 import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{CirceEq, EitherValues}
+import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity.{Anonymous, UserCredentials}
 import ch.epfl.bluebrain.nexus.tests.Optics._
-import ch.epfl.bluebrain.nexus.rdf.syntax._
 import ch.epfl.bluebrain.nexus.tests.Tags.ViewsTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Organizations, Views}
 import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.concurrent.Eventually
 
 class ViewsSpec extends NewBaseSpec
-  with Eventually
   with EitherValues
   with CirceEq {
 
@@ -48,22 +46,18 @@ class ViewsSpec extends NewBaseSpec
 
   "creating projects" should {
     "add necessary permissions for user" taggedAs ViewsTag in {
-      {
-        for {
-          _ <- aclDsl.addPermission(s"/$orgId", ScoobyDoo, Organizations.Create)
-          _ <- aclDsl.addPermissionAnonymous(s"/$fullId2", Views.Query)
-        } yield {}
-      }.runSyncUnsafe()
+      for {
+        _ <- aclDsl.addPermission(s"/$orgId", ScoobyDoo, Organizations.Create)
+        _ <- aclDsl.addPermissionAnonymous(s"/$fullId2", Views.Query)
+      } yield succeed
     }
 
     "succeed if payload is correct" taggedAs ViewsTag in {
-      {
-        for {
-          _ <- adminDsl.createOrganization(orgId, orgId, ScoobyDoo)
-          _ <- adminDsl.createProject(orgId, projId, kgDsl.projectJson(name = fullId), ScoobyDoo)
-          _ <- adminDsl.createProject(orgId, projId2, kgDsl.projectJson(name = fullId2), ScoobyDoo)
-        } yield {}
-      }.runSyncUnsafe()
+      for {
+        _ <- adminDsl.createOrganization(orgId, orgId, ScoobyDoo)
+        _ <- adminDsl.createProject(orgId, projId, kgDsl.projectJson(name = fullId), ScoobyDoo)
+        _ <- adminDsl.createProject(orgId, projId2, kgDsl.projectJson(name = fullId2), ScoobyDoo)
+      } yield succeed
     }
   }
 
@@ -75,7 +69,7 @@ class ViewsSpec extends NewBaseSpec
         cl.put[Json](s"/resources/$project/resource/test-resource:context", payload, ScoobyDoo) {
           (_, response) => response.status shouldEqual StatusCodes.Created
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "wait until in project resolver is created" taggedAs ViewsTag in {
@@ -83,7 +77,7 @@ class ViewsSpec extends NewBaseSpec
         cl.get[Json](s"/resolvers/$fullId", ScoobyDoo) { (json, response) =>
           response.status shouldEqual StatusCodes.OK
           _total.getOption(json).value shouldEqual 1L
-        }.runSyncUnsafe()
+        }
       }
     }
 
@@ -94,14 +88,14 @@ class ViewsSpec extends NewBaseSpec
         cl.put[Json](s"/views/$project/test-resource:testView", payload, ScoobyDoo) {
           (_, response) => response.status shouldEqual StatusCodes.Created
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "create an Sparql view that index tags" taggedAs ViewsTag in {
       val payload = jsonContentOf("/kg/views/sparql-view.json")
       cl.put[Json](s"/views/$fullId/test-resource:testSparqlView", payload, ScoobyDoo) {
         (_, response) => response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      }
     }
 
     "get the created SparqlView" taggedAs ViewsTag in {
@@ -120,7 +114,7 @@ class ViewsSpec extends NewBaseSpec
           )
 
           filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
-      }.runSyncUnsafe()
+      }
     }
 
     "create an AggregateSparqlView" taggedAs ViewsTag in {
@@ -132,7 +126,7 @@ class ViewsSpec extends NewBaseSpec
       cl.put[Json](s"/views/$fullId2/test-resource:testAggView", payload, ScoobyDoo) {
         (_, response) =>
           response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      }
     }
 
     "create an AggregateElasticSearchView" taggedAs ViewsTag in {
@@ -144,7 +138,7 @@ class ViewsSpec extends NewBaseSpec
       cl.put[Json](s"/views/$fullId2/test-resource:testAggEsView", payload, ScoobyDoo) {
         (_, response) =>
           response.status shouldEqual StatusCodes.Created
-      }.runSyncUnsafe()
+      }
     }
 
     "get the created AggregateElasticSearchView" taggedAs ViewsTag in {
@@ -165,7 +159,7 @@ class ViewsSpec extends NewBaseSpec
           )
 
           filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
-      }.runSyncUnsafe()
+      }
     }
 
     "get an AggregateSparqlView" taggedAs ViewsTag in {
@@ -185,7 +179,7 @@ class ViewsSpec extends NewBaseSpec
           )
 
           filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
-      }.runSyncUnsafe()
+      }
     }
 
     "post instances" taggedAs ViewsTag in {
@@ -202,21 +196,21 @@ class ViewsSpec extends NewBaseSpec
         ) { (_, response) =>
           response.status shouldEqual StatusCodes.Created
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "wait until in project view is indexed" taggedAs ViewsTag in eventually {
       cl.get[Json](s"/views/$fullId", ScoobyDoo) { (json, response) =>
         _total.getOption(json).value shouldEqual 4
         response.status shouldEqual StatusCodes.OK
-      }.runSyncUnsafe()
+      }
     }
 
     "wait until all instances are indexed in default view of project 2" taggedAs ViewsTag in eventually {
       cl.get[Json](s"/resources/$fullId2/resource", ScoobyDoo) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         _total.getOption(json).value shouldEqual 4
-      }.runSyncUnsafe()
+      }
     }
 
     "return 400 with bad query instances" taggedAs ViewsTag in {
@@ -225,7 +219,7 @@ class ViewsSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.BadRequest
           json shouldEqual jsonContentOf("/kg/views/elastic-error.json")
-      }.runSyncUnsafe()
+      }
     }
 
     val sort = Json.obj("sort" -> Json.arr(Json.obj("name.raw" -> Json.obj("order" -> Json.fromString("asc")))))
@@ -279,7 +273,7 @@ class ViewsSpec extends NewBaseSpec
         val indexes = hits.each._index.string.getAll(json)
         val toReplace = indexes.zipWithIndex.map { case (value, i) => quote(s"{index${i + 1}}") -> value }.toMap
         filterKey("took")(json) shouldEqual jsonContentOf("/kg/views/es-search-response-aggregated.json", toReplace)
-      }.runSyncUnsafe()
+      }
     }
 
     "search instances on project AggregatedElasticSearchView as anonymous" taggedAs ViewsTag in eventually {
@@ -291,7 +285,7 @@ class ViewsSpec extends NewBaseSpec
             "/kg/views/es-search-response-2.json",
             Map(quote("{index}") -> index)
           )
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch statistics for testView" taggedAs ViewsTag in {
@@ -309,7 +303,7 @@ class ViewsSpec extends NewBaseSpec
             )
           )
           json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
-      }.runSyncUnsafe()
+      }
     }
 
     val query =
@@ -327,7 +321,7 @@ class ViewsSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.OK
           json shouldEqual jsonContentOf("/kg/views/sparql-search-response.json")
-      }.runSyncUnsafe()
+      }
     }
 
     "search instances in SPARQL endpoint in project 2" taggedAs ViewsTag in {
@@ -335,7 +329,7 @@ class ViewsSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.OK
           json shouldEqual jsonContentOf("/kg/views/sparql-search-response-2.json")
-      }.runSyncUnsafe()
+      }
     }
 
     "search instances in AggregateSparqlView when logged" taggedAs ViewsTag in {
@@ -343,7 +337,7 @@ class ViewsSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.OK
           json should equalIgnoreArrayOrder(jsonContentOf("/kg/views/sparql-search-response-aggregated.json"))
-      }.runSyncUnsafe()
+      }
     }
 
     "search instances in AggregateSparqlView as anonymous" taggedAs ViewsTag in {
@@ -351,7 +345,7 @@ class ViewsSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.OK
           json should equalIgnoreArrayOrder(jsonContentOf("/kg/views/sparql-search-response-2.json"))
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch statistics for defaultSparqlIndex" taggedAs ViewsTag in {
@@ -369,7 +363,7 @@ class ViewsSpec extends NewBaseSpec
             )
           )
           json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
-      }.runSyncUnsafe()
+      }
     }
 
     "search instances in SPARQL endpoint in project 1 with custom SparqlView" taggedAs ViewsTag in {
@@ -377,7 +371,7 @@ class ViewsSpec extends NewBaseSpec
         (json, response) =>
           response.status shouldEqual StatusCodes.OK
           json shouldEqual jsonContentOf("/kg/views/sparql-search-response-empty.json")
-      }.runSyncUnsafe()
+      }
     }
 
     "tag resources resource" taggedAs ViewsTag in {
@@ -392,7 +386,7 @@ class ViewsSpec extends NewBaseSpec
         ) {
           (_, response) => response.status shouldEqual StatusCodes.Created
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "search instances in SPARQL endpoint in project 1 with custom SparqlView after tags added" taggedAs ViewsTag in {
@@ -401,7 +395,7 @@ class ViewsSpec extends NewBaseSpec
           (json, response) =>
             response.status shouldEqual StatusCodes.OK
             json shouldEqual jsonContentOf("/kg/views/sparql-search-response.json")
-        }.runSyncUnsafe()
+        }
       }
     }
 
@@ -416,10 +410,10 @@ class ViewsSpec extends NewBaseSpec
         ScoobyDoo
       ) {
         (_, response) => response.status shouldEqual StatusCodes.OK
-      }.runSyncUnsafe()
+      }
     }
 
-    "search instances on project 1 after removed @type" taggedAs ViewsTag in {
+    "search instances on project 1 after removed @type" taggedAs ViewsTag in  eventually {
       cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) {
         (json, response) =>
           response.status shouldEqual StatusCodes.OK
@@ -442,10 +436,10 @@ class ViewsSpec extends NewBaseSpec
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
       cl.delete[Json](s"/resources/$fullId/_/patchedcell:$unprefixedId?rev=2", ScoobyDoo) {
         (_, response) => response.status shouldEqual StatusCodes.OK
-      }.runSyncUnsafe()
+      }
     }
 
-    "search instances on project 1 after deprecated" taggedAs ViewsTag in {
+    "search instances on project 1 after deprecated" taggedAs ViewsTag in eventually {
       cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) {
         (json, result) =>
           result.status shouldEqual StatusCodes.OK
@@ -460,7 +454,6 @@ class ViewsSpec extends NewBaseSpec
               filterKey("took")(json2) shouldEqual filterKey("took")(json)
           }.runSyncUnsafe()
       }
-
     }
   }
 }

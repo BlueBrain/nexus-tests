@@ -63,7 +63,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{deprecated}") -> "false"
             )
           )
-      }.runSyncUnsafe()
+      }
     }
 
     "recreate realm" taggedAs (IamTag, RealmsTag) in {
@@ -86,7 +86,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{deprecated}") -> "false"
             )
           )
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch realm" taggedAs (IamTag, RealmsTag) in {
@@ -102,7 +102,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{label}")     -> testRealm.name
             )
           )
-      }.runSyncUnsafe()
+      }
     }
 
     "update realm" taggedAs (IamTag, RealmsTag) in {
@@ -127,7 +127,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{deprecated}") -> "false"
             )
           )
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch updated realm" taggedAs (IamTag, RealmsTag) in {
@@ -143,7 +143,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{label}")      -> testRealm.name
             )
           )
-      }.runSyncUnsafe()
+      }
     }
 
     "deprecate realm" taggedAs (IamTag, RealmsTag) in {
@@ -160,7 +160,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{deprecated}") -> "true"
             )
           )
-      }.runSyncUnsafe()
+      }
     }
 
     "fetch deprecated realm" taggedAs (IamTag, RealmsTag) in {
@@ -176,7 +176,7 @@ class RealmsSpec extends NewBaseSpec {
               quote("{label}")     -> testRealm.name
             )
           )
-      }.runSyncUnsafe()
+      }
     }
   }
 }

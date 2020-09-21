@@ -34,7 +34,7 @@ class AppInfoSpec extends NewBaseSpec with OptionValues {
         json.asObject.value.keys.toSet shouldEqual
           Set("delta", "storage", "elasticsearch", "blazegraph")
         response.status shouldEqual StatusCodes.OK
-      }.runSyncUnsafe()
+      }
     }
 
     "return the cassandra and cluster status" taggedAs AppInfoTag in {
@@ -48,7 +48,7 @@ class AppInfoSpec extends NewBaseSpec with OptionValues {
             "blazegraph"    -> Json.fromString("up")
           )
         response.status shouldEqual StatusCodes.OK
-      }.runSyncUnsafe()
+      }
     }
 
   }

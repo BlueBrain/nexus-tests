@@ -62,7 +62,7 @@ class AclsSpec extends NewBaseSpec
       aclDsl.addPermissions("/",
         Marge,
         defaultPermissions
-      ).runSyncUnsafe()
+      )
     }
 
     "fetch permissions for user"  taggedAs (IamTag, AclsTag) in {
@@ -75,7 +75,7 @@ class AclsSpec extends NewBaseSpec
           }
           .value
           .permissions shouldEqual defaultPermissions
-      }.runSyncUnsafe()
+      }
     }
 
     "delete some permissions for user"  taggedAs (IamTag, AclsTag) in {
@@ -95,7 +95,7 @@ class AclsSpec extends NewBaseSpec
             (_, response) => response.status shouldEqual StatusCodes.OK
           }
         }
-      }.runSyncUnsafe()
+      }
     }
 
     "check if permissions were removed"  taggedAs (IamTag, AclsTag) in {
@@ -108,7 +108,7 @@ class AclsSpec extends NewBaseSpec
           }
           .value
           .permissions shouldEqual restrictedPermissions
-      }.runSyncUnsafe()
+      }
     }
 
     "add permissions for user on paths with depth1"  taggedAs (IamTag, AclsTag) in {
@@ -118,7 +118,7 @@ class AclsSpec extends NewBaseSpec
           Marge,
           defaultPermissions
         )
-      }.runSyncUnsafe()
+      }
     }
 
     "add permissions for user on /orgpath/projectpath1 and /orgpath/projectpath2" taggedAs (IamTag, AclsTag) in {
@@ -128,7 +128,7 @@ class AclsSpec extends NewBaseSpec
           Marge,
           defaultPermissions
         )
-      }.runSyncUnsafe()
+      }
     }
 
     def assertPermissions(acls:AclListing,
@@ -151,7 +151,7 @@ class AclsSpec extends NewBaseSpec
             assertPermissions(acls, org, project, defaultPermissions)
           }
           succeed
-      }.runSyncUnsafe()
+      }
     }
 
     "list permissions on /orgpath1/*"  taggedAs (IamTag, AclsTag) in {
@@ -163,7 +163,7 @@ class AclsSpec extends NewBaseSpec
             assertPermissions(acls, orgPath1, project, defaultPermissions)
           }
           succeed
-      }.runSyncUnsafe()
+      }
     }
 
     "list permissions on /*/* with ancestors"  taggedAs (IamTag, AclsTag) in {
@@ -195,7 +195,7 @@ class AclsSpec extends NewBaseSpec
           }
 
           succeed
-      }.runSyncUnsafe()
+      }
     }
   }
 }
