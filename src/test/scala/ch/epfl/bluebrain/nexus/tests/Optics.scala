@@ -31,6 +31,7 @@ object Optics extends Optics {
   val _total = root._total.long
 
   val hits = root.hits.hits
+  val hitsSource = hits.each._source.json
 
   object admin {
     val `@type` = root.`@type`.string
