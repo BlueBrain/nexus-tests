@@ -16,7 +16,7 @@ import ch.epfl.bluebrain.nexus.tests.Identity._
 import ch.epfl.bluebrain.nexus.tests.admin.AdminDsl
 import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
 import ch.epfl.bluebrain.nexus.tests.config.{PrefixesConfig, TestsConfig}
-import ch.epfl.bluebrain.nexus.tests.iam.AclDsl
+import ch.epfl.bluebrain.nexus.tests.iam.{AclDsl, PermissionDsl}
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission
 import ch.epfl.bluebrain.nexus.tests.kg.KgDsl
 import com.typesafe.config.ConfigFactory
@@ -50,6 +50,7 @@ trait NewBaseSpec extends AsyncWordSpecLike
   private[tests] implicit val cl: UntypedHttpClient[Task] = HttpClient.untyped[Task]
 
   val aclDsl = new AclDsl()
+  val permissionDsl = new PermissionDsl()
   val adminDsl = new AdminDsl(prefixesConfig, config)
   val kgDsl = new KgDsl(config)
 
@@ -73,6 +74,7 @@ trait NewBaseSpec extends AsyncWordSpecLike
   override def beforeAll(): Unit = {
     super.beforeAll()
     val setup = for {
+      _ <- Elasticsearch.createTemplate
       _ <- initRealm(
         Realm.internal,
         Identity.Anonymous,

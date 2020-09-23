@@ -7,7 +7,7 @@
   ],
   "default" : false,
   "endpoint" : "{storageBase}",
-  "folder" : "nexustest",
+  "folder" : "{folder}",
   "maxFileSize" : 10737418240,
   "readPermission" : "resources/read",
   "writePermission" : "files/write"
