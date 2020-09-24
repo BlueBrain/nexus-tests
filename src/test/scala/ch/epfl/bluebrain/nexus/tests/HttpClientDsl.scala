@@ -3,12 +3,13 @@ package ch.epfl.bluebrain.nexus.tests
 import java.util.concurrent.ConcurrentHashMap
 
 import akka.http.scaladsl.model.HttpMethods._
+import akka.http.scaladsl.model.Multipart.FormData
+import akka.http.scaladsl.model.Multipart.FormData.BodyPart
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Accept, Authorization}
+import akka.http.scaladsl.model.headers.{Accept, Authorization, HttpEncodings, `Accept-Encoding`}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.Materializer
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
-import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.tests.Identity.Anonymous
 import com.typesafe.scalalogging.Logger
@@ -18,6 +19,8 @@ import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
+
+import scala.collection.immutable.Seq
 
 trait HttpClientDsl extends Matchers
 
@@ -29,9 +32,13 @@ object HttpClientDsl extends HttpClientDsl {
 
   val tokensMap: ConcurrentHashMap[Identity, Authorization] = new ConcurrentHashMap[Identity, Authorization]
 
+  val acceptAll: Seq[Accept] = Seq(Accept(MediaRanges.`*/*`))
+
   val jsonHeaders: Seq[HttpHeader] = Accept(MediaTypes.`application/json`) :: Nil
 
   val sparqlQueryHeaders: Seq[HttpHeader] = Accept(RdfMediaTypes.`application/sparql-query`) :: Nil
+
+  val gzipHeaders: Seq[HttpHeader] = Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
 
   private[tests] implicit class HttpClientOps(val httpClient: UntypedHttpClient[Task])
                                              (implicit materializer: Materializer) {
@@ -51,6 +58,30 @@ object HttpClientDsl extends HttpClientDsl {
               (assertResponse: (A, HttpResponse) => Assertion)
               (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(PUT, url, Some(body), identity, extraHeaders)(assertResponse)
+
+    def putAttachment[A](url: String,
+                         attachment: String,
+                         contentType: ContentType,
+                         fileName: String,
+                         identity: Identity,
+                         extraHeaders: Seq[HttpHeader] = jsonHeaders)
+                        (assertResponse: (A, HttpResponse) => Assertion)
+                        (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
+      def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for $url with identity $identity", e)
+      request(
+        PUT,
+        s"$deltaUrl$url",
+        Some(attachment),
+        identity,
+        (s: String) => {
+          val entity = HttpEntity(contentType, s.getBytes)
+          FormData(BodyPart.Strict("file", entity, Map("filename" -> fileName))).toEntity()
+        },
+        assertResponse,
+        onFail,
+        extraHeaders
+      )
+    }
 
     def patch[A](url: String,
                  body: Json,
@@ -156,18 +187,8 @@ object HttpClientDsl extends HttpClientDsl {
           f(_, res)
         }.onErrorHandleWith { e =>
           for {
-            // Deserializing to case class may fail, json should
-            // be fine in almost every case
-            json <- Task.deferFuture {
-              implicitly[FromEntityUnmarshaller[Json]].apply(res.entity)(global, materializer)
-            }.onErrorHandle {
-              _ =>
-                logger.error("We can't even deserialize in json")
-                Json.Null
-            }
             _   <- Task {
               logger.error(s"Status ${res.status}", e)
-              logger.error(json.spaces2)
             }
           } yield {
             handleError(e)

@@ -3,9 +3,11 @@ package ch.epfl.bluebrain.nexus.tests
 import java.util.regex.Pattern.quote
 
 import akka.http.javadsl.model.headers.HttpCredentials
+import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.Authorization
+import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.util.ByteString
 import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
@@ -16,8 +18,8 @@ import ch.epfl.bluebrain.nexus.tests.Identity._
 import ch.epfl.bluebrain.nexus.tests.admin.AdminDsl
 import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
 import ch.epfl.bluebrain.nexus.tests.config.{PrefixesConfig, TestsConfig}
-import ch.epfl.bluebrain.nexus.tests.iam.{AclDsl, PermissionDsl}
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission
+import ch.epfl.bluebrain.nexus.tests.iam.{AclDsl, PermissionDsl}
 import ch.epfl.bluebrain.nexus.tests.kg.KgDsl
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
@@ -27,7 +29,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpecLike
-import org.scalatest.{Assertion, BeforeAndAfterAll}
+import org.scalatest.{Assertion, BeforeAndAfterAll, OptionValues}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -38,6 +40,7 @@ trait NewBaseSpec extends AsyncWordSpecLike
   with Randomness
   with ScalatestRouteTest
   with Eventually
+  with OptionValues
   with ScalaFutures
   with Matchers {
 
@@ -171,6 +174,26 @@ trait NewBaseSpec extends AsyncWordSpecLike
       _ <- createRealmInDelta
     } yield ()
   }
+
+  private[tests] def dispositionType(response: HttpResponse): ContentDispositionType =
+    response.header[`Content-Disposition`].value.dispositionType
+
+  private[tests] def attachmentName(response: HttpResponse): String =
+    response
+      .header[`Content-Disposition`]
+      .value
+      .params
+      .get("filename")
+      .value
+
+  private[tests] def contentType(response: HttpResponse): ContentType =
+    response.header[`Content-Type`].value.contentType
+
+  private[tests] def httpEncodings(response: HttpResponse): Seq[HttpEncoding] =
+    response.header[`Content-Encoding`].value.encodings
+
+  private[tests] def decodeGzip(input: ByteString): String =
+    Gzip.decode(input).map(_.utf8String)(global).futureValue
 
   private[tests] def replacements(authenticated: Authenticated, otherReplacements: (String, String)*) =
     Map(

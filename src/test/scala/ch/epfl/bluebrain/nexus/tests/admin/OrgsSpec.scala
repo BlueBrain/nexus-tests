@@ -12,9 +12,8 @@ import ch.epfl.bluebrain.nexus.tests.Tags.OrgsTag
 import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, NewBaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.OptionValues
 
-class OrgsSpec extends NewBaseSpec with OptionValues with EitherValues{
+class OrgsSpec extends NewBaseSpec with EitherValues{
 
   private val testRealm   = Realm("orgs" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)

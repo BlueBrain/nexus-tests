@@ -33,6 +33,8 @@ object Optics extends Optics {
   val hits = root.hits.hits
   val hitsSource = hits.each._source.json
 
+  val location = root._location.string
+
   object admin {
     val `@type` = root.`@type`.string
 

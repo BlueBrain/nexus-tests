@@ -90,6 +90,7 @@ services:
     environment:
       MINIO_ACCESS_KEY: "MY_ACCESS_KEY"
       MINIO_SECRET_KEY: "CHUTCHUT"
+      MINIO_DOMAIN: "delta.bbp"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -100,7 +101,9 @@ services:
         # We add this alias due to the deprecation of path-styles on S3:
         # https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/
         aliases:
-          - nexustest.minio
+          - delta.bbp
+          - nexustest.delta.bbp
+          - foobar.delta.bbp
     ports:
       - "9000"
     volumes:

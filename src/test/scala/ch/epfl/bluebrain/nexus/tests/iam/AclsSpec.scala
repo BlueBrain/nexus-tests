@@ -12,10 +12,8 @@ import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Permission
 import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.OptionValues
 
-class AclsSpec extends NewBaseSpec
-  with OptionValues {
+class AclsSpec extends NewBaseSpec {
 
   private val testRealm   = Realm("acls" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)

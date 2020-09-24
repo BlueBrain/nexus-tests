@@ -8,9 +8,8 @@ import ch.epfl.bluebrain.nexus.tests.Tags.AppInfoTag
 import io.circe.Json
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.OptionValues
 
-class AppInfoSpec extends NewBaseSpec with OptionValues {
+class AppInfoSpec extends NewBaseSpec {
 
   val versionUri: Uri = Uri(s"http://${System.getProperty("delta:8080")}/version")
   val statusUri: Uri = Uri(s"http://${System.getProperty("delta:8080")}/status")

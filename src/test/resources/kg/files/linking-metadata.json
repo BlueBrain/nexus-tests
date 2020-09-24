@@ -3,7 +3,7 @@
   "@id": "{deltaUri}/resources/{projId}/_/logo.png",
   "@type": "File",
   "_storage": {
-    "@id": "nxv:mys3storage",
+    "@id": "nxv:mys3storage2",
     "_rev": 1
   },
   "_bytes": 29625,

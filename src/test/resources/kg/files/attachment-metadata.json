@@ -13,13 +13,13 @@
   },
   "_filename": "{filename}",
   "_mediaType": "application/json",
-  "_incoming": "{kgBase}/files/{projId}/attachment:{filename}/incoming",
-  "_outgoing": "{kgBase}/files/{projId}/attachment:{filename}/outgoing",
-  "_self": "{kgBase}/files/{projId}/attachment:{filename}",
+  "_incoming": "{deltaUri}/files/{projId}/attachment:{filename}/incoming",
+  "_outgoing": "{deltaUri}/files/{projId}/attachment:{filename}/outgoing",
+  "_self": "{deltaUri}/files/{projId}/attachment:{filename}",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/file.json",
   "_project": "{project}",
   "_rev": 3,
   "_deprecated": true,
-  "_createdBy": "{iamBase}/realms/internal/users/{user}",
-  "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+  "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+  "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}"
 }
