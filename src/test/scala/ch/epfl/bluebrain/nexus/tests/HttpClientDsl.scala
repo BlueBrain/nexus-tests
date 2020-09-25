@@ -1,5 +1,6 @@
 package ch.epfl.bluebrain.nexus.tests
 
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 import akka.http.scaladsl.model.HttpMethods._
@@ -9,18 +10,23 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Accept, Authorization, HttpEncodings, `Accept-Encoding`}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.Materializer
+import akka.stream.alpakka.sse.scaladsl.EventSource
+import akka.stream.scaladsl.Sink
 import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.RdfMediaTypes
 import ch.epfl.bluebrain.nexus.tests.Identity.Anonymous
 import com.typesafe.scalalogging.Logger
 import fs2._
 import io.circe.Json
+import io.circe.parser._
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 
 import scala.collection.immutable.Seq
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
 trait HttpClientDsl extends Matchers
 
@@ -70,7 +76,7 @@ object HttpClientDsl extends HttpClientDsl {
       def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for $url with identity $identity", e)
       request(
         PUT,
-        s"$deltaUrl$url",
+        url,
         Some(attachment),
         identity,
         (s: String) => {
@@ -98,6 +104,20 @@ object HttpClientDsl extends HttpClientDsl {
               (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(GET, url, None, identity, extraHeaders)(assertResponse)
 
+    def getJson[A](url: String,
+               identity: Identity)
+              (implicit um: FromEntityUnmarshaller[A]): Task[A] = {
+      def onFail(e: Throwable) = throw new IllegalStateException(s"Something went wrong while processing the response for url: $url with identity $identity", e)
+      requestJson(
+        GET,
+        url,
+        None,
+        identity,
+        (a: A, _: HttpResponse) => a,
+        onFail,
+        jsonHeaders)
+    }
+
     def delete[A](url: String,
                   identity: Identity,
                   extraHeaders: Seq[HttpHeader] = jsonHeaders)
@@ -115,7 +135,7 @@ object HttpClientDsl extends HttpClientDsl {
       def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for url: ${method.value} $url with identity $identity", e)
       requestJson(
         method,
-        s"$deltaUrl$url",
+        url,
         body,
         identity,
         assertResponse,
@@ -133,7 +153,7 @@ object HttpClientDsl extends HttpClientDsl {
       def onFail(e: Throwable): Assertion = fail(s"Something went wrong while processing the response for url: $url with identity $identity", e)
       request(
         POST,
-        s"$deltaUrl$url",
+        url,
         Some(query),
         identity,
         (s: String) => HttpEntity(RdfMediaTypes.`application/sparql-query`, s),
@@ -173,7 +193,7 @@ object HttpClientDsl extends HttpClientDsl {
       httpClient(
         HttpRequest(
           method = method,
-          uri = url,
+          uri = s"$deltaUrl$url",
           headers = identity match {
             case Anonymous => extraHeaders
             case _ => tokensMap.get(identity) +: extraHeaders
@@ -203,7 +223,7 @@ object HttpClientDsl extends HttpClientDsl {
                      extraHeaders: Seq[HttpHeader] = jsonHeaders)
                     (implicit um: FromEntityUnmarshaller[A]): Stream[Task, B] = {
       def onFail(e: Throwable) = throw new IllegalStateException(s"Something went wrong while processing the response for url: $url with identity $identity", e)
-      Stream.unfoldLoopEval[Task, String, B](s"$deltaUrl$url") { currentUrl =>
+      Stream.unfoldLoopEval[Task, String, B](url) { currentUrl =>
         requestJson[A, A](
           GET,
           currentUrl,
@@ -217,6 +237,31 @@ object HttpClientDsl extends HttpClientDsl {
         }
       }
     }
+
+    def sseEvents(url: String,
+                  identity: Identity,
+                  initialLastEventId: UUID,
+                  take: Long = 100L,
+                  takeWithin: FiniteDuration = 30.seconds)
+                  (assertResponse: Seq[(Option[String], Option[Json])] => Assertion)
+    : Task[Assertion] = {
+      def send(request: HttpRequest): Future[HttpResponse] =
+        httpClient(request.addHeader(tokensMap.get(identity))).runToFuture
+      Task.deferFuture {
+        EventSource(s"$deltaUrl$url", send, initialLastEventId = Some(initialLastEventId.toString))
+          //drop resolver, views and storage events
+          .take(take)
+          .takeWithin(takeWithin)
+          .runWith(Sink.seq)
+      }.map { seq =>
+        assertResponse(
+          seq.map  { s =>
+            (s.eventType, parse(s.data).toOption)
+          }
+        )
+      }
+    }
+
   }
 
 }

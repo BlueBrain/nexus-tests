@@ -65,6 +65,9 @@ trait NewBaseSpec extends AsyncWordSpecLike
   implicit def taskListToFutureAssertion(task: Task[List[Assertion]]): Future[Assertion] =
     task.runToFuture.map(_ => succeed)(global)
 
+  implicit def futureListToFutureAssertion(future: Future[List[Assertion]]): Future[Assertion] =
+    future.map(_ => succeed)(global)
+
   def eventually(t: Task[Assertion]): Assertion =
     eventually {
       t.runSyncUnsafe()

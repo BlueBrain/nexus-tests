@@ -12,7 +12,7 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.ResourcesTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.Organizations
-import ch.epfl.bluebrain.nexus.tests.{HttpClientDsl, Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
 import io.circe.Json
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
@@ -463,7 +463,7 @@ class ResourcesSpec extends NewBaseSpec
     "list responses using after" taggedAs ResourcesTag in {
       // Building the next results, replace the public url by the one used by the tests
       def next(json: Json) = resources._next.getOption(json).map { url =>
-        url.replace(config.deltaUri.toString(), HttpClientDsl.deltaUrl.toString())
+        url.replace(config.deltaUri.toString(), "")
       }
 
       // Get results though a lens and filtering out some fields

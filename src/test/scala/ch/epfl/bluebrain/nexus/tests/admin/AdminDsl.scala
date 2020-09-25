@@ -8,10 +8,10 @@ import ch.epfl.bluebrain.nexus.commons.http.HttpClient.UntypedHttpClient
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.{Randomness, Resources}
 import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
-import ch.epfl.bluebrain.nexus.tests.ExpectedResponse
 import ch.epfl.bluebrain.nexus.tests.Identity.Authenticated
-import ch.epfl.bluebrain.nexus.tests.Optics.filterMetadataKeys
+import ch.epfl.bluebrain.nexus.tests.Optics.{filterMetadataKeys, _}
 import ch.epfl.bluebrain.nexus.tests.config.{PrefixesConfig, TestsConfig}
+import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity}
 import com.typesafe.scalalogging.Logger
 import io.circe.Json
 import monix.bio.Task
@@ -147,5 +147,16 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
       }
 
     }
+
+  def getUuids(orgId: String,
+               projectId: String,
+               identity: Identity): Task[(String, String)] =
+    for {
+      orgUuid <- cl.getJson[Json](s"/orgs/$orgId", identity)
+      projectUuid <- cl.getJson[Json](s"/projects/$orgId/$projectId", identity)
+    } yield (
+      _uuid.getOption(orgUuid).value,
+      _uuid.getOption(projectUuid).value
+    )
 
 }

@@ -86,4 +86,12 @@ object Optics extends Optics {
     val _results = root._results.arr
   }
 
+  object events {
+    val filterFields = filterKeys(Set("_instant", "_updatedAt"))
+      .andThen(
+        List("_location", "_uuid", "_path")
+          .map { root._attributes.at(_).set(None) }.reduce(_ andThen _)
+      )
+  }
+
 }
