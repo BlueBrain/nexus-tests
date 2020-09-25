@@ -1,7 +1,5 @@
 package ch.epfl.bluebrain.nexus.tests.iam
 
-import java.util.regex.Pattern.quote
-
 import akka.http.scaladsl.model.StatusCodes
 import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
@@ -10,7 +8,6 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Tags.{AclsTag, IamTag}
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Permission, User}
 import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
-import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 
 class AclsSpec extends NewBaseSpec {
@@ -49,13 +46,6 @@ class AclsSpec extends NewBaseSpec {
     val defaultPermissions = Permission.Projects.list.toSet
     val restrictedPermissions = defaultPermissions.filterNot(_ == Permission.Projects.Write)
 
-    def permissionsMap(permissions: Permission*) =
-      Map(
-        quote("{realm}") -> testRealm.name,
-        quote("{sub}") -> Marge.name,
-        quote("{perms}") -> permissions.map(_.value).mkString("""","""")
-      )
-
     "add permissions for user on /"  taggedAs (IamTag, AclsTag) in {
       aclDsl.addPermissions("/",
         Marge,
@@ -76,25 +66,12 @@ class AclsSpec extends NewBaseSpec {
       }
     }
 
-    "delete some permissions for user"  taggedAs (IamTag, AclsTag) in {
-      cl.get[Json](s"/acls/", Identity.ServiceAccount) { (json, response) =>
-        runTask {
-          response.status shouldEqual StatusCodes.OK
-          val acls = json
-            .as[AclListing]
-            .getOrElse(throw new RuntimeException(s"Couldn't decode ${json.noSpaces} to AclListing"))
-
-          val rev = acls._results.head._rev
-          val body = jsonContentOf(
-            "/iam/subtract-permissions.json",
-            permissionsMap(Permission.Projects.Write)
-          )
-          cl.patch[Json](s"/acls/?rev=$rev", body, Identity.ServiceAccount) {
-            (_, response) => response.status shouldEqual StatusCodes.OK
-          }
-        }
-      }
-    }
+    "delete some permissions for user"  taggedAs (IamTag, AclsTag) in
+      aclDsl.deletePermission(
+        "/",
+        Marge,
+        Permission.Projects.Write
+      )
 
     "check if permissions were removed"  taggedAs (IamTag, AclsTag) in {
       cl.get[AclListing]("/acls/?self=false", Identity.ServiceAccount) { (acls, response) =>

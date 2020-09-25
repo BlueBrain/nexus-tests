@@ -99,6 +99,38 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
     }
   }
 
+  def deletePermission(path: String,
+                       target: Authenticated,
+                       permission: Permission): Task[Assertion] =
+    deletePermissions(path, target, Set(permission))
+
+  def deletePermissions(path: String,
+                        target: Authenticated,
+                        permissions: Set[Permission]): Task[Assertion] = {
+    path should not startWith "/acls"
+    cl.get[Json](s"/acls$path", Identity.ServiceAccount) { (json, response) =>
+    {
+        response.status shouldEqual StatusCodes.OK
+        val acls = json
+          .as[AclListing]
+          .getOrElse(throw new RuntimeException(s"Couldn't decode ${json.noSpaces} to AclListing"))
+
+        val rev = acls._results.head._rev
+        val body = jsonContentOf(
+          "/iam/subtract-permissions.json",
+          Map(
+            quote("{realm}") -> target.realm.name,
+            quote("{sub}") -> target.name,
+            quote("{perms}") -> permissions.map(_.value).mkString("""","""")
+          )
+        )
+        cl.patch[Json](s"/acls/?rev=$rev", body, Identity.ServiceAccount) {
+          (_, response) => response.status shouldEqual StatusCodes.OK
+        }
+      }.runSyncUnsafe()
+    }
+  }
+
   def checkAdminAcls(path: String, authenticated: Authenticated): Task[Assertion] = {
     logger.info(s"Gettings acls for $path using ${authenticated.name}")
     cl.get[AclListing](s"/acls$path", authenticated) { (acls, response) =>

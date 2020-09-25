@@ -1,5 +1,6 @@
 package ch.epfl.bluebrain.nexus.tests
 
+import java.nio.file.{Files, Path}
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -64,6 +65,30 @@ object HttpClientDsl extends HttpClientDsl {
               (assertResponse: (A, HttpResponse) => Assertion)
               (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(PUT, url, Some(body), identity, extraHeaders)(assertResponse)
+
+    def putAttachmentFromPath[A](url: String,
+                                 path: Path,
+                                 contentType: ContentType,
+                                 fileName: String,
+                                 identity: Identity,
+                                 extraHeaders: Seq[HttpHeader] = jsonHeaders)
+                                (assertResponse: (A, HttpResponse) => Assertion)
+                                (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
+      def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for $url with identity $identity", e)
+      request(
+        PUT,
+        url,
+        Some(path),
+        identity,
+        (p: Path) => {
+          val entity = HttpEntity(contentType, Files.readAllBytes(p))
+          FormData(BodyPart.Strict("file", entity, Map("filename" -> fileName))).toEntity()
+        },
+        assertResponse,
+        onFail,
+        extraHeaders
+      )
+    }
 
     def putAttachment[A](url: String,
                          attachment: String,

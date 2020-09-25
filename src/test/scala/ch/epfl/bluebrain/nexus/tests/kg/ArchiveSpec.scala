@@ -5,28 +5,30 @@ import java.nio.file.{Path, Paths}
 import java.security.MessageDigest
 import java.util.regex.Pattern.quote
 
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.Multipart.FormData
-import akka.http.scaladsl.model.Multipart.FormData.BodyPart
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.model.{HttpEntity, MediaRanges, MediaTypes, StatusCodes, HttpRequest => Req}
-import akka.stream.scaladsl.{Sink, StreamConverters}
+import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
 import akka.util.ByteString
+import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.EitherValues
-import ch.epfl.bluebrain.nexus.rdf.syntax._
-import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
-import io.circe.Printer
+import ch.epfl.bluebrain.nexus.commons.test.CirceEq
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
+import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
+import ch.epfl.bluebrain.nexus.tests.Tags.ArchivesTag
+import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Projects, Resources}
+import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
+import io.circe.{Json, Printer}
+import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, Inspectors}
+import ch.epfl.bluebrain.nexus.tests.Optics._
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Seq
-import scala.concurrent.Future
 
-class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
+class ArchiveSpec extends NewBaseSpec with CirceEq {
+
+  private val testRealm   = Realm("resources" + genString())
+  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Tweety = UserCredentials(genString(), genString(), testRealm)
+  private val Silvester = UserCredentials(genString(), genString(), testRealm)
+
   private val orgId          = genId()
   private val projId         = genId()
   private val projId2        = genId()
@@ -34,11 +36,15 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
   private val fullId2        = s"$orgId/$projId2"
   private val defaultPrinter = Printer.spaces2.copy(dropNullValues = true)
 
-  private val payload1 =
-    jsonContentOf("/kg/resources/simple-resource.json", Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1"))
+  private val payload1 = jsonContentOf(
+    "/kg/resources/simple-resource.json",
+    Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
+  )
 
-  private val payload2 =
-    jsonContentOf("/kg/resources/simple-resource.json", Map(quote("{priority}") -> "6", quote("{resourceId}") -> "2"))
+  private val payload2 = jsonContentOf(
+      "/kg/resources/simple-resource.json",
+      Map(quote("{priority}") -> "6", quote("{resourceId}") -> "2")
+    )
 
   private val nexusLogoDigest =
     "edd70eff895cde1e36eaedd22ed8e9c870bb04155d05d275f970f4f255488e993a32a7c914ee195f6893d43b8be4e0b00db0a6d545a8462491eae788f664ea6b"
@@ -46,6 +52,16 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
   private val payload2Digest = digest(ByteString(payload2.printWith(defaultPrinter)))
 
   private type PathAndContent = (Path, ByteString)
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    initRealm(
+      testRealm,
+      Identity.ServiceAccount,
+      testClient,
+      Tweety :: Silvester :: Nil
+    ).runSyncUnsafe()
+  }
 
   @tailrec
   private def readEntries(tar: TarArchiveInputStream, entries: List[PathAndContent] = Nil): List[PathAndContent] = {
@@ -64,162 +80,141 @@ class ArchiveSpec extends BaseSpec with Eventually with Inspectors with CancelAf
     digest.digest().map("%02x".format(_)).mkString
   }
 
-  val sinkDigest: Sink[ByteString, Future[String]] =
-    Sink
-      .fold(MessageDigest.getInstance("SHA-512")) { (digest, currentBytes: ByteString) =>
-        digest.update(currentBytes.asByteBuffer)
-        digest
+  "Setup" should {
+
+    "create projects, resources and add necessary acls" taggedAs ArchivesTag in {
+      for {
+        _ <- adminDsl.createOrganization(orgId, orgId, Identity.ServiceAccount)
+        _ <- aclDsl.addPermission(s"/$orgId", Tweety, Projects.Create)
+        _ <- adminDsl.createProject(orgId, projId, kgDsl.projectJson(name = fullId), Tweety)
+        _ <- adminDsl.createProject(orgId, projId2, kgDsl.projectJson(name = fullId2), Tweety)
+      } yield succeed
+    }
+
+    "create resources" taggedAs ArchivesTag in {
+      eventually {
+        for {
+          _ <- cl.putAttachmentFromPath[Json](
+            s"/files/$fullId/test-resource:logo",
+            Paths.get(getClass.getResource("/kg/files/nexus-logo.png").toURI),
+            MediaTypes.`image/png`,
+            "nexus-logo.png",
+            Tweety) { (_, response) => response.status shouldEqual StatusCodes.Created }
+          _ <- cl.put[Json](s"/resources/$fullId/_/test-resource:1", payload1, Tweety) {
+            (_, response) => response.status shouldEqual StatusCodes.Created
+          }
+          _ <- cl.put[Json](s"/resources/$fullId2/_/test-resource:2", payload2, Tweety) {
+            (_, response) => response.status shouldEqual StatusCodes.Created
+          }
+        } yield succeed
       }
-      .mapMaterializedValue(_.map(_.digest().map("%02x".format(_)).mkString))
-
-  "creating projects" should {
-
-    "created org using service account" taggedAs ToMigrateTag in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersServiceAccount, orgReqEntity(orgId)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
     }
-
-    "add necessary ACLs for user" taggedAs ToMigrateTag in {
-      val json = jsonContentOf("/iam/add.json", replSub + (quote("{perms}") -> "projects/create")).toEntity
-      cl(Req(PATCH, s"$iamBase/acls/$orgId?rev=1", headersServiceAccount, json))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-    }
-
-    "succeed if payload is correct" taggedAs ToMigrateTag in {
-      cl(Req(PUT, s"$adminBase/projects/$fullId", headersJsonUser, kgProjectReqEntity(name = fullId)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
-      cl(Req(PUT, s"$adminBase/projects/$fullId2", headersJsonUser, kgProjectReqEntity(name = fullId)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-  }
-
-  "creating resources" taggedAs ToMigrateTag in {
-
-    val source        = StreamConverters.fromInputStream(() => getClass.getResourceAsStream("/kg/files/nexus-logo.png"))
-    val entity        = HttpEntity.IndefiniteLength(MediaTypes.`image/png`, source)
-    val multipartForm = FormData(BodyPart("file", entity, Map("filename" -> "nexus-logo.png"))).toEntity()
-
-    eventually {
-      cl(Req(PUT, s"$kgBase/files/$fullId/test-resource:logo", headersJsonUser, multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    cl(Req(PUT, s"$kgBase/resources/$fullId/_/test-resource:1", headersJsonUser, payload1.toEntity))
-      .mapResp(_.status shouldEqual StatusCodes.Created)
-
-    cl(Req(PUT, s"$kgBase/resources/$fullId2/_/test-resource:2", headersJsonUser, payload2.toEntity))
-      .mapResp(_.status shouldEqual StatusCodes.Created)
   }
 
   "creating archives" should {
-
-    "succeed" taggedAs ToMigrateTag in {
+    "succeed" taggedAs ArchivesTag in {
       val payload = jsonContentOf("/kg/archives/archive3.json", Map(quote("{project2}") -> fullId2))
 
-      cl(Req(PUT, s"$kgBase/archives/$fullId/test-resource:archive", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "failed if payload is wrong" taggedAs ToMigrateTag in {
-      val payload = jsonContentOf("/kg/archives/archive-wrong.json")
-
-      cl(Req(PUT, s"$kgBase/archives/$fullId/archive2", headersJsonUser, payload.toEntity))
-        .mapJson { (json, resp) =>
-          val response = jsonContentOf("/kg/archives/archive-wrong-response.json")
-          resp.status shouldEqual StatusCodes.BadRequest
-          json.removeKeys("report") shouldEqual response
-        }
-    }
-
-    "failed on wrong path" taggedAs ToMigrateTag in {
-      val wrong    = List.tabulate(2)(i => jsonContentOf(s"/kg/archives/archive-wrong-path${i + 1}.json"))
-      val expected = jsonContentOf("/kg/archives/archive-path-invalid.json")
-      forAll(wrong) { payload =>
-        cl(Req(PUT, s"$kgBase/archives/$fullId/archive2", headersJsonUser, payload.toEntity))
-          .mapJson { (json, resp) =>
-            json shouldEqual expected
-            resp.status shouldEqual StatusCodes.BadRequest
-          }
+      cl.put[Json](s"/archives/$fullId/test-resource:archive", payload, Tweety) {
+        (_, response) => response.status shouldEqual StatusCodes.Created
       }
     }
 
-    "failed on path collisions" taggedAs ToMigrateTag in {
+    "failed if payload is wrong" taggedAs ArchivesTag in {
+      val payload = jsonContentOf("/kg/archives/archive-wrong.json")
+
+      cl.put[Json](s"/archives/$fullId/archive2", payload, Tweety) {
+        (json, response) =>
+          response.status shouldEqual StatusCodes.BadRequest
+          filterKey("report")(json) shouldEqual jsonContentOf("/kg/archives/archive-wrong-response.json")
+      }
+    }
+
+    "failed on wrong path" taggedAs ArchivesTag in {
+      val wrong    = List.tabulate(2)(i => jsonContentOf(s"/kg/archives/archive-wrong-path${i + 1}.json"))
+      val expected = jsonContentOf("/kg/archives/archive-path-invalid.json")
+
+      wrong.traverse { payload =>
+        cl.put[Json](s"/archives/$fullId/archive2", payload, Tweety) {
+          (json, response) =>
+            json shouldEqual expected
+            response.status shouldEqual StatusCodes.BadRequest
+        }
+      }
+    }
+
+    "failed on path collisions" taggedAs ArchivesTag in {
       val collisions = List.tabulate(2)(i => jsonContentOf(s"/kg/archives/archive-path-collision${i + 1}.json"))
       val expected = jsonContentOf(
         "/kg/archives/archive-path-dup.json",
-        Map(quote("{project}") -> fullId, quote("{kg}") -> config.kg.uri.toString())
+        Map(quote("{project}") -> fullId, quote("{kg}") -> config.deltaUri.toString())
       )
-      forAll(collisions) { payload =>
-        cl(Req(PUT, s"$kgBase/archives/$fullId/archive2", headersJsonUser, payload.toEntity))
-          .mapJson { (json, resp) =>
+
+      collisions.traverse { payload =>
+        cl.put[Json](s"/archives/$fullId/archive2", payload, Tweety) {
+          (json, response) =>
             json shouldEqual expected
-            resp.status shouldEqual StatusCodes.BadRequest
-          }
+            response.status shouldEqual StatusCodes.BadRequest
+        }
       }
     }
   }
 
   "fetching archive" should {
-
-    "succeed returning metadata" taggedAs ToMigrateTag in {
-      cl(Req(GET, s"$kgBase/archives/$fullId/test-resource:archive", headersJsonUser))
-        .mapJson { (json, result) =>
-          val resp = jsonContentOf(
+    "succeed returning metadata" taggedAs ArchivesTag in {
+      cl.get[Json](s"/archives/$fullId/test-resource:archive", Tweety) {
+        (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          val expected = jsonContentOf(
             "/kg/archives/archive-response.json",
-            Map(
+            replacements(
+              Tweety,
               quote("{project2}") -> fullId2,
-              quote("{project1}") -> fullId,
-              quote("{kg}")       -> config.kg.uri.toString(),
-              quote("{iam}")      -> config.iam.uri.toString(),
-              quote("{admin}")    -> config.admin.uri.toString()
+              quote("{project1}") -> fullId
             )
           )
-          json.removeKeys("_createdAt", "_updatedAt", "_expiresInSeconds") should equalIgnoreArrayOrder(resp)
-          result.status shouldEqual StatusCodes.OK
-        }
+          filterKeys(
+            Set("_createdAt", "_updatedAt", "_expiresInSeconds")
+          )(json) should equalIgnoreArrayOrder(expected)
+      }
     }
 
-    "succeed returning binary" taggedAs ToMigrateTag in {
+    "succeed returning binary" taggedAs ArchivesTag in {
       val prefix = "https:%2F%2Fdev.nexus.test.com%2Fsimplified-resource%2F"
-      cl(Req(GET, s"$kgBase/archives/$fullId/test-resource:archive", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapByteString { (byteString, result) =>
-          result.entity.contentType shouldEqual MediaTypes.`application/x-tar`.toContentType
-          result.status shouldEqual StatusCodes.OK
+      cl.get[ByteString](s"/archives/$fullId/test-resource:archive", Tweety, acceptAll) {
+        (byteString, response) =>
+          contentType(response) shouldEqual MediaTypes.`application/x-tar`.toContentType
+          response.status shouldEqual StatusCodes.OK
 
-          val bytes  = new ByteArrayInputStream(byteString.toArray)
-          val tar    = new TarArchiveInputStream(bytes)
+          val bytes = new ByteArrayInputStream(byteString.toArray)
+          val tar = new TarArchiveInputStream(bytes)
           val unpack = readEntries(tar).map { case (path, content) => path.toString -> digest(content) }.toMap
           unpack(s"$fullId/${prefix}1.json") shouldEqual payload1Digest
           unpack(s"$fullId2/${prefix}2.json") shouldEqual payload2Digest
           unpack("some/other/nexus-logo.png") shouldEqual nexusLogoDigest
-        }
+      }
     }
 
-    "delete resources/read permissions for user on project 2" taggedAs ToMigrateTag in {
-      val json =
-        jsonContentOf("/iam/subtract-permissions.json", replSub + (quote("{perms}") -> "resources/read")).toEntity
-      cl(Req(PATCH, s"$iamBase/acls/$fullId2?rev=1", headersServiceAccount, json))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-    }
+    "delete resources/read permissions for user on project 2" taggedAs ArchivesTag in
+      aclDsl.deletePermission(
+        s"/$fullId2",
+        Tweety,
+        Resources.Read
+      )
 
-    "failed when a resource in the archive cannot be fetched" taggedAs ToMigrateTag in {
-      cl(Req(GET, s"$kgBase/archives/$fullId/test-resource:archive", headersUser ++ Seq(Accept(MediaRanges.`*/*`))))
-        .mapJson { (json, result) =>
+    "failed when a resource in the archive cannot be fetched" taggedAs ArchivesTag in {
+      cl.get[Json](s"/archives/$fullId/test-resource:archive", Tweety, acceptAll) {
+        (json, response) =>
           json shouldEqual jsonContentOf("/kg/archives/archive-element-not-found.json")
-          result.status shouldEqual StatusCodes.NotFound
-        }
+          response.status shouldEqual StatusCodes.NotFound
+      }
     }
-    "succeed returning metadata using query param ignoreNotFound" taggedAs ToMigrateTag in {
-      cl(
-        Req(
-          GET,
-          s"$kgBase/archives/$fullId/test-resource:archive?ignoreNotFound=true",
-          headersUser ++ Seq(Accept(MediaRanges.`*/*`))
-        )
-      ).mapResp { result =>
-        result.entity.contentType shouldEqual MediaTypes.`application/x-tar`.toContentType
-        result.status shouldEqual StatusCodes.OK
+
+    "succeed returning metadata using query param ignoreNotFound" taggedAs ArchivesTag in {
+      cl.get[ByteString](s"/archives/$fullId/test-resource:archive?ignoreNotFound=true", Tweety, acceptAll) {
+        (_, response) =>
+          contentType(response) shouldEqual MediaTypes.`application/x-tar`.toContentType
+          response.status shouldEqual StatusCodes.OK
       }
     }
   }
