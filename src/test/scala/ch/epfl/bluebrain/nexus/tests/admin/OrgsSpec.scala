@@ -305,17 +305,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
 
     "succeed if organization exists"  taggedAs OrgsTag in {
       for {
-        _ <- cl.delete[Json](s"/orgs/$id?rev=1", Leela) { (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          filterMetadataKeys(json) shouldEqual adminDsl.createRespJson(
-            id,
-            2L,
-            "orgs",
-            "Organization",
-            Leela,
-            deprecated = true
-          )
-        }
+        _ <- adminDsl.deprecateOrganization(id, Leela)
         _ <- cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>
           response.status shouldEqual StatusCodes.OK
           admin.validate(json, "Organization", "orgs", id, name, 2L, id, deprecated = true)

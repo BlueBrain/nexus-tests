@@ -199,6 +199,7 @@ class ArchiveSpec extends BaseSpec with CirceEq {
       aclDsl.deletePermission(
         s"/$fullId2",
         Tweety,
+        1L,
         Resources.Read
       )
 

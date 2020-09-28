@@ -9,21 +9,25 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.EventsTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Events, Organizations, Resources}
-import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, Identity, Realm}
 import com.fasterxml.uuid.Generators
+import com.typesafe.scalalogging.Logger
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inspectors
+
 import scala.concurrent.duration._
 
 class EventsSpec extends BaseSpec with Inspectors {
+
+  private val logger = Logger[this.type]
 
   private val orgId     = genId()
   private val orgId2    = genId()
   private val projId    = genId()
   private val id        = s"$orgId/$projId"
   private val id2       = s"$orgId2/$projId"
-  private val timestampUuid = Generators.timeBasedGenerator().generate()
+  private lazy val timestampUuid = Generators.timeBasedGenerator().generate()
 
   private[tests] val testRealm   = Realm("events" + genString())
   private[tests] val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
@@ -32,6 +36,7 @@ class EventsSpec extends BaseSpec with Inspectors {
 
   override def beforeAll(): Unit = {
     super.beforeAll()
+    logger.info(s"TimestampUuid: $timestampUuid")
     initRealm(
       testRealm,
       Identity.ServiceAccount,
@@ -253,6 +258,7 @@ class EventsSpec extends BaseSpec with Inspectors {
           BugsBunny,
           timestampUuid,
           take = 15) { seq =>
+            println(seq)
             val projectEvents = seq.drop(8)
             projectEvents.size shouldEqual 7
             projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(

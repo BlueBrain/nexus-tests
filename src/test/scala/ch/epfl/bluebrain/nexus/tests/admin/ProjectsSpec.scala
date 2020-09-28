@@ -67,7 +67,7 @@ class ProjectsSpec extends BaseSpec {
       aclDsl.addPermissions(
         "/",
         Bojack,
-        Set(Organizations.Create, Projects.Create)
+        Set(Organizations.Create)
       )
     }
 
@@ -98,10 +98,21 @@ class ProjectsSpec extends BaseSpec {
       vocab = vocab
     )
 
-    "return not found when fetching a non existing project"  taggedAs ProjectsTag in {
+    "return not found when fetching a non existing project" taggedAs ProjectsTag in {
       cl.get[Json](s"/projects/$orgId/${genId()}", Bojack) { (_, response) =>
         response.status shouldEqual StatusCodes.NotFound
       }
+    }
+
+    "Clean permissions and add projects/create permissions" taggedAs ProjectsTag in {
+      for {
+        _ <- aclDsl.cleanAcls(Bojack)
+        _ <- aclDsl.addPermissions(
+          s"/$orgId",
+          Bojack,
+          Set(Projects.Create)
+        )
+      } yield succeed
     }
 
     "create project" taggedAs ProjectsTag in {
@@ -148,7 +159,7 @@ class ProjectsSpec extends BaseSpec {
     }
 
     "fetch project by UUID"  taggedAs ProjectsTag in {
-      cl.get[Json](s"/orgs/$orgId", Bojack) { (orgJson, _) =>
+      cl.get[Json](s"/orgs/$orgId", Identity.ServiceAccount) { (orgJson, _) =>
         runTask {
           val orgUuid = _uuid.getOption(orgJson).value
           cl.get[Json](s"/projects/$id", Bojack) { (projectJson, _) =>
@@ -267,6 +278,14 @@ class ProjectsSpec extends BaseSpec {
         response.status shouldEqual StatusCodes.OK
         json shouldEqual jsonContentOf("/admin/projects/empty-project-list.json")
       }
+    }
+
+    "add projects/create permissions for user" taggedAs ProjectsTag in {
+      aclDsl.addPermissions(
+        "/",
+        Bojack,
+        Set(Organizations.Create, Projects.Read)
+      )
     }
 
     val orgId = genId()

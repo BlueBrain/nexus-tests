@@ -17,6 +17,7 @@ import io.circe.Json
 import monix.bio.Task
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
+import monix.execution.Scheduler.Implicits.global
 
 class AdminDsl(prefixesConfig: PrefixesConfig,
                config: TestsConfig)
@@ -93,6 +94,26 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
       }
     }
   }
+
+  def deprecateOrganization(id: String,
+                            authenticated: Authenticated): Task[Assertion] =
+    cl.get[Json](s"/orgs/$id", authenticated) {
+      (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        val rev =  admin._rev.getOption(json).value
+        cl.delete[Json](s"/orgs/$id?rev=$rev", authenticated) {
+          (deleteJson, deleteResponse) =>
+            deleteResponse.status shouldEqual StatusCodes.OK
+            filterMetadataKeys(deleteJson) shouldEqual createRespJson(
+              id,
+              rev + 1L,
+              "orgs",
+              "Organization",
+              authenticated,
+              deprecated = true
+            )
+        }.runSyncUnsafe()
+    }
 
   private[tests] val startPool = Vector.range('a', 'z')
   private[tests] val pool      = Vector.range('a', 'z') ++ Vector.range('0', '9') :+ '_' :+ '-'
