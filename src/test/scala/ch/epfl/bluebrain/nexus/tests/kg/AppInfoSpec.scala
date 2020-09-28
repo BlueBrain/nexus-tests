@@ -3,13 +3,13 @@ package ch.epfl.bluebrain.nexus.tests.kg
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes, Uri}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.tests.NewBaseSpec
+import ch.epfl.bluebrain.nexus.tests.BaseSpec
 import ch.epfl.bluebrain.nexus.tests.Tags.AppInfoTag
 import io.circe.Json
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
 
-class AppInfoSpec extends NewBaseSpec {
+class AppInfoSpec extends BaseSpec {
 
   val versionUri: Uri = Uri(s"http://${System.getProperty("delta:8080")}/version")
   val statusUri: Uri = Uri(s"http://${System.getProperty("delta:8080")}/status")

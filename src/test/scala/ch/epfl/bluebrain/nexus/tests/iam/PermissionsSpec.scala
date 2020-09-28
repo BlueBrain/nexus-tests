@@ -5,11 +5,11 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Tags.{IamTag, PermissionsTag}
 import ch.epfl.bluebrain.nexus.tests.iam.types.{Permission, Permissions}
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec}
 import io.circe.Json
 import monix.bio.Task
 
-class PermissionsSpec extends NewBaseSpec {
+class PermissionsSpec extends BaseSpec {
 
   "manage permissions" should {
     val permission1 = Permission(genString(8), genString(8))

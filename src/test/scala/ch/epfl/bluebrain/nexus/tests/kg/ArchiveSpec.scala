@@ -14,7 +14,7 @@ import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Tags.ArchivesTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Projects, Resources}
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
 import io.circe.{Json, Printer}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
@@ -22,7 +22,7 @@ import ch.epfl.bluebrain.nexus.tests.Optics._
 
 import scala.annotation.tailrec
 
-class ArchiveSpec extends NewBaseSpec with CirceEq {
+class ArchiveSpec extends BaseSpec with CirceEq {
 
   private val testRealm   = Realm("resources" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)

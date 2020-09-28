@@ -7,10 +7,10 @@ import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Tags.{AclsTag, IamTag}
 import ch.epfl.bluebrain.nexus.tests.iam.types.{AclEntry, AclListing, Permission, User}
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
 import monix.execution.Scheduler.Implicits.global
 
-class AclsSpec extends NewBaseSpec {
+class AclsSpec extends BaseSpec {
 
   private val testRealm   = Realm("acls" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)

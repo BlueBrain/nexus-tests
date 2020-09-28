@@ -12,12 +12,12 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.ResourcesTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.Organizations
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
 import io.circe.Json
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
 
-class ResourcesSpec extends NewBaseSpec
+class ResourcesSpec extends BaseSpec
   with EitherValues
   with CirceEq {
 

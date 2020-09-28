@@ -15,7 +15,7 @@ import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
 import ch.epfl.bluebrain.nexus.tests.config.StorageConfig
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.Organizations
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
 import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import monix.bio.Task
@@ -26,7 +26,7 @@ import org.scalatest.Assertion
 
 import scala.collection.immutable.Seq
 
-abstract class StorageSpec extends NewBaseSpec with CirceEq {
+abstract class StorageSpec extends BaseSpec with CirceEq {
 
   val storageConfig: StorageConfig = load[StorageConfig](ConfigFactory.load(), "storage")
 

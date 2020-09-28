@@ -1,286 +1,218 @@
 package ch.epfl.bluebrain.nexus.tests.kg
+
 import java.util.regex.Pattern.quote
 
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
+import akka.http.scaladsl.model.StatusCodes
+import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.EitherValues
-import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.Tags.ToMigrateTag
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
+import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
+import ch.epfl.bluebrain.nexus.tests.Optics._
+import ch.epfl.bluebrain.nexus.tests.Tags.CompositeViewsTag
+import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Events, Organizations, Views}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
+import com.typesafe.scalalogging.Logger
 import io.circe.Json
-import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, Inspectors}
+import io.circe.optics.JsonPath._
+import monix.execution.Scheduler.Implicits.global
 
-class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
+class CompositeViewsSpec extends BaseSpec {
 
-  val orgId        = genId()
-  val bandsProject = s"$orgId/bands"
+  private val logger = Logger[this.type]
 
-  val albumsProject = s"$orgId/albums"
+  case class Stats(totalEvents: Long, remainingEvents: Long)
 
-  val songsProject = s"$orgId/songs"
+  object Stats {
+    import io.circe._
+    import io.circe.generic.semiauto._
+    implicit val decoder: Decoder[Stats] = deriveDecoder[Stats]
+    implicit val encoder: Encoder.AsObject[Stats] = deriveEncoder[Stats]
+  }
 
-  override def afterAll() = {
-    val _ = cl(Req(DELETE, s"$kgBase/views/${orgId}/bands/composite?rev=1", headersJsonUser)).mapResp { resp =>
-      resp.status shouldEqual StatusCodes.OK
+  private val orgId        = genId()
+  private val bandsProject = "bands"
+  private val albumsProject = "albums"
+  private val songsProject = "songs"
+
+  private val testRealm   = Realm("composite" + genString())
+  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Tom = UserCredentials(genString(), genString(), testRealm)
+  private val Jerry = UserCredentials(genString(), genString(), testRealm)
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    initRealm(
+      testRealm,
+      Identity.ServiceAccount,
+      testClient,
+      Tom :: Jerry :: Nil
+    ).runSyncUnsafe()
+  }
+
+  "Creating projects" should {
+    "add necessary permissions for user" taggedAs CompositeViewsTag in {
+      aclDsl.addPermissions(
+        s"/$orgId",
+        Jerry,
+        Set(Organizations.Create, Views.Query, Events.Read)
+      )
+    }
+
+    "succeed if payload is correct" taggedAs CompositeViewsTag in {
+      val projectPayload = jsonContentOf("/kg/views/composite/project.json")
+      for {
+        _ <- adminDsl.createOrganization(orgId, orgId, Jerry)
+        _ <- adminDsl.createProject(orgId, bandsProject, projectPayload, Jerry)
+        _ <- adminDsl.createProject(orgId, albumsProject, projectPayload, Jerry)
+        _ <- adminDsl.createProject(orgId, songsProject, projectPayload, Jerry)
+      } yield succeed
+    }
+
+    "wait until in project resolver is created" taggedAs CompositeViewsTag in {
+      eventually {
+          cl.get[Json](s"/resolvers/$orgId/$bandsProject", Jerry) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            _total.getOption(json).value shouldEqual 1
+          }
+      }
+      eventually {
+        cl.get[Json](s"/resolvers/$orgId/$albumsProject", Jerry) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          _total.getOption(json).value shouldEqual 1
+        }
+      }
+      eventually {
+        cl.get[Json](s"/resolvers/$orgId/$songsProject", Jerry) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          _total.getOption(json).value shouldEqual 1
+        }
+      }
     }
   }
 
-  "creating projects" should {
-
-    "add necessary permissions for user" taggedAs ToMigrateTag in {
-      val json =
-        jsonContentOf(
-          "/iam/add.json",
-          replSub + (quote("{perms}") -> "organizations/create\",\"views/query\",\"events/read")
-        ).toEntity
-
-      cl(Req(PATCH, s"$iamBase/acls/$orgId", headersServiceAccount, json))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "succeed if payload is correct" taggedAs ToMigrateTag in {
-
-      val projectPayload = jsonContentOf("/kg/views/composite/project.json").toEntity
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$bandsProject", headersJsonUser, projectPayload))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
-      cl(Req(PUT, s"$adminBase/projects/$albumsProject", headersJsonUser, projectPayload))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
-      cl(Req(PUT, s"$adminBase/projects/$songsProject", headersJsonUser, projectPayload))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "wait until in project resolver is created" taggedAs ToMigrateTag in {
-      eventually {
-        cl(Req(GET, s"$kgBase/resolvers/$bandsProject", headersJsonUser)).mapJson { (json, result) =>
-          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 1
-          result.status shouldEqual StatusCodes.OK
-        }
-      }
-      eventually {
-        cl(Req(GET, s"$kgBase/resolvers/$albumsProject", headersJsonUser)).mapJson { (json, result) =>
-          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 1
-          result.status shouldEqual StatusCodes.OK
-        }
-      }
-
-      eventually {
-        cl(Req(GET, s"$kgBase/resolvers/$songsProject", headersJsonUser)).mapJson { (json, result) =>
-          json.asObject.value("_total").value.asNumber.value.toInt.value shouldEqual 1
-          result.status shouldEqual StatusCodes.OK
-        }
-      }
-
-    }
-
-  }
-
-  "uploading data" should {
-
-    "upload context" taggedAs ToMigrateTag in {
+  "Uploading data" should {
+    "upload context" taggedAs CompositeViewsTag in {
       val context = jsonContentOf("/kg/views/composite/context.json")
-      cl(Req(POST, s"$kgBase/resources/$songsProject", headersJsonUser, context.toEntity)).mapResp { resp =>
-        resp.status shouldEqual StatusCodes.Created
-      }
-      cl(Req(POST, s"$kgBase/resources/$albumsProject", headersJsonUser, context.toEntity)).mapResp { resp =>
-        resp.status shouldEqual StatusCodes.Created
-      }
-      cl(Req(POST, s"$kgBase/resources/$bandsProject", headersJsonUser, context.toEntity)).mapResp { resp =>
-        resp.status shouldEqual StatusCodes.Created
+      List(songsProject, albumsProject, bandsProject).traverse { projectId =>
+        cl.post[Json](s"/resources/$orgId/$projectId", context, Jerry) {
+          (_, response) => response.status shouldEqual StatusCodes.Created
+        }
       }
     }
 
-    "upload songs" taggedAs ToMigrateTag in {
-      jsonContentOf("/kg/views/composite/songs1.json").asArray.value.foreach { song =>
-        cl(Req(POST, s"$kgBase/resources/$songsProject", headersJsonUser, song.toEntity)).mapResp { resp =>
-          resp.status shouldEqual StatusCodes.Created
+    "upload songs" taggedAs CompositeViewsTag in {
+      root.each.json.getAll(
+        jsonContentOf("/kg/views/composite/songs1.json")
+      ).traverse { song =>
+        cl.post[Json](s"/resources/$orgId/$songsProject", song, Jerry) {
+          (_, response) => response.status shouldEqual StatusCodes.Created
         }
       }
     }
-    "upload albums" taggedAs ToMigrateTag in {
-      jsonContentOf("/kg/views/composite/albums.json").asArray.value.foreach { album =>
-        cl(Req(POST, s"$kgBase/resources/$albumsProject", headersJsonUser, album.toEntity)).mapResp { resp =>
-          resp.status shouldEqual StatusCodes.Created
+
+    "upload albums" taggedAs CompositeViewsTag in {
+      root.each.json.getAll(
+        jsonContentOf("/kg/views/composite/albums.json")
+      ).traverse { album =>
+        cl.post[Json](s"/resources/$orgId/$albumsProject", album, Jerry) {
+          (_, response) => response.status shouldEqual StatusCodes.Created
         }
       }
     }
-    "upload bands" taggedAs ToMigrateTag in {
-      jsonContentOf("/kg/views/composite/bands.json").asArray.value.foreach { band =>
-        cl(Req(POST, s"$kgBase/resources/$bandsProject", headersJsonUser, band.toEntity)).mapResp { resp =>
-          resp.status shouldEqual StatusCodes.Created
+
+    "upload bands" taggedAs CompositeViewsTag in {
+      root.each.json.getAll(
+        jsonContentOf("/kg/views/composite/bands.json")
+      ).traverse { band =>
+        cl.post[Json](s"/resources/$orgId/$bandsProject", band, Jerry) {
+          (_, response) => response.status shouldEqual StatusCodes.Created
         }
       }
     }
   }
 
   "creating the view" should {
-    "create a composite view" taggedAs ToMigrateTag in {
 
+    def jerryToken = tokensMap.get(Jerry).credentials.token()
+
+    "create a composite view" taggedAs CompositeViewsTag in {
       val view = jsonContentOf(
         "/kg/views/composite/composite-view.json",
-        replSub ++ Map(
+        replacements(
+          Jerry,
           quote("{org}")               -> orgId,
           quote("{org2}")              -> orgId,
-          quote("{remoteEndpoint}")    -> kgBase.toString,
-          quote("{remoteSourceToken}") -> config.iam.testUserToken
+          quote("{remoteEndpoint}")    -> "http://delta:8080/v1",
+          quote("{token}")             -> jerryToken
         )
       )
-      cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite", headersJsonUser, view.toEntity)).mapResp { resp =>
-        resp.status shouldEqual StatusCodes.Created
+
+      cl.put[Json](s"/views/$orgId/bands/composite", view, Jerry) {
+        (_, response) =>
+          response.status shouldEqual StatusCodes.Created
       }
     }
 
-    waitForView()
+    "wait for data to be indexed after creation" taggedAs CompositeViewsTag in
+      resetAndWait
 
-    "reject creating a composite view with wrong remote source project" taggedAs ToMigrateTag in {
-
+    "reject creating a composite view with remote source endpoint with a wrong suffix" taggedAs CompositeViewsTag in {
       val view = jsonContentOf(
         "/kg/views/composite/composite-view.json",
-        replSub ++ Map(
+        replacements(
+          Jerry,
           quote("{org}")               -> orgId,
-          quote("{org2}")              -> "{org2}",
-          quote("{remoteEndpoint}")    -> kgBase.toString,
-          quote("{remoteSourceToken}") -> config.iam.testUserToken
+          quote("{org2}")              -> orgId,
+          quote("{remoteEndpoint}")    -> "http://delta:8080/v1/other",
+          quote("{token}")             -> jerryToken
         )
       )
-      cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite2", headersJsonUser, view.toEntity)).mapJson {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.BadRequest
-          json shouldEqual jsonContentOf("/kg/views/composite/composite-source-project-reject.json")
+
+      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) {
+        (_, response) =>
+          response.status shouldEqual StatusCodes.NotFound
       }
     }
 
-    // It depends on the remoteEndpoint (if it is a Uri that does not exist or it is a different path on nexus
-    "reject creating a composite view with wrong remote source endpoint" ignore {
-
+    "reject creating a composite view with wrong remote source token" taggedAs CompositeViewsTag in {
       val view = jsonContentOf(
         "/kg/views/composite/composite-view.json",
-        replSub ++ Map(
+        replacements(
+          Jerry,
           quote("{org}")               -> orgId,
           quote("{org2}")              -> orgId,
-          quote("{remoteEndpoint}")    -> s"$kgBase/other",
-          quote("{remoteSourceToken}") -> config.iam.testUserToken
+          quote("{remoteEndpoint}")    -> "http://delta:8080/v1",
+          quote("{token}")             -> s"${jerryToken}wrong"
         )
       )
-      cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite2", headersJsonUser, view.toEntity)).mapJson {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.BadRequest
-          json shouldEqual jsonContentOf("/kg/views/composite/composite-source-project-reject.json")
-      }
-    }
 
-    "reject creating a composite view with wrong remote source token" taggedAs ToMigrateTag in {
-
-      val view = jsonContentOf(
-        "/kg/views/composite/composite-view.json",
-        replSub ++ Map(
-          quote("{org}")               -> orgId,
-          quote("{org2}")              -> orgId,
-          quote("{remoteEndpoint}")    -> kgBase.toString,
-          quote("{remoteSourceToken}") -> s"${config.iam.testUserToken}wrong"
-        )
-      )
-      cl(Req(PUT, s"$kgBase/views/${orgId}/bands/composite2", headersJsonUser, view.toEntity)).mapJson {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.BadRequest
+      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) {
+        (json, response) =>
+          response.status shouldEqual StatusCodes.BadRequest
           json shouldEqual jsonContentOf("/kg/views/composite/composite-source-token-reject.json")
       }
     }
-  }
 
-  "searching the projections" should {
-    "find all bands" taggedAs ToMigrateTag in {
-      eventually {
-        cl(
-          Req(
-            POST,
-            s"$kgBase/views/${orgId}/bands/composite/projections/bands/_search",
-            headersJsonUser,
-            sortAscendingById.toEntity
-          )
-        ).mapJson { (json, resp) =>
-          json.getJson("hits").getArray("hits").map(_.getJson("_source")) shouldEqual jsonContentOf(
-            "/kg/views/composite/bands-results1.json"
-          ).asArray.value
-          resp.status shouldEqual StatusCodes.OK
-        }
-      }
-    }
-    "find all albums" taggedAs ToMigrateTag in {
-      eventually {
-        cl(
-          Req(
-            POST,
-            s"$kgBase/views/${orgId}/bands/composite/projections/albums/_search",
-            headersJsonUser,
-            sortAscendingById.toEntity
-          )
-        ).mapJson { (json, resp) =>
-          json.getJson("hits").getArray("hits").map(_.getJson("_source")) shouldEqual jsonContentOf(
-            "/kg/views/composite/albums-results1.json"
-          ).asArray.value
-          resp.status shouldEqual StatusCodes.OK
-        }
+    "reject creating a composite view with remote source endpoint with a wrong hostname" taggedAs CompositeViewsTag in {
+      val view = jsonContentOf(
+        "/kg/views/composite/composite-view.json",
+        replacements(
+          Jerry,
+          quote("{org}")               -> orgId,
+          quote("{org2}")              -> orgId,
+          quote("{remoteEndpoint}")    -> "http://fail/v1",
+          quote("{token}")             -> jerryToken
+        )
+      )
+
+      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) {
+        (_, response) =>
+          response.status shouldEqual StatusCodes.BadRequest
       }
     }
   }
 
-  "uploading more data" should {
-    "upload more songs" taggedAs ToMigrateTag in {
-      jsonContentOf("/kg/views/composite/songs2.json").asArray.value.foreach { song =>
-        cl(Req(POST, s"$kgBase/resources/$songsProject", headersJsonUser, song.toEntity)).mapResp { resp =>
-          resp.status shouldEqual StatusCodes.Created
-        }
-      }
-    }
-  }
-
-  "waiting for data to be indexed" should {
-    waitForView()
-  }
-
-  "searching the projections with more data" should {
-    "find all bands" taggedAs ToMigrateTag in {
-      eventually {
-        cl(
-          Req(
-            POST,
-            s"$kgBase/views/${orgId}/bands/composite/projections/bands/_search",
-            headersJsonUser,
-            sortAscendingById.toEntity
-          )
-        ).mapJson { (json, resp) =>
-          json.getJson("hits").getArray("hits").map(_.getJson("_source")) shouldEqual jsonContentOf(
-            "/kg/views/composite/bands-results2.json"
-          ).asArray.value
-          resp.status shouldEqual StatusCodes.OK
-        }
-      }
-    }
-    "find all albums" taggedAs ToMigrateTag in {
-      eventually {
-        cl(
-          Req(
-            POST,
-            s"$kgBase/views/${orgId}/bands/composite/projections/albums/_search",
-            headersJsonUser,
-            sortAscendingById.toEntity
-          )
-        ).mapJson { (json, resp) =>
-          json.getJson("hits").getArray("hits").map(_.getJson("_source")) shouldEqual jsonContentOf(
-            "/kg/views/composite/albums-results2.json"
-          ).asArray.value
-          resp.status shouldEqual StatusCodes.OK
-        }
-      }
-    }
-  }
-
-  val sortAscendingById = Json
+  private val sortAscendingById = Json
     .obj(
       "sort" -> Json.arr(
         Json.obj(
@@ -291,38 +223,118 @@ class CompositeViewsSpec extends BaseSpec with Eventually with Inspectors with C
       )
     )
 
-  def waitForView() = "wait for view" should {
-    "wait for view to be indexed" taggedAs ToMigrateTag in {
-      eventually(
-        cl(Req(GET, s"$kgBase/views/${orgId}/bands/composite/projections/_/statistics", headersJsonUser)).mapJson {
-          (json, resp) =>
-            json.getArray("_results").foreach { stats =>
-              stats.getLong("totalEvents") should be > 0L
-              stats.getLong("remainingEvents") shouldEqual 0
-            }
-            resp.status shouldEqual StatusCodes.OK
+  "searching the projections" should {
+    "find all bands" taggedAs CompositeViewsTag in {
+      eventually {
+        cl.post[Json](s"/views/$orgId/bands/composite/projections/bands/_search", sortAscendingById, Jerry) {
+          (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
+              jsonContentOf(
+              "/kg/views/composite/bands-results1.json"
+              )
+            ).value
         }
-      )
-    }
-
-    "reset the view" taggedAs ToMigrateTag in {
-      cl(Req(DELETE, s"$kgBase/views/${orgId}/bands/composite/projections/_/offset", headersJsonUser)).mapResp { resp =>
-        resp.status shouldEqual StatusCodes.OK
       }
     }
 
-    "wait for view to be indexed again" taggedAs ToMigrateTag in {
-      eventually(
-        cl(Req(GET, s"$kgBase/views/${orgId}/bands/composite/projections/_/statistics", headersJsonUser)).mapJson {
-          (json, resp) =>
-            json.getArray("_results").foreach { stats =>
-              stats.getLong("totalEvents") should be > 0L
-              stats.getLong("remainingEvents") shouldEqual 0
-            }
-            resp.status shouldEqual StatusCodes.OK
+    "find all albums" taggedAs CompositeViewsTag in {
+      eventually {
+        cl.post[Json](s"/views/$orgId/bands/composite/projections/albums/_search", sortAscendingById, Jerry) {
+          (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
+              jsonContentOf(
+                "/kg/views/composite/albums-results1.json"
+              )
+            ).value
         }
-      )
+      }
     }
   }
 
+  "uploading more data" should {
+    "upload more songs" taggedAs CompositeViewsTag in {
+      root.each.json.getAll(
+        jsonContentOf("/kg/views/composite/songs2.json")
+      ).traverse { song =>
+        cl.post[Json](s"/resources/$orgId/$songsProject", song, Jerry) {
+          (_, response) => response.status shouldEqual StatusCodes.Created
+        }
+      }
+    }
+
+    "waiting for data to be indexed" taggedAs CompositeViewsTag in
+      resetAndWait
+  }
+
+  "searching the projections with more data" should {
+    "find all bands" taggedAs CompositeViewsTag in {
+      eventually {
+        cl.post[Json](s"/views/$orgId/bands/composite/projections/bands/_search", sortAscendingById, Jerry) {
+          (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
+              jsonContentOf(
+                "/kg/views/composite/bands-results2.json"
+              )
+            ).value
+        }
+      }
+    }
+
+    "find all albums" taggedAs CompositeViewsTag in {
+      eventually {
+        cl.post[Json](s"/views/$orgId/bands/composite/projections/albums/_search", sortAscendingById, Jerry) {
+          (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
+              jsonContentOf(
+                "/kg/views/composite/albums-results2.json"
+              )
+            ).value
+        }
+      }
+    }
+  }
+
+  private def waitForView() = {
+    eventually {
+      cl.get[Json](s"/views/$orgId/bands/composite/projections/_/statistics", Jerry) {
+        (json, response) =>
+          val stats = root._results.each.as[Stats].getAll(json)
+          logger.debug(s"Response: ${response.status} with ${stats.size} stats")
+          stats.foreach { stat =>
+            logger.debug(s"totalEvents: ${stat.totalEvents}, remainingEvents: ${stat.remainingEvents}")
+            stat.totalEvents should be > 0L
+            stat.remainingEvents shouldEqual 0
+          }
+          response.status shouldEqual StatusCodes.OK
+      }
+    }
+  }
+
+  private def resetView =
+    cl.delete[Json](s"/views/$orgId/bands/composite/projections/_/offset", Jerry) {
+      (_, response) =>
+        logger.info(s"Resetting view responded with ${response.status}")
+        response.status shouldEqual StatusCodes.OK
+    }
+
+  private def resetAndWait = {
+    logger.info("Waiting for view to be indexed")
+    waitForView()
+    logger.info("Resetting offsets")
+    resetView.runSyncUnsafe()
+    logger.info("Waiting for view to be indexed again")
+    waitForView()
+  }
+
+  "Delete composite views" should {
+    "be ok" taggedAs CompositeViewsTag in {
+      cl.delete[Json](s"/views/$orgId/bands/composite?rev=1", Jerry){
+        (_, response) => response.status shouldEqual StatusCodes.OK
+      }
+    }
+  }
 }

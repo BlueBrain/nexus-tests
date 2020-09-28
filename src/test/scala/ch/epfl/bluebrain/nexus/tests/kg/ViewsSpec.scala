@@ -12,11 +12,11 @@ import ch.epfl.bluebrain.nexus.tests.Identity.{Anonymous, UserCredentials}
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.ViewsTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Organizations, Views}
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 
-class ViewsSpec extends NewBaseSpec
+class ViewsSpec extends BaseSpec
   with EitherValues
   with CirceEq {
 

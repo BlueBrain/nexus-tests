@@ -9,11 +9,11 @@ import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.OrgsTag
-import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, BaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 
-class OrgsSpec extends NewBaseSpec with EitherValues{
+class OrgsSpec extends BaseSpec with EitherValues{
 
   private val testRealm   = Realm("orgs" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)

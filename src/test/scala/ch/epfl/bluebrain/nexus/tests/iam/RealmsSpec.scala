@@ -7,12 +7,12 @@ import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.{IamTag, RealmsTag}
-import ch.epfl.bluebrain.nexus.tests.{Identity, Keycloak, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, Keycloak, BaseSpec, Realm}
 import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import monix.execution.Scheduler.Implicits.global
 import io.circe.Json
 
-class RealmsSpec extends NewBaseSpec {
+class RealmsSpec extends BaseSpec {
 
   private val testRealm   = Realm("realm" + genString())
   private val testRealmUri = config.realmSuffix(testRealm)

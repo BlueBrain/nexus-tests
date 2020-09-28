@@ -12,10 +12,11 @@ services:
     entrypoint: ["bin/wait-for-it.sh", "-s", "-t", "0", "cassandra:9042", "--", "./bin/delta",
                  "-Xmx2G",
                  "-Dapp.instance.interface=0.0.0.0",
+                 "-Dapp.composite.min-interval-rebuild=1s",
                  "-Dapp.indexing.batch=3",
                  "-Dapp.indexing.batch-timeout=100ms",
                  "-Dapp.indexing.progress.persist-after-processed=3",
-                 "-Dapp.indexing.progress.max-time-window=2s",
+                 "-Dapp.indexing.progress.max-time-window=1s",
                  "-Dapp.http.public-uri=https://test.nexus.bbp.epfl.ch",
                  "-Dapp.service-account-caller.realm=internal",
                  "-Dapp.service-account-caller.subject=service-account-delta",
@@ -25,12 +26,14 @@ services:
                  "-Dapp.storage.remote-disk.default-endpoint=http://storage-service:8080",
                  "-Dakka.persistence.cassandra.journal.keyspace-autocreate=true",
                  "-Dakka.persistence.cassandra.journal.tables-autocreate=true",
+#                 "-Dakka.persistence.cassandra.events-by-tag.eventual-consistency-delay=2s",
+#                 "-Dakka.persistence.cassandra.events-by-tag.first-time-bucket=20200926T00:00",
+                 "-Dakka.persistence.cassandra.events-by-tag.pubsub-notification=true",
+ #                "-Dakka.persistence.cassandra.events-by-tag.scanning-flush-interval=5s",
+#                "-Dakka.persistence.cassandra.query.refresh-interval=3s",
                  "-Dakka.persistence.cassandra.snapshot.keyspace-autocreate=true",
                  "-Dakka.persistence.cassandra.snapshot.tables-autocreate=true",
-                 "-Dakka.persistence.cassandra.events-by-tag.pubsub-notification=true",
-                 "-Ddatastax-java-driver.basic.contact-points.1=cassandra:9042",
-                 "-Dkamon.modules.prometheus-reporter.enabled=false",
-                 "-Dkamon.modules.jaeger.enabled=false"]
+                 "-Ddatastax-java-driver.basic.contact-points.1=cassandra:9042"]
     ports:
       - "8080"
 
@@ -70,6 +73,11 @@ services:
       ES_JAVA_OPTS: "-Xmx2G"
       discovery.type: "single-node"
       bootstrap.memory_lock: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     ports:
       - "9200"
 
@@ -80,6 +88,12 @@ services:
       MAX_HEAP_SIZE: "1G"
       HEAP_NEWSIZE: "100m"
       CASSANDRA_BROADCAST_ADDRESS: cassandra
+    healthcheck:
+      test: ["CMD", "cqlsh","-e describe keyspaces"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
 
   blazegraph:
     image: bluebrain/blazegraph-nexus:2.1.5

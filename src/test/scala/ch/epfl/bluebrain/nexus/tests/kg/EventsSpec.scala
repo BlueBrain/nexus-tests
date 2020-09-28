@@ -9,14 +9,14 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.EventsTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Events, Organizations, Resources}
-import ch.epfl.bluebrain.nexus.tests.{Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
 import com.fasterxml.uuid.Generators
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inspectors
 import scala.concurrent.duration._
 
-class EventsSpec extends NewBaseSpec with Inspectors {
+class EventsSpec extends BaseSpec with Inspectors {
 
   private val orgId     = genId()
   private val orgId2    = genId()

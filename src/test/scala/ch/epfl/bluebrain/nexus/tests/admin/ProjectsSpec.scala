@@ -9,11 +9,11 @@ import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity.{Authenticated, UserCredentials}
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.ProjectsTag
-import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, NewBaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, BaseSpec, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 
-class ProjectsSpec extends NewBaseSpec {
+class ProjectsSpec extends BaseSpec {
 
   private val testRealm   = Realm("projects" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
