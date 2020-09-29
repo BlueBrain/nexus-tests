@@ -24,7 +24,7 @@
     <logger name="ch.epfl.bluebrain.nexus" additivity="false" level="${LOG_LEVEL:-INFO}">
         <appender-ref ref="TRACED" />
     </logger>
-    
+
     <logger name="akka.remote" level="WARN" />
     <logger name="akka.cluster" level="WARN" />
 
