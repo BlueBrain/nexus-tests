@@ -12,19 +12,17 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.ResourcesTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.Organizations
-import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, Identity, Realm}
 import io.circe.Json
 import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
 
-class ResourcesSpec extends BaseSpec
-  with EitherValues
-  with CirceEq {
+class ResourcesSpec extends BaseSpec with EitherValues with CirceEq {
 
-  private val testRealm   = Realm("resources" + genString())
+  private val testRealm  = Realm("resources" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
-  private val Rick = UserCredentials(genString(), genString(), testRealm)
-  private val Morty = UserCredentials(genString(), genString(), testRealm)
+  private val Rick       = UserCredentials(genString(), genString(), testRealm)
+  private val Morty      = UserCredentials(genString(), genString(), testRealm)
 
   private val orgId   = genId()
   private val projId1 = genId()
@@ -65,18 +63,16 @@ class ResourcesSpec extends BaseSpec
     "create a schema" taggedAs ResourcesTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
-      cl.put[Json](s"/schemas/$id1/test-schema", schemaPayload, Rick) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
+      cl.put[Json](s"/schemas/$id1/test-schema", schemaPayload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
     "creating a schema with property shape" taggedAs ResourcesTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-prop-shape.json")
 
-      cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
+      cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
@@ -84,9 +80,8 @@ class ResourcesSpec extends BaseSpec
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-imports.json")
 
       eventually {
-        cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) {
-          (_, response) =>
-            response.status shouldEqual StatusCodes.Created
+        cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       }
     }
@@ -98,28 +93,26 @@ class ResourcesSpec extends BaseSpec
         jsonContentOf(
           "/kg/resources/simple-resource.json",
           Map(
-            quote("{priority}") -> "5",
+            quote("{priority}")   -> "5",
             quote("{resourceId}") -> "1"
           )
         )
 
       val id2 = URLEncoder.encode("https://dev.nexus.test.com/test-schema-imports", "UTF-8")
       val payload2 = jsonContentOf(
-          "/kg/resources/simple-resource.json",
-          Map(
-            quote("{priority}") -> "5",
-            quote("{resourceId}") -> "10"
-          )
+        "/kg/resources/simple-resource.json",
+        Map(
+          quote("{priority}")   -> "5",
+          quote("{resourceId}") -> "10"
         )
+      )
 
       for {
-        _ <- cl.put[Json](s"/resources/$id1/test-schema/test-resource:1", payload, Rick) {
-          (_, response) =>
-            response.status shouldEqual StatusCodes.Created
+        _ <- cl.put[Json](s"/resources/$id1/test-schema/test-resource:1", payload, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
-        _ <- cl.put[Json](s"/resources/$id1/$id2/test-resource:10", payload2, Rick) {
-          (_, response) =>
-            response.status shouldEqual StatusCodes.Created
+        _ <- cl.put[Json](s"/resources/$id1/$id2/test-resource:10", payload2, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       } yield succeed
     }
@@ -168,28 +161,25 @@ class ResourcesSpec extends BaseSpec
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
         Map(
-          quote("{priority}") -> "3",
+          quote("{priority}")   -> "3",
           quote("{resourceId}") -> "1"
         )
       )
 
-      cl.put[Json](s"/resources/$id2/test-schema/test-resource:1", payload, Rick) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.NotFound
+      cl.put[Json](s"/resources/$id2/test-schema/test-resource:1", payload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
       }
     }
 
     "fail to create a cross-project-resolver for proj2 if identities are missing" taggedAs ResourcesTag in {
-      cl.post[Json](s"/resolvers/$id2", filterKey("identities")(resolverPayload), Rick) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.BadRequest
+      cl.post[Json](s"/resolvers/$id2", filterKey("identities")(resolverPayload), Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "create a cross-project-resolver for proj2" taggedAs ResourcesTag in {
-      cl.post[Json](s"/resolvers/$id2", resolverPayload, Rick) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
+      cl.post[Json](s"/resolvers/$id2", resolverPayload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
@@ -204,14 +194,14 @@ class ResourcesSpec extends BaseSpec
 
     "fetch the update" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
-          "/kg/resources/cross-project-resolver-updated-resp.json",
-          replacements(
-            Rick,
-            quote("{project}")        -> id1,
-            quote("{resources}")      -> s"${config.deltaUri}/resolvers/$id2",
-            quote("{project-parent}") -> s"${config.deltaUri}/projects/$id2"
-          )
+        "/kg/resources/cross-project-resolver-updated-resp.json",
+        replacements(
+          Rick,
+          quote("{project}")        -> id1,
+          quote("{resources}")      -> s"${config.deltaUri}/resolvers/$id2",
+          quote("{project-parent}") -> s"${config.deltaUri}/projects/$id2"
         )
+      )
 
       cl.get[Json](s"/resolvers/$id2/example-id", Rick) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
@@ -343,15 +333,14 @@ class ResourcesSpec extends BaseSpec
       val tag2 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.1", quote("{rev}") -> "2"))
 
       for {
-        _ <- cl.post[Json](s"/resources/$id1/test-schema/test-resource:1/tags?rev=2", tag1, Rick) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        _ <- cl.post[Json](s"/resources/$id1/test-schema/test-resource:1/tags?rev=2", tag1, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
-        _ <- cl.post[Json](s"/resources/$id1/_/test-resource:1/tags?rev=3", tag2, Rick) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        _ <- cl.post[Json](s"/resources/$id1/_/test-resource:1/tags?rev=3", tag2, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       } yield succeed
     }
-
 
     "fetch a tagged value" taggedAs ResourcesTag in {
       val expectedTag1 = jsonContentOf(
@@ -377,15 +366,13 @@ class ResourcesSpec extends BaseSpec
       )
 
       for {
-        _ <- cl.get[Json](s"/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", Rick) {
-          (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag1)
+        _ <- cl.get[Json](s"/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag1)
         }
-        _ <- cl.get[Json](s"/resources/$id1/_/test-resource:1?tag=v1.0.0", Rick) {
-          (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag2)
+        _ <- cl.get[Json](s"/resources/$id1/_/test-resource:1?tag=v1.0.0", Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag2)
         }
       } yield succeed
     }
@@ -406,7 +393,8 @@ class ResourcesSpec extends BaseSpec
         "storages"  -> jsonContentOf("/kg/listings/default-storage.json", mapping)
       )
 
-      resources.traverse { case (segment, expected) =>
+      resources.traverse {
+        case (segment, expected) =>
           cl.get[Json](s"/$segment/$id1", Rick) { (json, response) =>
             response.status shouldEqual StatusCodes.OK
             filterSearchMetadata(json) shouldEqual expected
@@ -445,18 +433,16 @@ class ResourcesSpec extends BaseSpec
     }
 
     "return 400 when using both from and after" taggedAs ResourcesTag in {
-      cl.get[Json](s"/resources/$id1/test-schema?from=10&after=%5B%22test%22%5D", Rick) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.BadRequest
-          json shouldEqual jsonContentOf("/kg/listings/from-and-after-error.json")
+      cl.get[Json](s"/resources/$id1/test-schema?from=10&after=%5B%22test%22%5D", Rick) { (json, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
+        json shouldEqual jsonContentOf("/kg/listings/from-and-after-error.json")
       }
     }
 
     "return 400 when from is bigger than limit" taggedAs ResourcesTag in {
-      cl.get[Json](s"/resources/$id1/test-schema?from=10001", Rick) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.BadRequest
-          json shouldEqual jsonContentOf("/kg/listings/from-over-limit-error.json")
+      cl.get[Json](s"/resources/$id1/test-schema?from=10001", Rick) { (json, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
+        json shouldEqual jsonContentOf("/kg/listings/from-over-limit-error.json")
       }
     }
 
@@ -467,26 +453,33 @@ class ResourcesSpec extends BaseSpec
       }
 
       // Get results though a lens and filtering out some fields
-      def lens(json: Json) = resources._results.getOption(json)
-        .fold(Vector.empty[Json]) { _.map (filterMetadataKeys) }
+      def lens(json: Json) =
+        resources._results
+          .getOption(json)
+          .fold(Vector.empty[Json]) { _.map(filterMetadataKeys) }
 
-      val result = cl.stream(
-        s"/resources/$id1/test-schema?size=2",
-        next,
-        lens,
-        Rick
-      ).compile.toList
+      val result = cl
+        .stream(
+          s"/resources/$id1/test-schema?size=2",
+          next,
+          lens,
+          Rick
+        )
+        .compile
+        .toList
 
-      val expected = resources._results.getOption(
-        jsonContentOf(
-          "/kg/listings/response.json",
-          replacements(
-            Rick,
-            quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
-            quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
+      val expected = resources._results
+        .getOption(
+          jsonContentOf(
+            "/kg/listings/response.json",
+            replacements(
+              Rick,
+              quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+              quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
+            )
           )
         )
-      ).value
+        .value
 
       result.flatMap { l =>
         Task.pure(l.flatten shouldEqual expected)

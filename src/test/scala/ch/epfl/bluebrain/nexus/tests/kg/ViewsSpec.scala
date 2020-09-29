@@ -12,25 +12,23 @@ import ch.epfl.bluebrain.nexus.tests.Identity.{Anonymous, UserCredentials}
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.ViewsTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Organizations, Views}
-import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, Identity, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 
-class ViewsSpec extends BaseSpec
-  with EitherValues
-  with CirceEq {
+class ViewsSpec extends BaseSpec with EitherValues with CirceEq {
 
-  private val testRealm   = Realm("views" + genString())
+  private val testRealm  = Realm("views" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
-  private val ScoobyDoo = UserCredentials(genString(), genString(), testRealm)
-  private val Shaggy = UserCredentials(genString(), genString(), testRealm)
+  private val ScoobyDoo  = UserCredentials(genString(), genString(), testRealm)
+  private val Shaggy     = UserCredentials(genString(), genString(), testRealm)
 
   private val orgId  = genId()
   private val projId = genId()
-  val fullId = s"$orgId/$projId"
+  val fullId         = s"$orgId/$projId"
 
   private val projId2 = genId()
-  val fullId2 = s"$orgId/$projId2"
+  val fullId2         = s"$orgId/$projId2"
 
   val projects = List(fullId, fullId2)
 
@@ -66,8 +64,8 @@ class ViewsSpec extends BaseSpec
       val payload = jsonContentOf("/kg/views/context.json")
 
       projects.traverse { project =>
-        cl.put[Json](s"/resources/$project/resource/test-resource:context", payload, ScoobyDoo) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        cl.put[Json](s"/resources/$project/resource/test-resource:context", payload, ScoobyDoo) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       }
     }
@@ -85,35 +83,34 @@ class ViewsSpec extends BaseSpec
       val payload = jsonContentOf("/kg/views/elastic-view.json")
 
       projects.traverse { project =>
-        cl.put[Json](s"/views/$project/test-resource:testView", payload, ScoobyDoo) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        cl.put[Json](s"/views/$project/test-resource:testView", payload, ScoobyDoo) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       }
     }
 
     "create an Sparql view that index tags" taggedAs ViewsTag in {
       val payload = jsonContentOf("/kg/views/sparql-view.json")
-      cl.put[Json](s"/views/$fullId/test-resource:testSparqlView", payload, ScoobyDoo) {
-        (_, response) => response.status shouldEqual StatusCodes.Created
+      cl.put[Json](s"/views/$fullId/test-resource:testSparqlView", payload, ScoobyDoo) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
     "get the created SparqlView" taggedAs ViewsTag in {
-      cl.get[Json](s"/views/$fullId/test-resource:testSparqlView", ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
+      cl.get[Json](s"/views/$fullId/test-resource:testSparqlView", ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
 
-          val expected = jsonContentOf(
-            "/kg/views/sparql-view-response.json",
-            replacements(
-              ScoobyDoo,
-              quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testSparqlView",
-              quote("{resources}")      -> s"${config.deltaUri}/views/$fullId/test-resource:testSparqlView",
-              quote("{project-parent}") -> s"${config.deltaUri}/projects/$fullId"
-            )
+        val expected = jsonContentOf(
+          "/kg/views/sparql-view-response.json",
+          replacements(
+            ScoobyDoo,
+            quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testSparqlView",
+            quote("{resources}")      -> s"${config.deltaUri}/views/$fullId/test-resource:testSparqlView",
+            quote("{project-parent}") -> s"${config.deltaUri}/projects/$fullId"
           )
+        )
 
-          filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
+        filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
       }
     }
 
@@ -123,9 +120,8 @@ class ViewsSpec extends BaseSpec
         Map(quote("{project1}") -> fullId, quote("{project2}") -> fullId2)
       )
 
-      cl.put[Json](s"/views/$fullId2/test-resource:testAggView", payload, ScoobyDoo) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
+      cl.put[Json](s"/views/$fullId2/test-resource:testAggView", payload, ScoobyDoo) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
@@ -135,57 +131,54 @@ class ViewsSpec extends BaseSpec
         Map(quote("{project1}") -> fullId, quote("{project2}") -> fullId2)
       )
 
-      cl.put[Json](s"/views/$fullId2/test-resource:testAggEsView", payload, ScoobyDoo) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
+      cl.put[Json](s"/views/$fullId2/test-resource:testAggEsView", payload, ScoobyDoo) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
     "get the created AggregateElasticSearchView" taggedAs ViewsTag in {
-      cl.get[Json](s"/views/$fullId2/test-resource:testAggEsView", ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
+      cl.get[Json](s"/views/$fullId2/test-resource:testAggEsView", ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
 
-          val expected = jsonContentOf(
-            "/kg/views/agg-elastic-view-response.json",
-            replacements(
-              ScoobyDoo,
-              quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testAggEsView",
-              quote("{resources}")      -> s"${config.deltaUri}/views/$fullId2/test-resource:testAggEsView",
-              quote("{project-parent}") -> s"${config.deltaUri}/projects/$fullId2",
-              quote("{project1}")       -> fullId,
-              quote("{project2}")       -> fullId2
-            )
+        val expected = jsonContentOf(
+          "/kg/views/agg-elastic-view-response.json",
+          replacements(
+            ScoobyDoo,
+            quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testAggEsView",
+            quote("{resources}")      -> s"${config.deltaUri}/views/$fullId2/test-resource:testAggEsView",
+            quote("{project-parent}") -> s"${config.deltaUri}/projects/$fullId2",
+            quote("{project1}")       -> fullId,
+            quote("{project2}")       -> fullId2
           )
+        )
 
-          filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
+        filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
       }
     }
 
     "get an AggregateSparqlView" taggedAs ViewsTag in {
-      cl.get[Json](s"/views/$fullId2/test-resource:testAggView", ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          val expected = jsonContentOf(
-            "/kg/views/agg-sparql-view-response.json",
-            replacements(
-              ScoobyDoo,
-              quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testAggView",
-              quote("{resources}")      -> s"${config.deltaUri}/views/$fullId2/test-resource:testAggView",
-              quote("{project-parent}") -> s"${config.deltaUri}/projects/$fullId2",
-              quote("{project1}")       -> fullId,
-              quote("{project2}")       -> fullId2
-            )
+      cl.get[Json](s"/views/$fullId2/test-resource:testAggView", ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        val expected = jsonContentOf(
+          "/kg/views/agg-sparql-view-response.json",
+          replacements(
+            ScoobyDoo,
+            quote("{id}")             -> "https://dev.nexus.test.com/simplified-resource/testAggView",
+            quote("{resources}")      -> s"${config.deltaUri}/views/$fullId2/test-resource:testAggView",
+            quote("{project-parent}") -> s"${config.deltaUri}/projects/$fullId2",
+            quote("{project1}")       -> fullId,
+            quote("{project2}")       -> fullId2
           )
+        )
 
-          filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
+        filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
       }
     }
 
     "post instances" taggedAs ViewsTag in {
       (1 to 8).toList.traverse { i =>
         val payload      = jsonContentOf(s"/kg/views/instances/instance$i.json")
-        val id = `@id`.getOption(payload).value
+        val id           = `@id`.getOption(payload).value
         val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
         val projectId    = if (i > 5) fullId2 else fullId
 
@@ -215,10 +208,9 @@ class ViewsSpec extends BaseSpec
 
     "return 400 with bad query instances" taggedAs ViewsTag in {
       val query = Json.obj("query" -> Json.obj("other" -> Json.obj()))
-      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", query, ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.BadRequest
-          json shouldEqual jsonContentOf("/kg/views/elastic-error.json")
+      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", query, ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
+        json shouldEqual jsonContentOf("/kg/views/elastic-error.json")
       }
     }
 
@@ -230,19 +222,18 @@ class ViewsSpec extends BaseSpec
     val matchAll = Json.obj("query" -> Json.obj("match_all" -> Json.obj())) deepMerge sort
 
     "search instances on project 1" taggedAs ViewsTag in eventually {
-      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          val index = hits(0)._index.string.getOption(json).value
-          filterKey("took")(json) shouldEqual jsonContentOf(
-            "/kg/views/es-search-response.json",
-            Map(quote("{index}") -> index)
-          )
+      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        val index = hits(0)._index.string.getOption(json).value
+        filterKey("took")(json) shouldEqual jsonContentOf(
+          "/kg/views/es-search-response.json",
+          Map(quote("{index}") -> index)
+        )
 
-          cl.post[Json](s"/views/$fullId/test-resource:testView/_search", matchAll, ScoobyDoo) {
-            (json2, _) =>
-              filterKey("took")(json2) shouldEqual filterKey("took")(json)
-          }.runSyncUnsafe()
+        cl.post[Json](s"/views/$fullId/test-resource:testView/_search", matchAll, ScoobyDoo) { (json2, _) =>
+            filterKey("took")(json2) shouldEqual filterKey("took")(json)
+          }
+          .runSyncUnsafe()
       }
     }
 
@@ -256,10 +247,10 @@ class ViewsSpec extends BaseSpec
             Map(quote("{index}") -> index)
           )
 
-          cl.post[Json](s"/views/$fullId2/test-resource:testView/_search", matchAll, ScoobyDoo) {
-            (json2, _) =>
+          cl.post[Json](s"/views/$fullId2/test-resource:testView/_search", matchAll, ScoobyDoo) { (json2, _) =>
               filterKey("took")(json2) shouldEqual filterKey("took")(json)
-          }.runSyncUnsafe()
+            }
+            .runSyncUnsafe()
       }
     }
 
@@ -270,7 +261,7 @@ class ViewsSpec extends BaseSpec
         ScoobyDoo
       ) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
-        val indexes = hits.each._index.string.getAll(json)
+        val indexes   = hits.each._index.string.getAll(json)
         val toReplace = indexes.zipWithIndex.map { case (value, i) => quote(s"{index${i + 1}}") -> value }.toMap
         filterKey("took")(json) shouldEqual jsonContentOf("/kg/views/es-search-response-aggregated.json", toReplace)
       }
@@ -289,20 +280,19 @@ class ViewsSpec extends BaseSpec
     }
 
     "fetch statistics for testView" taggedAs ViewsTag in {
-      cl.get[Json](s"/views/$fullId/test-resource:testView/statistics", ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          val expected = jsonContentOf(
-            "/kg/views/statistics.json",
-            Map(
-              quote("{total}")     -> "12",
-              quote("{processed}") -> "12",
-              quote("{evaluated}") -> "6",
-              quote("{discarded}") -> "6",
-              quote("{remaining}") -> "0"
-            )
+      cl.get[Json](s"/views/$fullId/test-resource:testView/statistics", ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        val expected = jsonContentOf(
+          "/kg/views/statistics.json",
+          Map(
+            quote("{total}")     -> "12",
+            quote("{processed}") -> "12",
+            quote("{evaluated}") -> "6",
+            quote("{discarded}") -> "6",
+            quote("{remaining}") -> "0"
           )
-          json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
+        )
+        json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
       }
     }
 
@@ -317,52 +307,47 @@ class ViewsSpec extends BaseSpec
       """.stripMargin
 
     "search instances in SPARQL endpoint in project 1" taggedAs ViewsTag in {
-      cl.sparqlQuery[Json](s"/views/$fullId/nxv:defaultSparqlIndex/sparql", query, ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          json shouldEqual jsonContentOf("/kg/views/sparql-search-response.json")
+      cl.sparqlQuery[Json](s"/views/$fullId/nxv:defaultSparqlIndex/sparql", query, ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        json shouldEqual jsonContentOf("/kg/views/sparql-search-response.json")
       }
     }
 
     "search instances in SPARQL endpoint in project 2" taggedAs ViewsTag in {
-      cl.sparqlQuery[Json](s"/views/$fullId2/nxv:defaultSparqlIndex/sparql", query, ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          json shouldEqual jsonContentOf("/kg/views/sparql-search-response-2.json")
+      cl.sparqlQuery[Json](s"/views/$fullId2/nxv:defaultSparqlIndex/sparql", query, ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        json shouldEqual jsonContentOf("/kg/views/sparql-search-response-2.json")
       }
     }
 
     "search instances in AggregateSparqlView when logged" taggedAs ViewsTag in {
-      cl.sparqlQuery[Json](s"/views/$fullId2/test-resource:testAggView/sparql", query, ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          json should equalIgnoreArrayOrder(jsonContentOf("/kg/views/sparql-search-response-aggregated.json"))
+      cl.sparqlQuery[Json](s"/views/$fullId2/test-resource:testAggView/sparql", query, ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        json should equalIgnoreArrayOrder(jsonContentOf("/kg/views/sparql-search-response-aggregated.json"))
       }
     }
 
     "search instances in AggregateSparqlView as anonymous" taggedAs ViewsTag in {
-      cl.sparqlQuery[Json](s"/views/$fullId2/test-resource:testAggView/sparql", query, Anonymous) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          json should equalIgnoreArrayOrder(jsonContentOf("/kg/views/sparql-search-response-2.json"))
+      cl.sparqlQuery[Json](s"/views/$fullId2/test-resource:testAggView/sparql", query, Anonymous) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        json should equalIgnoreArrayOrder(jsonContentOf("/kg/views/sparql-search-response-2.json"))
       }
     }
 
     "fetch statistics for defaultSparqlIndex" taggedAs ViewsTag in {
-      cl.get[Json](s"/views/$fullId/nxv:defaultSparqlIndex/statistics", ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          val expected = jsonContentOf(
-            "/kg/views/statistics.json",
-            Map(
-              quote("{total}")     -> "12",
-              quote("{processed}") -> "12",
-              quote("{evaluated}") -> "12",
-              quote("{discarded}") -> "0",
-              quote("{remaining}") -> "0"
-            )
+      cl.get[Json](s"/views/$fullId/nxv:defaultSparqlIndex/statistics", ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        val expected = jsonContentOf(
+          "/kg/views/statistics.json",
+          Map(
+            quote("{total}")     -> "12",
+            quote("{processed}") -> "12",
+            quote("{evaluated}") -> "12",
+            quote("{discarded}") -> "0",
+            quote("{remaining}") -> "0"
           )
-          json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
+        )
+        json.removeNestedKeys("lastEventDateTime", "lastProcessedEventDateTime") shouldEqual expected
       }
     }
 
@@ -383,8 +368,8 @@ class ViewsSpec extends BaseSpec
           s"/resources/$fullId/resource/patchedcell:$unprefixedId/tags?rev=1",
           Json.obj("rev" -> Json.fromLong(1L), "tag" -> Json.fromString("one")),
           ScoobyDoo
-        ) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       }
     }
@@ -401,32 +386,31 @@ class ViewsSpec extends BaseSpec
 
     "remove @type on a resource" taggedAs ViewsTag in {
       val payload      = jsonContentOf("/kg/views/instances/instance1.json").removeKeys("@type")
-      val id           =`@id`.getOption(payload).value
+      val id           = `@id`.getOption(payload).value
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
 
       cl.put[Json](
         s"/resources/$fullId/_/patchedcell:$unprefixedId?rev=2",
         filterKey("@id")(payload),
         ScoobyDoo
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.OK
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.OK
       }
     }
 
-    "search instances on project 1 after removed @type" taggedAs ViewsTag in  eventually {
-      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          val index = hits(0)._index.string.getOption(json).value
-          filterKey("took")(json) shouldEqual jsonContentOf(
-            "/kg/views/es-search-response-no-type.json",
-            Map(quote("{index}") -> index)
-          )
+    "search instances on project 1 after removed @type" taggedAs ViewsTag in eventually {
+      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        val index = hits(0)._index.string.getOption(json).value
+        filterKey("took")(json) shouldEqual jsonContentOf(
+          "/kg/views/es-search-response-no-type.json",
+          Map(quote("{index}") -> index)
+        )
 
-          cl.post[Json](s"/views/$fullId/test-resource:testView/_search", matchAll, ScoobyDoo) {
-            (json2, _) =>
-              filterKey("took")(json2) shouldEqual filterKey("took")(json)
-          }.runSyncUnsafe()
+        cl.post[Json](s"/views/$fullId/test-resource:testView/_search", matchAll, ScoobyDoo) { (json2, _) =>
+            filterKey("took")(json2) shouldEqual filterKey("took")(json)
+          }
+          .runSyncUnsafe()
       }
     }
 
@@ -434,25 +418,24 @@ class ViewsSpec extends BaseSpec
       val payload      = jsonContentOf("/kg/views/instances/instance2.json").removeKeys("@type")
       val id           = payload.asObject.value("@id").value.asString.value
       val unprefixedId = id.stripPrefix("https://bbp.epfl.ch/nexus/v0/data/bbp/experiment/patchedcell/v0.1.0/")
-      cl.delete[Json](s"/resources/$fullId/_/patchedcell:$unprefixedId?rev=2", ScoobyDoo) {
-        (_, response) => response.status shouldEqual StatusCodes.OK
+      cl.delete[Json](s"/resources/$fullId/_/patchedcell:$unprefixedId?rev=2", ScoobyDoo) { (_, response) =>
+        response.status shouldEqual StatusCodes.OK
       }
     }
 
     "search instances on project 1 after deprecated" taggedAs ViewsTag in eventually {
-      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          val index = hits(0)._index.string.getOption(json).value
-          filterKey("took")(json) shouldEqual jsonContentOf(
-            "/kg/views/es-search-response-no-deprecated.json",
-            Map(quote("{index}") -> index)
-          )
+      cl.post[Json](s"/views/$fullId/test-resource:testView/_search", sortedMatchCells, ScoobyDoo) { (json, result) =>
+        result.status shouldEqual StatusCodes.OK
+        val index = hits(0)._index.string.getOption(json).value
+        filterKey("took")(json) shouldEqual jsonContentOf(
+          "/kg/views/es-search-response-no-deprecated.json",
+          Map(quote("{index}") -> index)
+        )
 
-          cl.post[Json](s"/views/$fullId/test-resource:testView/_search", matchAll, ScoobyDoo) {
-            (json2, _) =>
-              filterKey("took")(json2) shouldEqual filterKey("took")(json)
-          }.runSyncUnsafe()
+        cl.post[Json](s"/views/$fullId/test-resource:testView/_search", matchAll, ScoobyDoo) { (json2, _) =>
+            filterKey("took")(json2) shouldEqual filterKey("took")(json)
+          }
+          .runSyncUnsafe()
       }
     }
   }

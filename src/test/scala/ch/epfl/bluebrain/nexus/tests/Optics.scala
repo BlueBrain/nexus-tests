@@ -15,13 +15,13 @@ object Optics extends Optics {
   def filterKeys(keys: Set[String]): Json => Json =
     keys.map { root.at(_).set(None) }.reduce(_ andThen _)
 
-  private val realmKeysToIgnore = Set("_createdAt", "_createdBy", "_updatedAt", "_updatedBy")
+  private val realmKeysToIgnore     = Set("_createdAt", "_createdBy", "_updatedAt", "_updatedBy")
   val filterRealmKeys: Json => Json = filterKeys(realmKeysToIgnore)
 
-  private val metadataKeys = Set("_uuid", "_createdAt", "_updatedAt", "_organizationUuid")
+  private val metadataKeys             = Set("_uuid", "_createdAt", "_updatedAt", "_organizationUuid")
   val filterMetadataKeys: Json => Json = filterKeys(metadataKeys)
 
-  val filterResultMetadata: Json => Json = root._results.arr.modify( _.map(filterMetadataKeys))
+  val filterResultMetadata: Json => Json = root._results.arr.modify(_.map(filterMetadataKeys))
 
   val filterSearchMetadata: Json => Json = filterKey("_next") andThen filterResultMetadata
 
@@ -30,7 +30,7 @@ object Optics extends Optics {
 
   val _total = root._total.long
 
-  val hits = root.hits.hits
+  val hits       = root.hits.hits
   val hitsSource = hits.each._source.json
 
   val location = root._location.string
@@ -38,27 +38,30 @@ object Optics extends Optics {
   object admin {
     val `@type` = root.`@type`.string
 
-    val _label = root._label.string
+    val _label      = root._label.string
     val description = root.description.string
-    val _rev = root._rev.long
+    val _rev        = root._rev.long
     val _deprecated = root._deprecated.boolean
 
-    val base = root.base.string
-    val vocab = root.vocab.string
+    val base        = root.base.string
+    val vocab       = root.vocab.string
     val apiMappings = root.apiMappings.json
 
-    def validate(json: Json,
-                 tpe: String,
-                 idPrefix: String,
-                 id: String,
-                 desc: String,
-                 rev: Long,
-                 label: String,
-                 deprecated: Boolean = false)
-                (implicit config: TestsConfig): Assertion = {
+    def validate(
+        json: Json,
+        tpe: String,
+        idPrefix: String,
+        id: String,
+        desc: String,
+        rev: Long,
+        label: String,
+        deprecated: Boolean = false
+    )(implicit config: TestsConfig): Assertion = {
       `@id`.getOption(json).value shouldEqual s"${config.deltaUri.toString()}/$idPrefix/$id"
       `@type`.getOption(json).value shouldEqual tpe
-      _uuid.getOption(json).value should fullyMatch regex """[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"""
+      _uuid
+        .getOption(json)
+        .value should fullyMatch regex """[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"""
       _label.getOption(json).value shouldEqual label
       description.getOption(json).value shouldEqual desc
       _rev.getOption(json).value shouldEqual rev
@@ -82,7 +85,7 @@ object Optics extends Optics {
   }
 
   object resources {
-    val _next = root._next.string
+    val _next    = root._next.string
     val _results = root._results.arr
   }
 
@@ -90,7 +93,8 @@ object Optics extends Optics {
     val filterFields = filterKeys(Set("_instant", "_updatedAt"))
       .andThen(
         List("_location", "_uuid", "_path")
-          .map { root._attributes.at(_).set(None) }.reduce(_ andThen _)
+          .map { root._attributes.at(_).set(None) }
+          .reduce(_ andThen _)
       )
   }
 

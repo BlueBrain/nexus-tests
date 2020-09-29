@@ -22,17 +22,17 @@ class EventsSpec extends BaseSpec with Inspectors {
 
   private val logger = Logger[this.type]
 
-  private val orgId     = genId()
-  private val orgId2    = genId()
-  private val projId    = genId()
-  private val id        = s"$orgId/$projId"
-  private val id2       = s"$orgId2/$projId"
+  private val orgId              = genId()
+  private val orgId2             = genId()
+  private val projId             = genId()
+  private val id                 = s"$orgId/$projId"
+  private val id2                = s"$orgId2/$projId"
   private lazy val timestampUuid = Generators.timeBasedGenerator().generate()
 
-  private[tests] val testRealm   = Realm("events" + genString())
+  private[tests] val testRealm  = Realm("events" + genString())
   private[tests] val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
-  private[tests] val BugsBunny = UserCredentials(genString(), genString(), testRealm)
-  private[tests] val DaffyDuck = UserCredentials(genString(), genString(), testRealm)
+  private[tests] val BugsBunny  = UserCredentials(genString(), genString(), testRealm)
+  private[tests] val DaffyDuck  = UserCredentials(genString(), genString(), testRealm)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -84,8 +84,8 @@ class EventsSpec extends BaseSpec with Inspectors {
 
       forAll(endpoints) { endpoint =>
         eventually {
-          cl.get[Json](endpoint, BugsBunny) {
-            (_, response) => response.status shouldEqual StatusCodes.OK
+          cl.get[Json](endpoint, BugsBunny) { (_, response) =>
+            response.status shouldEqual StatusCodes.OK
           }
         }
       }
@@ -99,10 +99,9 @@ class EventsSpec extends BaseSpec with Inspectors {
 
       forAll(endpoints) { endpoint =>
         eventually {
-          cl.get[Json](endpoint, BugsBunny) {
-            (json, response) =>
-              response.status shouldEqual StatusCodes.OK
-              _total.getOption(json).value shouldEqual 1
+          cl.get[Json](endpoint, BugsBunny) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            _total.getOption(json).value shouldEqual 1
           }
         }
       }
@@ -120,11 +119,11 @@ class EventsSpec extends BaseSpec with Inspectors {
 
       for {
         //Created event
-        _ <- cl.put[Json](s"/resources/$id/_/test-resource:1", payload, BugsBunny) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        _ <- cl.put[Json](s"/resources/$id/_/test-resource:1", payload, BugsBunny) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
-        _ <- cl.put[Json](s"/resources/$id2/_/test-resource:1", payload, BugsBunny) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        _ <- cl.put[Json](s"/resources/$id2/_/test-resource:1", payload, BugsBunny) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
         //Updated event
         _ <- cl.put[Json](
@@ -134,8 +133,8 @@ class EventsSpec extends BaseSpec with Inspectors {
             Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
           ),
           BugsBunny
-        ) {
-          (_, response) => response.status shouldEqual StatusCodes.OK
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.OK
         }
         //TagAdded event
         _ <- cl.post[Json](
@@ -144,22 +143,23 @@ class EventsSpec extends BaseSpec with Inspectors {
             "/kg/resources/tag.json",
             Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1")
           ),
-          BugsBunny) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+          BugsBunny
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
         // Deprecated event
-        _ <- cl.delete[Json](s"/resources/$id/_/test-resource:1?rev=3", BugsBunny) {
-          (_, response) => response.status shouldEqual StatusCodes.OK
+        _ <- cl.delete[Json](s"/resources/$id/_/test-resource:1?rev=3", BugsBunny) { (_, response) =>
+          response.status shouldEqual StatusCodes.OK
         }
         //FileCreated event
         _ <- cl.putAttachment[Json](
-              s"/files/$id/attachment.json",
-              contentOf("/kg/files/attachment.json"),
-              ContentTypes.`application/json`,
-              "attachment.json",
-              BugsBunny
-        ) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+          s"/files/$id/attachment.json",
+          contentOf("/kg/files/attachment.json"),
+          ContentTypes.`application/json`,
+          "attachment.json",
+          BugsBunny
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
         //FileUpdated event
         _ <- cl.putAttachment[Json](
@@ -168,8 +168,8 @@ class EventsSpec extends BaseSpec with Inspectors {
           ContentTypes.`application/json`,
           "attachment.json",
           BugsBunny
-        ) {
-          (_, response) => response.status shouldEqual StatusCodes.OK
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.OK
         }
       } yield succeed
     }
@@ -177,24 +177,27 @@ class EventsSpec extends BaseSpec with Inspectors {
     "fetch resource events filtered by project" taggedAs EventsTag in {
       for {
         uuids <- adminDsl.getUuids(orgId, projId, BugsBunny)
-        _     <- cl.sseEvents(
-          s"/resources/$id/events",
-          BugsBunny,
-          timestampUuid,
-          take = 10L) { seq =>
-            val projectEvents = seq.drop(4)
-            projectEvents.size shouldEqual 6
-            projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
-            val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
-            json shouldEqual jsonContentOf(
-              "/kg/events/events.json",
-              replacements(
-                BugsBunny,
-                quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
-                quote("{organizationUuid}") -> uuids._1,
-                quote("{projectUuid}")      -> uuids._2
-              )
+        _ <- cl.sseEvents(s"/resources/$id/events", BugsBunny, timestampUuid, take = 10L) { seq =>
+          val projectEvents = seq.drop(4)
+          projectEvents.size shouldEqual 6
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(
+            "Created",
+            "Updated",
+            "TagAdded",
+            "Deprecated",
+            "FileCreated",
+            "FileUpdated"
+          )
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}") -> uuids._1,
+              quote("{projectUuid}")      -> uuids._2
             )
+          )
         }
       } yield succeed
     }
@@ -202,24 +205,27 @@ class EventsSpec extends BaseSpec with Inspectors {
     "fetch resource events filtered by organization 1" taggedAs EventsTag in {
       for {
         uuids <- adminDsl.getUuids(orgId, projId, BugsBunny)
-        _     <- cl.sseEvents(
-          s"/resources/$orgId/events",
-          BugsBunny,
-          timestampUuid,
-          take = 10L) { seq =>
-            val projectEvents = seq.drop(4)
-            projectEvents.size shouldEqual 6
-            projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
-            val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
-            json shouldEqual jsonContentOf(
-              "/kg/events/events.json",
-              replacements(
-                BugsBunny,
-                quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
-                quote("{organizationUuid}") -> uuids._1,
-                quote("{projectUuid}")      -> uuids._2
-              )
+        _ <- cl.sseEvents(s"/resources/$orgId/events", BugsBunny, timestampUuid, take = 10L) { seq =>
+          val projectEvents = seq.drop(4)
+          projectEvents.size shouldEqual 6
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(
+            "Created",
+            "Updated",
+            "TagAdded",
+            "Deprecated",
+            "FileCreated",
+            "FileUpdated"
+          )
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}") -> uuids._1,
+              quote("{projectUuid}")      -> uuids._2
             )
+          )
         }
       } yield succeed
     }
@@ -227,24 +233,20 @@ class EventsSpec extends BaseSpec with Inspectors {
     "fetch resource events filtered by organization 2" taggedAs EventsTag in {
       for {
         uuids <- adminDsl.getUuids(orgId2, projId, BugsBunny)
-        _     <- cl.sseEvents(
-          s"/resources/$orgId2/events",
-          BugsBunny,
-          timestampUuid,
-          takeWithin = 2.seconds) { seq =>
-            val projectEvents = seq.drop(4)
-            projectEvents.size shouldEqual 1
-            projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List("Created")
-            val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
-            json shouldEqual jsonContentOf(
-              "/kg/events/events2.json",
-              replacements(
-                BugsBunny,
-                quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
-                quote("{organizationUuid}") -> uuids._1,
-                quote("{projectUuid}")      -> uuids._2
-              )
+        _ <- cl.sseEvents(s"/resources/$orgId2/events", BugsBunny, timestampUuid, takeWithin = 2.seconds) { seq =>
+          val projectEvents = seq.drop(4)
+          projectEvents.size shouldEqual 1
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List("Created")
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events2.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}") -> uuids._1,
+              quote("{projectUuid}")      -> uuids._2
             )
+          )
         }
       } yield succeed
     }
@@ -253,35 +255,31 @@ class EventsSpec extends BaseSpec with Inspectors {
       for {
         uuids  <- adminDsl.getUuids(orgId, projId, BugsBunny)
         uuids2 <- adminDsl.getUuids(orgId2, projId, BugsBunny)
-        _      <- cl.sseEvents(
-          s"/resources/events",
-          BugsBunny,
-          timestampUuid,
-          take = 15) { seq =>
-            println(seq)
-            val projectEvents = seq.drop(8)
-            projectEvents.size shouldEqual 7
-            projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(
-              "Created",
-              "Created",
-              "Updated",
-              "TagAdded",
-              "Deprecated",
-              "FileCreated",
-              "FileUpdated"
+        _ <- cl.sseEvents(s"/resources/events", BugsBunny, timestampUuid, take = 15) { seq =>
+          println(seq)
+          val projectEvents = seq.drop(8)
+          projectEvents.size shouldEqual 7
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(
+            "Created",
+            "Created",
+            "Updated",
+            "TagAdded",
+            "Deprecated",
+            "FileCreated",
+            "FileUpdated"
+          )
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events-multi-project.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")         -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}")  -> uuids._1,
+              quote("{projectUuid}")       -> uuids._2,
+              quote("{organization2Uuid}") -> uuids2._1,
+              quote("{project2Uuid}")      -> uuids2._2
             )
-            val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
-            json shouldEqual jsonContentOf(
-              "/kg/events/events-multi-project.json",
-              replacements(
-                BugsBunny,
-                quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
-                quote("{organizationUuid}")  -> uuids._1,
-                quote("{projectUuid}")       -> uuids._2,
-                quote("{organization2Uuid}") -> uuids2._1,
-                quote("{project2Uuid}")      -> uuids2._2
-              )
-            )
+          )
         }
       } yield succeed
     }

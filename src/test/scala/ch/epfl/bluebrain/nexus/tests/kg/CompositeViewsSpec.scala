@@ -10,7 +10,7 @@ import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.CompositeViewsTag
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Events, Organizations, Views}
-import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, Identity, Realm}
 import com.typesafe.scalalogging.Logger
 import io.circe.Json
 import io.circe.optics.JsonPath._
@@ -25,19 +25,19 @@ class CompositeViewsSpec extends BaseSpec {
   object Stats {
     import io.circe._
     import io.circe.generic.semiauto._
-    implicit val decoder: Decoder[Stats] = deriveDecoder[Stats]
+    implicit val decoder: Decoder[Stats]          = deriveDecoder[Stats]
     implicit val encoder: Encoder.AsObject[Stats] = deriveEncoder[Stats]
   }
 
-  private val orgId        = genId()
-  private val bandsProject = "bands"
+  private val orgId         = genId()
+  private val bandsProject  = "bands"
   private val albumsProject = "albums"
-  private val songsProject = "songs"
+  private val songsProject  = "songs"
 
-  private val testRealm   = Realm("composite" + genString())
+  private val testRealm  = Realm("composite" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
-  private val Tom = UserCredentials(genString(), genString(), testRealm)
-  private val Jerry = UserCredentials(genString(), genString(), testRealm)
+  private val Tom        = UserCredentials(genString(), genString(), testRealm)
+  private val Jerry      = UserCredentials(genString(), genString(), testRealm)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -70,10 +70,10 @@ class CompositeViewsSpec extends BaseSpec {
 
     "wait until in project resolver is created" taggedAs CompositeViewsTag in {
       eventually {
-          cl.get[Json](s"/resolvers/$orgId/$bandsProject", Jerry) { (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            _total.getOption(json).value shouldEqual 1
-          }
+        cl.get[Json](s"/resolvers/$orgId/$bandsProject", Jerry) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          _total.getOption(json).value shouldEqual 1
+        }
       }
       eventually {
         cl.get[Json](s"/resolvers/$orgId/$albumsProject", Jerry) { (json, response) =>
@@ -94,40 +94,46 @@ class CompositeViewsSpec extends BaseSpec {
     "upload context" taggedAs CompositeViewsTag in {
       val context = jsonContentOf("/kg/views/composite/context.json")
       List(songsProject, albumsProject, bandsProject).traverse { projectId =>
-        cl.post[Json](s"/resources/$orgId/$projectId", context, Jerry) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+        cl.post[Json](s"/resources/$orgId/$projectId", context, Jerry) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       }
     }
 
     "upload songs" taggedAs CompositeViewsTag in {
-      root.each.json.getAll(
-        jsonContentOf("/kg/views/composite/songs1.json")
-      ).traverse { song =>
-        cl.post[Json](s"/resources/$orgId/$songsProject", song, Jerry) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+      root.each.json
+        .getAll(
+          jsonContentOf("/kg/views/composite/songs1.json")
+        )
+        .traverse { song =>
+          cl.post[Json](s"/resources/$orgId/$songsProject", song, Jerry) { (_, response) =>
+            response.status shouldEqual StatusCodes.Created
+          }
         }
-      }
     }
 
     "upload albums" taggedAs CompositeViewsTag in {
-      root.each.json.getAll(
-        jsonContentOf("/kg/views/composite/albums.json")
-      ).traverse { album =>
-        cl.post[Json](s"/resources/$orgId/$albumsProject", album, Jerry) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+      root.each.json
+        .getAll(
+          jsonContentOf("/kg/views/composite/albums.json")
+        )
+        .traverse { album =>
+          cl.post[Json](s"/resources/$orgId/$albumsProject", album, Jerry) { (_, response) =>
+            response.status shouldEqual StatusCodes.Created
+          }
         }
-      }
     }
 
     "upload bands" taggedAs CompositeViewsTag in {
-      root.each.json.getAll(
-        jsonContentOf("/kg/views/composite/bands.json")
-      ).traverse { band =>
-        cl.post[Json](s"/resources/$orgId/$bandsProject", band, Jerry) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+      root.each.json
+        .getAll(
+          jsonContentOf("/kg/views/composite/bands.json")
+        )
+        .traverse { band =>
+          cl.post[Json](s"/resources/$orgId/$bandsProject", band, Jerry) { (_, response) =>
+            response.status shouldEqual StatusCodes.Created
+          }
         }
-      }
     }
   }
 
@@ -140,16 +146,15 @@ class CompositeViewsSpec extends BaseSpec {
         "/kg/views/composite/composite-view.json",
         replacements(
           Jerry,
-          quote("{org}")               -> orgId,
-          quote("{org2}")              -> orgId,
-          quote("{remoteEndpoint}")    -> "http://delta:8080/v1",
-          quote("{token}")             -> jerryToken
+          quote("{org}")            -> orgId,
+          quote("{org2}")           -> orgId,
+          quote("{remoteEndpoint}") -> "http://delta:8080/v1",
+          quote("{token}")          -> jerryToken
         )
       )
 
-      cl.put[Json](s"/views/$orgId/bands/composite", view, Jerry) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.Created
+      cl.put[Json](s"/views/$orgId/bands/composite", view, Jerry) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
@@ -161,16 +166,15 @@ class CompositeViewsSpec extends BaseSpec {
         "/kg/views/composite/composite-view.json",
         replacements(
           Jerry,
-          quote("{org}")               -> orgId,
-          quote("{org2}")              -> orgId,
-          quote("{remoteEndpoint}")    -> "http://delta:8080/v1/other",
-          quote("{token}")             -> jerryToken
+          quote("{org}")            -> orgId,
+          quote("{org2}")           -> orgId,
+          quote("{remoteEndpoint}") -> "http://delta:8080/v1/other",
+          quote("{token}")          -> jerryToken
         )
       )
 
-      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.NotFound
+      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
       }
     }
 
@@ -179,17 +183,16 @@ class CompositeViewsSpec extends BaseSpec {
         "/kg/views/composite/composite-view.json",
         replacements(
           Jerry,
-          quote("{org}")               -> orgId,
-          quote("{org2}")              -> orgId,
-          quote("{remoteEndpoint}")    -> "http://delta:8080/v1",
-          quote("{token}")             -> s"${jerryToken}wrong"
+          quote("{org}")            -> orgId,
+          quote("{org2}")           -> orgId,
+          quote("{remoteEndpoint}") -> "http://delta:8080/v1",
+          quote("{token}")          -> s"${jerryToken}wrong"
         )
       )
 
-      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.BadRequest
-          json shouldEqual jsonContentOf("/kg/views/composite/composite-source-token-reject.json")
+      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) { (json, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
+        json shouldEqual jsonContentOf("/kg/views/composite/composite-source-token-reject.json")
       }
     }
 
@@ -198,16 +201,15 @@ class CompositeViewsSpec extends BaseSpec {
         "/kg/views/composite/composite-view.json",
         replacements(
           Jerry,
-          quote("{org}")               -> orgId,
-          quote("{org2}")              -> orgId,
-          quote("{remoteEndpoint}")    -> "http://fail/v1",
-          quote("{token}")             -> jerryToken
+          quote("{org}")            -> orgId,
+          quote("{org2}")           -> orgId,
+          quote("{remoteEndpoint}") -> "http://fail/v1",
+          quote("{token}")          -> jerryToken
         )
       )
 
-      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) {
-        (_, response) =>
-          response.status shouldEqual StatusCodes.BadRequest
+      cl.put[Json](s"/views/$orgId/bands/composite2", view, Jerry) { (_, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
       }
     }
   }
@@ -229,11 +231,13 @@ class CompositeViewsSpec extends BaseSpec {
         cl.post[Json](s"/views/$orgId/bands/composite/projections/bands/_search", sortAscendingById, Jerry) {
           (json, response) =>
             response.status shouldEqual StatusCodes.OK
-            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
-              jsonContentOf(
-              "/kg/views/composite/bands-results1.json"
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr
+              .getOption(
+                jsonContentOf(
+                  "/kg/views/composite/bands-results1.json"
+                )
               )
-            ).value
+              .value
         }
       }
     }
@@ -243,11 +247,13 @@ class CompositeViewsSpec extends BaseSpec {
         cl.post[Json](s"/views/$orgId/bands/composite/projections/albums/_search", sortAscendingById, Jerry) {
           (json, response) =>
             response.status shouldEqual StatusCodes.OK
-            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
-              jsonContentOf(
-                "/kg/views/composite/albums-results1.json"
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr
+              .getOption(
+                jsonContentOf(
+                  "/kg/views/composite/albums-results1.json"
+                )
               )
-            ).value
+              .value
         }
       }
     }
@@ -255,13 +261,15 @@ class CompositeViewsSpec extends BaseSpec {
 
   "uploading more data" should {
     "upload more songs" taggedAs CompositeViewsTag in {
-      root.each.json.getAll(
-        jsonContentOf("/kg/views/composite/songs2.json")
-      ).traverse { song =>
-        cl.post[Json](s"/resources/$orgId/$songsProject", song, Jerry) {
-          (_, response) => response.status shouldEqual StatusCodes.Created
+      root.each.json
+        .getAll(
+          jsonContentOf("/kg/views/composite/songs2.json")
+        )
+        .traverse { song =>
+          cl.post[Json](s"/resources/$orgId/$songsProject", song, Jerry) { (_, response) =>
+            response.status shouldEqual StatusCodes.Created
+          }
         }
-      }
     }
 
     "waiting for data to be indexed" taggedAs CompositeViewsTag in
@@ -274,11 +282,13 @@ class CompositeViewsSpec extends BaseSpec {
         cl.post[Json](s"/views/$orgId/bands/composite/projections/bands/_search", sortAscendingById, Jerry) {
           (json, response) =>
             response.status shouldEqual StatusCodes.OK
-            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
-              jsonContentOf(
-                "/kg/views/composite/bands-results2.json"
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr
+              .getOption(
+                jsonContentOf(
+                  "/kg/views/composite/bands-results2.json"
+                )
               )
-            ).value
+              .value
         }
       }
     }
@@ -288,11 +298,13 @@ class CompositeViewsSpec extends BaseSpec {
         cl.post[Json](s"/views/$orgId/bands/composite/projections/albums/_search", sortAscendingById, Jerry) {
           (json, response) =>
             response.status shouldEqual StatusCodes.OK
-            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr.getOption(
-              jsonContentOf(
-                "/kg/views/composite/albums-results2.json"
+            hitsSource.getAll(json) should contain theSameElementsInOrderAs root.arr
+              .getOption(
+                jsonContentOf(
+                  "/kg/views/composite/albums-results2.json"
+                )
               )
-            ).value
+              .value
         }
       }
     }
@@ -300,25 +312,23 @@ class CompositeViewsSpec extends BaseSpec {
 
   private def waitForView() = {
     eventually {
-      cl.get[Json](s"/views/$orgId/bands/composite/projections/_/statistics", Jerry) {
-        (json, response) =>
-          val stats = root._results.each.as[Stats].getAll(json)
-          logger.debug(s"Response: ${response.status} with ${stats.size} stats")
-          stats.foreach { stat =>
-            logger.debug(s"totalEvents: ${stat.totalEvents}, remainingEvents: ${stat.remainingEvents}")
-            stat.totalEvents should be > 0L
-            stat.remainingEvents shouldEqual 0
-          }
-          response.status shouldEqual StatusCodes.OK
+      cl.get[Json](s"/views/$orgId/bands/composite/projections/_/statistics", Jerry) { (json, response) =>
+        val stats = root._results.each.as[Stats].getAll(json)
+        logger.debug(s"Response: ${response.status} with ${stats.size} stats")
+        stats.foreach { stat =>
+          logger.debug(s"totalEvents: ${stat.totalEvents}, remainingEvents: ${stat.remainingEvents}")
+          stat.totalEvents should be > 0L
+          stat.remainingEvents shouldEqual 0
+        }
+        response.status shouldEqual StatusCodes.OK
       }
     }
   }
 
   private def resetView =
-    cl.delete[Json](s"/views/$orgId/bands/composite/projections/_/offset", Jerry) {
-      (_, response) =>
-        logger.info(s"Resetting view responded with ${response.status}")
-        response.status shouldEqual StatusCodes.OK
+    cl.delete[Json](s"/views/$orgId/bands/composite/projections/_/offset", Jerry) { (_, response) =>
+      logger.info(s"Resetting view responded with ${response.status}")
+      response.status shouldEqual StatusCodes.OK
     }
 
   private def resetAndWait = {
@@ -332,8 +342,8 @@ class CompositeViewsSpec extends BaseSpec {
 
   "Delete composite views" should {
     "be ok" taggedAs CompositeViewsTag in {
-      cl.delete[Json](s"/views/$orgId/bands/composite?rev=1", Jerry){
-        (_, response) => response.status shouldEqual StatusCodes.OK
+      cl.delete[Json](s"/views/$orgId/bands/composite?rev=1", Jerry) { (_, response) =>
+        response.status shouldEqual StatusCodes.OK
       }
     }
   }

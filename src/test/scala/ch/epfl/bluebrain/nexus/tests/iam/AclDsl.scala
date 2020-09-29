@@ -20,22 +20,21 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{Assertion, OptionValues}
 
-class AclDsl(implicit cl: UntypedHttpClient[Task],
-             materializer: Materializer) extends Randomness with OptionValues with Resources with Matchers {
+class AclDsl(implicit cl: UntypedHttpClient[Task], materializer: Materializer)
+    extends Randomness
+    with OptionValues
+    with Resources
+    with Matchers {
 
   private val logger = Logger[this.type]
 
-  def addPermission(path: String,
-                    target: Authenticated,
-                    permission: Permission): Task[Assertion] =
+  def addPermission(path: String, target: Authenticated, permission: Permission): Task[Assertion] =
     addPermissions(path, target, Set(permission))
 
-  def addPermissions(path: String,
-                     target: Authenticated,
-                     permissions: Set[Permission]): Task[Assertion] = {
+  def addPermissions(path: String, target: Authenticated, permissions: Set[Permission]): Task[Assertion] = {
     val permissionsMap = Map(
       quote("{realm}") -> target.realm.name,
-      quote("{sub}") -> target.name,
+      quote("{sub}")   -> target.name,
       quote("{perms}") -> permissions.map(_.value).mkString("""","""")
     )
 
@@ -47,13 +46,12 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
     addPermissions(path, json, target.name)
   }
 
-  def addPermissionAnonymous(path: String,
-                             permission: Permission): Task[Assertion] =
+  def addPermissionAnonymous(path: String, permission: Permission): Task[Assertion] =
     addPermissionsAnonymous(path, Set(permission))
 
-  def addPermissionsAnonymous(path: String,
-                              permissions: Set[Permission]): Task[Assertion] = {
-    val json = jsonContentOf("/iam/add_annon.json",
+  def addPermissionsAnonymous(path: String, permissions: Set[Permission]): Task[Assertion] = {
+    val json = jsonContentOf(
+      "/iam/add_annon.json",
       Map(
         quote("{perms}") -> permissions.map(_.value).mkString("""","""")
       )
@@ -62,9 +60,7 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
     addPermissions(path, json, "Anonymous")
   }
 
-  def addPermissions(path: String,
-                     payload: Json,
-                     targetName: String): Task[Assertion] = {
+  def addPermissions(path: String, payload: Json, targetName: String): Task[Assertion] = {
     path should not startWith "/acls"
     logger.info(s"Addings permissions to $path for $targetName")
 
@@ -91,7 +87,7 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
             cl.patch[Json](s"/acls$path?rev=${r._rev}", payload, Identity.ServiceAccount) {
               assertResponse
             }
-          case None    =>
+          case None =>
             cl.put[Json](s"/acls$path", payload, Identity.ServiceAccount) {
               assertResponse
             }
@@ -101,47 +97,44 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
   }
 
   def cleanAcls(target: Authenticated): Task[Assertion] =
-    cl.get[AclListing](s"/acls/*/*?ancestors=true&self=false", Identity.ServiceAccount)
-      { (acls, response) =>
-        response.status shouldEqual StatusCodes.OK
+    cl.get[AclListing](s"/acls/*/*?ancestors=true&self=false", Identity.ServiceAccount) { (acls, response) =>
+      response.status shouldEqual StatusCodes.OK
 
-        val permissions = acls._results
-          .map { acls =>
-            val userAcls = acls.acl.filter {
-              case AclEntry(User(_, name), _) if name == target.name => true
-              case _                                                 => false
-            }
-            acls.copy(acl = userAcls)
+      val permissions = acls._results
+        .map { acls =>
+          val userAcls = acls.acl.filter {
+            case AclEntry(User(_, name), _) if name == target.name => true
+            case _                                                 => false
           }
-          .filter(_.acl.nonEmpty)
+          acls.copy(acl = userAcls)
+        }
+        .filter(_.acl.nonEmpty)
 
-        permissions.traverse { acl =>
+      permissions
+        .traverse { acl =>
           val payload = jsonContentOf(
             "/iam/subtract-permissions.json",
             Map(
               quote("{realm}") -> target.realm.name,
-              quote("{sub}") -> target.name,
+              quote("{sub}")   -> target.name,
               quote("{perms}") -> acl.acl.head.permissions.map(_.value).mkString("""","""")
             )
           )
-          cl.patch[Json](s"/acls${acl._path}?rev=${acl._rev}", payload, Identity.ServiceAccount) {
-            (_, response ) => response.status shouldEqual StatusCodes.OK
+          cl.patch[Json](s"/acls${acl._path}?rev=${acl._rev}", payload, Identity.ServiceAccount) { (_, response) =>
+            response.status shouldEqual StatusCodes.OK
           }
-        }.map(_ => succeed).runSyncUnsafe()
-      }
+        }
+        .map(_ => succeed)
+        .runSyncUnsafe()
+    }
 
-  def deletePermission(path: String,
-                       target: Authenticated,
-                       permission: Permission): Task[Assertion] =
+  def deletePermission(path: String, target: Authenticated, permission: Permission): Task[Assertion] =
     deletePermissions(path, target, Set(permission))
 
-  def deletePermissions(path: String,
-                        target: Authenticated,
-                        permissions: Set[Permission],
-                       ): Task[Assertion] = {
+  def deletePermissions(path: String, target: Authenticated, permissions: Set[Permission]): Task[Assertion] = {
     path should not startWith "/acls"
     cl.get[Json](s"/acls$path", Identity.ServiceAccount) { (json, response) =>
-    {
+      {
         response.status shouldEqual StatusCodes.OK
         val acls = json
           .as[AclListing]
@@ -157,27 +150,26 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
     }
   }
 
-  def deletePermission(path: String,
-                        target: Authenticated,
-                        revision: Long,
-                        permission: Permission): Task[Assertion] = {
+  def deletePermission(path: String, target: Authenticated, revision: Long, permission: Permission): Task[Assertion] = {
     deletePermissions(path, target, revision, Set(permission))
   }
 
-  def deletePermissions(path: String,
-                       target: Authenticated,
-                       revision: Long,
-                       permissions: Set[Permission]): Task[Assertion] = {
+  def deletePermissions(
+      path: String,
+      target: Authenticated,
+      revision: Long,
+      permissions: Set[Permission]
+  ): Task[Assertion] = {
     val body = jsonContentOf(
       "/iam/subtract-permissions.json",
       Map(
         quote("{realm}") -> target.realm.name,
-        quote("{sub}") -> target.name,
+        quote("{sub}")   -> target.name,
         quote("{perms}") -> permissions.map(_.value).mkString("""","""")
       )
     )
-    cl.patch[Json](s"/acls$path?rev=$revision", body, Identity.ServiceAccount) {
-      (_, response) => response.status shouldEqual StatusCodes.OK
+    cl.patch[Json](s"/acls$path?rev=$revision", body, Identity.ServiceAccount) { (_, response) =>
+      response.status shouldEqual StatusCodes.OK
     }
   }
 
@@ -185,7 +177,7 @@ class AclDsl(implicit cl: UntypedHttpClient[Task],
     logger.info(s"Gettings acls for $path using ${authenticated.name}")
     cl.get[AclListing](s"/acls$path", authenticated) { (acls, response) =>
       response.status shouldEqual StatusCodes.OK
-      val acl = acls._results.headOption.value
+      val acl   = acls._results.headOption.value
       val entry = acl.acl.headOption.value
       entry.permissions shouldEqual Permission.adminPermissions
     }

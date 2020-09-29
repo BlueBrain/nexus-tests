@@ -15,8 +15,7 @@ import monix.bio.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertion
 
-class PermissionDsl(implicit cl: UntypedHttpClient[Task],
-                    materializer: Materializer) extends Resources {
+class PermissionDsl(implicit cl: UntypedHttpClient[Task], materializer: Materializer) extends Resources {
 
   def permissionsMap(permissions: Iterable[Permission]) =
     Map(
@@ -24,20 +23,20 @@ class PermissionDsl(implicit cl: UntypedHttpClient[Task],
     )
 
   def addPermissions(list: Permission*): Task[Assertion] =
-    cl.get[Permissions]("/permissions", Identity.ServiceAccount) {
-      (permissions, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val body = jsonContentOf(
-          "/iam/permissions/append.json",
-          permissionsMap(list)
-        )
-        if(!list.toSet.subsetOf(permissions.permissions)) {
-          cl.patch[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) {
-            (_, response) => response.status shouldEqual StatusCodes.OK
-          }.runSyncUnsafe()
-        } else {
-          succeed
-        }
+    cl.get[Permissions]("/permissions", Identity.ServiceAccount) { (permissions, response) =>
+      response.status shouldEqual StatusCodes.OK
+      val body = jsonContentOf(
+        "/iam/permissions/append.json",
+        permissionsMap(list)
+      )
+      if (!list.toSet.subsetOf(permissions.permissions)) {
+        cl.patch[Json](s"/permissions?rev=${permissions._rev}", body, Identity.ServiceAccount) { (_, response) =>
+            response.status shouldEqual StatusCodes.OK
+          }
+          .runSyncUnsafe()
+      } else {
+        succeed
+      }
 
     }
 

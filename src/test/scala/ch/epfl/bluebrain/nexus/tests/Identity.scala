@@ -12,16 +12,11 @@ object Identity {
     def realm: Realm
   }
 
-  final case class UserCredentials(name: String,
-                                   password: String,
-                                   realm: Realm) extends Authenticated
+  final case class UserCredentials(name: String, password: String, realm: Realm) extends Authenticated
 
-  final case class ClientCredentials(id: String,
-                                     name :String,
-                                     secret: String,
-                                     realm: Realm) extends Authenticated
+  final case class ClientCredentials(id: String, name: String, secret: String, realm: Realm) extends Authenticated
 
-  object ClientCredentials{
+  object ClientCredentials {
     def apply(id: String, secret: String, realm: Realm): ClientCredentials =
       new ClientCredentials(id, s"service-account-$id", secret, realm)
   }

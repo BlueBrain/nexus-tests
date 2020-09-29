@@ -15,7 +15,7 @@ import ch.epfl.bluebrain.nexus.tests.config.ConfigLoader._
 import ch.epfl.bluebrain.nexus.tests.config.StorageConfig
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission
 import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.Organizations
-import ch.epfl.bluebrain.nexus.tests.{Identity, BaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, Identity, Realm}
 import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import monix.bio.Task
@@ -30,14 +30,14 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
 
   val storageConfig: StorageConfig = load[StorageConfig](ConfigFactory.load(), "storage")
 
-  private[tests] val orgId   = genId()
-  private[tests] val projId  = genId()
-  private[tests] val fullId  = s"$orgId/$projId"
+  private[tests] val orgId  = genId()
+  private[tests] val projId = genId()
+  private[tests] val fullId = s"$orgId/$projId"
 
-  private[tests] val testRealm   = Realm("storage" + genString())
+  private[tests] val testRealm  = Realm("storage" + genString())
   private[tests] val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
-  private[tests] val BipBip = UserCredentials(genString(), genString(), testRealm)
-  private[tests] val Coyote = UserCredentials(genString(), genString(), testRealm)
+  private[tests] val BipBip     = UserCredentials(genString(), genString(), testRealm)
+  private[tests] val Coyote     = UserCredentials(genString(), genString(), testRealm)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -71,7 +71,7 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
     "succeed if payload is correct" taggedAs StorageTag in {
       for {
         _ <- adminDsl.createOrganization(orgId, orgId, Coyote)
-        _ <- adminDsl.createProject(orgId, projId, kgDsl.projectJson(name = fullId) , Coyote)
+        _ <- adminDsl.createProject(orgId, projId, kgDsl.projectJson(name = fullId), Coyote)
       } yield succeed
     }
 
@@ -84,10 +84,9 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
 
     "wait for storages to be indexed" taggedAs StorageTag in {
       eventually {
-        cl.get[Json](s"/storages/$fullId", Coyote) {
-          (json, response) =>
-            response.status shouldEqual StatusCodes.OK
-            _total.getOption(json).value shouldEqual 3
+        cl.get[Json](s"/storages/$fullId", Coyote) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          _total.getOption(json).value shouldEqual 3
         }
       }
     }
@@ -95,40 +94,38 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
 
   s"uploading an attachment against the $storageType storage" should {
 
-    "upload attachment with JSON"taggedAs StorageTag in {
+    "upload attachment with JSON" taggedAs StorageTag in {
       cl.putAttachment[Json](
         s"/files/$fullId/attachment.json?storage=nxv:$storageName",
         contentOf("/kg/files/attachment.json"),
         ContentTypes.`application/json`,
         "attachment.json",
         Coyote
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.Created
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
     "fetch attachment" taggedAs StorageTag in {
-      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json", Coyote , acceptAll) {
-        (content, response) =>
-          assertFetchAttachment(
-            response,
-            "attachment.json",
-            ContentTypes.`application/json`
-          )
-          content.utf8String shouldEqual contentOf("/kg/files/attachment.json")
+      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json", Coyote, acceptAll) { (content, response) =>
+        assertFetchAttachment(
+          response,
+          "attachment.json",
+          ContentTypes.`application/json`
+        )
+        content.utf8String shouldEqual contentOf("/kg/files/attachment.json")
       }
     }
 
     "fetch gzipped attachment" taggedAs StorageTag in {
-      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json", Coyote, gzipHeaders) {
-        (content, response) =>
-          assertFetchAttachment(
-            response,
-            "attachment.json",
-            ContentTypes.`application/json`
-          )
-          httpEncodings(response) shouldEqual Seq(HttpEncodings.gzip)
-          decodeGzip(content) shouldEqual contentOf("/kg/files/attachment.json")
+      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json", Coyote, gzipHeaders) { (content, response) =>
+        assertFetchAttachment(
+          response,
+          "attachment.json",
+          ContentTypes.`application/json`
+        )
+        httpEncodings(response) shouldEqual Seq(HttpEncodings.gzip)
+        decodeGzip(content) shouldEqual contentOf("/kg/files/attachment.json")
       }
     }
 
@@ -139,32 +136,30 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         ContentTypes.`application/json`,
         "attachment.json",
         Coyote
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.OK
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.OK
       }
     }
 
     "fetch updated attachment" taggedAs StorageTag in {
-      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json", Coyote , acceptAll) {
-        (content, response) =>
-          assertFetchAttachment(
-            response,
-            "attachment.json",
-            ContentTypes.`application/json`
-          )
-          content.utf8String shouldEqual contentOf("/kg/files/attachment2.json")
+      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json", Coyote, acceptAll) { (content, response) =>
+        assertFetchAttachment(
+          response,
+          "attachment.json",
+          ContentTypes.`application/json`
+        )
+        content.utf8String shouldEqual contentOf("/kg/files/attachment2.json")
       }
     }
 
     "fetch previous revision of attachment" taggedAs StorageTag in {
-      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json?rev=1", Coyote , acceptAll) {
-        (content, response) =>
-          assertFetchAttachment(
-            response,
-            "attachment.json",
-            ContentTypes.`application/json`
-          )
-          content.utf8String shouldEqual contentOf("/kg/files/attachment.json")
+      cl.get[ByteString](s"/files/$fullId/attachment:attachment.json?rev=1", Coyote, acceptAll) { (content, response) =>
+        assertFetchAttachment(
+          response,
+          "attachment.json",
+          ContentTypes.`application/json`
+        )
+        content.utf8String shouldEqual contentOf("/kg/files/attachment.json")
       }
     }
 
@@ -175,25 +170,24 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         ContentTypes.NoContentType,
         "attachment2",
         Coyote
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.Created
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
 
     "fetch second attachment" taggedAs StorageTag in {
-      cl.get[ByteString](s"/files/$fullId/attachment:attachment2", Coyote , acceptAll) {
-        (content, response) =>
-          assertFetchAttachment(
-            response,
-            "attachment2"
-          )
-          content.utf8String shouldEqual contentOf("/kg/files/attachment2")
+      cl.get[ByteString](s"/files/$fullId/attachment:attachment2", Coyote, acceptAll) { (content, response) =>
+        assertFetchAttachment(
+          response,
+          "attachment2"
+        )
+        content.utf8String shouldEqual contentOf("/kg/files/attachment2")
       }
     }
 
     "delete the attachment" taggedAs StorageTag in {
-      cl.delete[Json](s"/files/$fullId/attachment:attachment.json?rev=2", Coyote) {
-        (_, response) => response.status shouldEqual StatusCodes.OK
+      cl.delete[Json](s"/files/$fullId/attachment:attachment.json?rev=2", Coyote) { (_, response) =>
+        response.status shouldEqual StatusCodes.OK
       }
     }
 
@@ -210,13 +204,12 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         )
       )
 
-      cl.get[Json](s"/files/$fullId/attachment:attachment.json", Coyote) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          locationPrefix.foreach { l =>
-            location.getOption(json).value should startWith(l)
-          }
-          filterMetadataKeys.andThen(filterKey("_location"))(json) shouldEqual expected
+      cl.get[Json](s"/files/$fullId/attachment:attachment.json", Coyote) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        locationPrefix.foreach { l =>
+          location.getOption(json).value should startWith(l)
+        }
+        filterMetadataKeys.andThen(filterKey("_location"))(json) shouldEqual expected
       }
     }
 
@@ -227,8 +220,8 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         ContentTypes.NoContentType,
         "attachment2",
         Coyote
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.NotFound
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
       }
     }
 
@@ -239,8 +232,8 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         ContentTypes.NoContentType,
         "attachment2",
         Coyote
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.Forbidden
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.Forbidden
       }
     }
 
@@ -248,7 +241,7 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
       aclDsl.addPermissions(
         "/",
         Coyote,
-        Set(Permission(storageType, "read"), Permission(storageType,"write"))
+        Set(Permission(storageType, "read"), Permission(storageType, "write"))
       )
     }
 
@@ -259,8 +252,8 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         ContentTypes.NoContentType,
         "attachment2",
         Coyote
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.Created
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
   }
@@ -268,8 +261,8 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
   "deprecating a storage" should {
 
     "deprecate a DiskStorage" taggedAs StorageTag in {
-      cl.delete[Json](s"/storages/$fullId/nxv:$storageName?rev=1", Coyote) {
-        (_, response) => response.status shouldEqual StatusCodes.OK
+      cl.delete[Json](s"/storages/$fullId/nxv:$storageName?rev=1", Coyote) { (_, response) =>
+        response.status shouldEqual StatusCodes.OK
       }
     }
 
@@ -280,8 +273,8 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         ContentTypes.NoContentType,
         "attachment3",
         Coyote
-      ) {
-        (_, response) => response.status shouldEqual StatusCodes.NotFound
+      ) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
       }
     }
 
@@ -296,10 +289,9 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
         )
       )
 
-      cl.get[Json](s"/files/$fullId/attachment:attachment2", Coyote) {
-        (json, response) =>
-          response.status shouldEqual StatusCodes.OK
-          filterMetadataKeys.andThen(filterKey("_location"))(json) shouldEqual expected
+      cl.get[Json](s"/files/$fullId/attachment:attachment2", Coyote) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        filterMetadataKeys.andThen(filterKey("_location"))(json) shouldEqual expected
       }
     }
   }
@@ -309,15 +301,16 @@ abstract class StorageSpec extends BaseSpec with CirceEq {
     s"=?UTF-8?B?$encodedFilename?="
   }
 
-  private def assertFetchAttachment(response: HttpResponse,
-                                    expectedFilename: String,
-                                    expectedContentType: ContentType): Assertion = {
+  private def assertFetchAttachment(
+      response: HttpResponse,
+      expectedFilename: String,
+      expectedContentType: ContentType
+  ): Assertion = {
     assertFetchAttachment(response, expectedFilename)
     contentType(response) shouldEqual expectedContentType
   }
 
-  private def assertFetchAttachment(response: HttpResponse,
-                                    expectedFilename: String): Assertion = {
+  private def assertFetchAttachment(response: HttpResponse, expectedFilename: String): Assertion = {
     response.status shouldEqual StatusCodes.OK
     dispositionType(response) shouldEqual ContentDispositionTypes.attachment
     attachmentName(response) shouldEqual attachmentString(expectedFilename)

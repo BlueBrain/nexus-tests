@@ -9,15 +9,15 @@ import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity.{Authenticated, UserCredentials}
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.ProjectsTag
-import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, BaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, ExpectedResponse, Identity, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 
 class ProjectsSpec extends BaseSpec {
 
-  private val testRealm   = Realm("projects" + genString())
-  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
-  private val Bojack = UserCredentials(genString(), genString(), testRealm)
+  private val testRealm       = Realm("projects" + genString())
+  private val testClient      = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Bojack          = UserCredentials(genString(), genString(), testRealm)
   private val PrincessCarolyn = UserCredentials(genString(), genString(), testRealm)
 
   import ch.epfl.bluebrain.nexus.tests.iam.types.Permission._
@@ -49,11 +49,11 @@ class ProjectsSpec extends BaseSpec {
 
   "projects API" should {
 
-    val orgId = genId()
+    val orgId  = genId()
     val projId = genId()
-    val id = s"$orgId/$projId"
+    val id     = s"$orgId/$projId"
 
-    "fail to create project if the permissions are missing"  taggedAs ProjectsTag in {
+    "fail to create project if the permissions are missing" taggedAs ProjectsTag in {
       adminDsl.createProject(
         orgId,
         projId,
@@ -63,7 +63,7 @@ class ProjectsSpec extends BaseSpec {
       )
     }
 
-    "add organizations/create permissions for user"  taggedAs ProjectsTag in {
+    "add organizations/create permissions for user" taggedAs ProjectsTag in {
       aclDsl.addPermissions(
         "/",
         Bojack,
@@ -71,14 +71,14 @@ class ProjectsSpec extends BaseSpec {
       )
     }
 
-    "fail to create if the HTTP verb used is POST"  taggedAs ProjectsTag in {
+    "fail to create if the HTTP verb used is POST" taggedAs ProjectsTag in {
       cl.post[Json](s"/projects/$id", Json.obj(), Bojack) { (json, response) =>
         response.status shouldEqual MethodNotAllowed.statusCode
         json shouldEqual MethodNotAllowed.json
       }
     }
 
-    "create organization"  taggedAs ProjectsTag in {
+    "create organization" taggedAs ProjectsTag in {
       adminDsl.createOrganization(
         orgId,
         "Description",
@@ -124,7 +124,7 @@ class ProjectsSpec extends BaseSpec {
       )
     }
 
-    "fail to create if project already exists"  taggedAs ProjectsTag in {
+    "fail to create if project already exists" taggedAs ProjectsTag in {
       val conflict = ExpectedResponse(
         StatusCodes.Conflict,
         jsonContentOf(
@@ -146,11 +146,11 @@ class ProjectsSpec extends BaseSpec {
       )
     }
 
-    "ensure that necessary permissions have been set"  taggedAs ProjectsTag in {
+    "ensure that necessary permissions have been set" taggedAs ProjectsTag in {
       aclDsl.checkAdminAcls(s"/$id", Bojack)
     }
 
-    "fetch the project"  taggedAs ProjectsTag in {
+    "fetch the project" taggedAs ProjectsTag in {
       cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         admin.validateProject(json, createJson)
@@ -158,17 +158,17 @@ class ProjectsSpec extends BaseSpec {
       }
     }
 
-    "fetch project by UUID"  taggedAs ProjectsTag in {
+    "fetch project by UUID" taggedAs ProjectsTag in {
       cl.get[Json](s"/orgs/$orgId", Identity.ServiceAccount) { (orgJson, _) =>
         runTask {
           val orgUuid = _uuid.getOption(orgJson).value
           cl.get[Json](s"/projects/$id", Bojack) { (projectJson, _) =>
             runTask {
-                val projectUuid = _uuid.getOption(projectJson).value
-                cl.get[Json](s"/projects/$orgUuid/$projectUuid", Bojack) { (json, response) =>
-                  response.status shouldEqual StatusCodes.OK
-                  json shouldEqual projectJson
-                }
+              val projectUuid = _uuid.getOption(projectJson).value
+              cl.get[Json](s"/projects/$orgUuid/$projectUuid", Bojack) { (json, response) =>
+                response.status shouldEqual StatusCodes.OK
+                json shouldEqual projectJson
+              }
             }
           }
         }
@@ -181,7 +181,7 @@ class ProjectsSpec extends BaseSpec {
       }
     }
 
-    "update project and fetch revisions"  taggedAs ProjectsTag in {
+    "update project and fetch revisions" taggedAs ProjectsTag in {
       val descRev2  = s"$description update 1"
       val baseRev2  = s"${config.deltaUri.toString()}/${genString()}/"
       val vocabRev2 = s"${config.deltaUri.toString()}/${genString()}/"
@@ -256,9 +256,11 @@ class ProjectsSpec extends BaseSpec {
         _ <- cl.delete[Json](s"/projects/$id?rev=3", Bojack) { (json, response) =>
           response.status shouldEqual StatusCodes.OK
           filterMetadataKeys(json) shouldEqual adminDsl.createRespJson(
-            id, 4L,
+            id,
+            4L,
             authenticated = Bojack,
-            deprecated = true)
+            deprecated = true
+          )
         }
         _ <- cl.get[Json](s"/projects/$id", Bojack) { (json, response) =>
           response.status shouldEqual StatusCodes.OK
@@ -291,46 +293,51 @@ class ProjectsSpec extends BaseSpec {
     val orgId = genId()
 
     val projectIds: List[(String, String)] =
-      (1 to 5).map { _ =>
-        (orgId, genId())
-      }.sorted.toList
+      (1 to 5)
+        .map { _ =>
+          (orgId, genId())
+        }
+        .sorted
+        .toList
 
     def projectListingResults(ids: Seq[(String, String)], target: Authenticated): Json = {
       Json.arr(
-        ids.map { case (orgId, projectId) =>
-          jsonContentOf(
-            "/admin/projects/listing-item.json",
-            replacements(
-              target,
-              quote("{id}")        -> s"$orgId/$projectId",
-              quote("{projId}")    -> projectId,
-              quote("{orgId}")     -> orgId
+        ids.map {
+          case (orgId, projectId) =>
+            jsonContentOf(
+              "/admin/projects/listing-item.json",
+              replacements(
+                target,
+                quote("{id}")     -> s"$orgId/$projectId",
+                quote("{projId}") -> projectId,
+                quote("{orgId}")  -> orgId
+              )
             )
-          )
         }: _*
       )
     }
 
-    "create projects"  taggedAs ProjectsTag in {
+    "create projects" taggedAs ProjectsTag in {
       for {
         _ <- adminDsl.createOrganization(
           orgId,
           "Description",
           Bojack
         )
-        _ <- projectIds.traverse { case (orgId, projId) =>
-          adminDsl.createProject(
-            orgId,
-            projId,
-            adminDsl.projectPayload(
-              nxv = s"nxv-$projId",
-              person = s"person-$projId",
-              description = projId,
-              base = s"http:example.com/$projId/",
-              vocab = s"http:example.com/$projId/vocab/"
-            ),
-            Bojack
-          )
+        _ <- projectIds.traverse {
+          case (orgId, projId) =>
+            adminDsl.createProject(
+              orgId,
+              projId,
+              adminDsl.projectPayload(
+                nxv = s"nxv-$projId",
+                person = s"person-$projId",
+                description = projId,
+                base = s"http:example.com/$projId/",
+                vocab = s"http:example.com/$projId/vocab/"
+              ),
+              Bojack
+            )
         }
       } yield succeed
     }
@@ -365,12 +372,13 @@ class ProjectsSpec extends BaseSpec {
       )
 
       for {
-        _ <- projectsToList.traverse { case (orgId, projectId) =>
-          aclDsl.addPermission(
-            s"/$orgId/$projectId",
-            PrincessCarolyn,
-            Projects.Read
-          )
+        _ <- projectsToList.traverse {
+          case (orgId, projectId) =>
+            aclDsl.addPermission(
+              s"/$orgId/$projectId",
+              PrincessCarolyn,
+              Projects.Read
+            )
         }
         _ <- cl.get[Json](s"/projects/$orgId", PrincessCarolyn) { (json, response) =>
           response.status shouldEqual StatusCodes.OK

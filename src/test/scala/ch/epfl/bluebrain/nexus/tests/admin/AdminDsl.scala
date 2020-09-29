@@ -19,10 +19,12 @@ import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import monix.execution.Scheduler.Implicits.global
 
-class AdminDsl(prefixesConfig: PrefixesConfig,
-               config: TestsConfig)
-              (implicit cl: UntypedHttpClient[Task],
-               materializer: Materializer) extends Randomness with Resources with Matchers {
+class AdminDsl(prefixesConfig: PrefixesConfig, config: TestsConfig)(
+    implicit cl: UntypedHttpClient[Task],
+    materializer: Materializer
+) extends Randomness
+    with Resources
+    with Matchers {
 
   private val logger = Logger[this.type]
 
@@ -31,18 +33,20 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
     jsonContentOf("/admin/orgs/payload.json", rep)
   }
 
-  def createRespJson(id: String,
-                     rev: Long,
-                     tpe: String = "projects",
-                     `@type`: String = "Project",
-                     authenticated: Authenticated,
-                     deprecated: Boolean = false): Json = {
+  def createRespJson(
+      id: String,
+      rev: Long,
+      tpe: String = "projects",
+      `@type`: String = "Project",
+      authenticated: Authenticated,
+      deprecated: Boolean = false
+  ): Json = {
     val resp = prefixesConfig.coreContextMap ++ Map(
       quote("{id}")         -> id,
       quote("{type}")       -> tpe,
       quote("{@type}")      -> `@type`,
       quote("{rev}")        -> rev.toString,
-      quote("{deltaUri}")  -> config.deltaUri.toString(),
+      quote("{deltaUri}")   -> config.deltaUri.toString(),
       quote("{realm}")      -> authenticated.realm.name,
       quote("{user}")       -> authenticated.name,
       quote("{orgId}")      -> id,
@@ -51,35 +55,35 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
     jsonContentOf("/admin/response.json", resp)
   }
 
-  private def queryParams(revision: Long) = if(revision == 0L) {
-    ""
-  } else {
-    s"?rev=$revision"
-  }
+  private def queryParams(revision: Long) =
+    if (revision == 0L) {
+      ""
+    } else {
+      s"?rev=$revision"
+    }
 
-  def createOrganization(id: String,
-                         description: String,
-                         authenticated: Authenticated,
-                         expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] =
-    updateOrganization(
-      id,
-      description,
-      authenticated,
-      0L,
-      expectedResponse)
+  def createOrganization(
+      id: String,
+      description: String,
+      authenticated: Authenticated,
+      expectedResponse: Option[ExpectedResponse] = None
+  ): Task[Assertion] =
+    updateOrganization(id, description, authenticated, 0L, expectedResponse)
 
-  def updateOrganization(id: String,
-                         description: String,
-                         authenticated: Authenticated,
-                         revision: Long,
-                         expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] = {
+  def updateOrganization(
+      id: String,
+      description: String,
+      authenticated: Authenticated,
+      revision: Long,
+      expectedResponse: Option[ExpectedResponse] = None
+  ): Task[Assertion] = {
     cl.put[Json](s"/orgs/$id${queryParams(revision)}", orgPayload(description), authenticated) { (json, response) =>
       expectedResponse match {
         case Some(e) =>
           response.status shouldEqual e.statusCode
           json shouldEqual e.json
         case None =>
-          if(revision == 0L)
+          if (revision == 0L)
             response.status shouldEqual StatusCodes.Created
           else
             response.status shouldEqual StatusCodes.OK
@@ -95,24 +99,22 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
     }
   }
 
-  def deprecateOrganization(id: String,
-                            authenticated: Authenticated): Task[Assertion] =
-    cl.get[Json](s"/orgs/$id", authenticated) {
-      (json, response) =>
-        response.status shouldEqual StatusCodes.OK
-        val rev =  admin._rev.getOption(json).value
-        cl.delete[Json](s"/orgs/$id?rev=$rev", authenticated) {
-          (deleteJson, deleteResponse) =>
-            deleteResponse.status shouldEqual StatusCodes.OK
-            filterMetadataKeys(deleteJson) shouldEqual createRespJson(
-              id,
-              rev + 1L,
-              "orgs",
-              "Organization",
-              authenticated,
-              deprecated = true
-            )
-        }.runSyncUnsafe()
+  def deprecateOrganization(id: String, authenticated: Authenticated): Task[Assertion] =
+    cl.get[Json](s"/orgs/$id", authenticated) { (json, response) =>
+      response.status shouldEqual StatusCodes.OK
+      val rev = admin._rev.getOption(json).value
+      cl.delete[Json](s"/orgs/$id?rev=$rev", authenticated) { (deleteJson, deleteResponse) =>
+          deleteResponse.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(deleteJson) shouldEqual createRespJson(
+            id,
+            rev + 1L,
+            "orgs",
+            "Organization",
+            authenticated,
+            deprecated = true
+          )
+        }
+        .runSyncUnsafe()
     }
 
   private[tests] val startPool = Vector.range('a', 'z')
@@ -120,12 +122,14 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
 
   private[tests] def randomProjectPrefix = genString(1, startPool) + genString(genInt(10), pool)
 
-  def projectPayload(path: String = "/admin/projects/create.json",
-                     nxv: String = randomProjectPrefix,
-                     person: String = randomProjectPrefix,
-                     description: String = genString(),
-                     base: String = s"${config.deltaUri.toString()}/${genString()}/",
-                     vocab: String = s"${config.deltaUri.toString()}/${genString()}/"): Json = {
+  def projectPayload(
+      path: String = "/admin/projects/create.json",
+      nxv: String = randomProjectPrefix,
+      person: String = randomProjectPrefix,
+      description: String = genString(),
+      base: String = s"${config.deltaUri.toString()}/${genString()}/",
+      vocab: String = s"${config.deltaUri.toString()}/${genString()}/"
+  ): Json = {
     val rep = Map(
       quote("{nxv-prefix}")    -> nxv,
       quote("{person-prefix}") -> person,
@@ -136,19 +140,23 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
     jsonContentOf(path, rep)
   }
 
-  def createProject(orgId: String,
-                    projectId: String,
-                    json: Json,
-                    authenticated: Authenticated,
-                    expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] =
+  def createProject(
+      orgId: String,
+      projectId: String,
+      json: Json,
+      authenticated: Authenticated,
+      expectedResponse: Option[ExpectedResponse] = None
+  ): Task[Assertion] =
     updateProject(orgId, projectId, json, authenticated, 0L, expectedResponse)
 
-  def updateProject(orgId: String,
-                    projectId: String,
-                    payload: Json,
-                    authenticated: Authenticated,
-                    revision: Long,
-                    expectedResponse: Option[ExpectedResponse] = None): Task[Assertion] =
+  def updateProject(
+      orgId: String,
+      projectId: String,
+      payload: Json,
+      authenticated: Authenticated,
+      revision: Long,
+      expectedResponse: Option[ExpectedResponse] = None
+  ): Task[Assertion] =
     cl.put[Json](s"/projects/$orgId/$projectId${queryParams(revision)}", payload, authenticated) { (json, response) =>
       logger.info(s"Creating/updating project $orgId/$projectId at revision $revision")
       expectedResponse match {
@@ -156,7 +164,7 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
           response.status shouldEqual e.statusCode
           json shouldEqual e.json
         case None =>
-          if(revision == 0L)
+          if (revision == 0L)
             response.status shouldEqual StatusCodes.Created
           else
             response.status shouldEqual StatusCodes.OK
@@ -169,11 +177,9 @@ class AdminDsl(prefixesConfig: PrefixesConfig,
 
     }
 
-  def getUuids(orgId: String,
-               projectId: String,
-               identity: Identity): Task[(String, String)] =
+  def getUuids(orgId: String, projectId: String, identity: Identity): Task[(String, String)] =
     for {
-      orgUuid <- cl.getJson[Json](s"/orgs/$orgId", identity)
+      orgUuid     <- cl.getJson[Json](s"/orgs/$orgId", identity)
       projectUuid <- cl.getJson[Json](s"/projects/$orgId/$projectId", identity)
     } yield (
       _uuid.getOption(orgUuid).value,

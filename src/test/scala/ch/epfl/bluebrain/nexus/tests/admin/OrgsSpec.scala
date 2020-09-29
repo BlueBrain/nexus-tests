@@ -9,16 +9,16 @@ import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
 import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
 import ch.epfl.bluebrain.nexus.tests.Optics._
 import ch.epfl.bluebrain.nexus.tests.Tags.OrgsTag
-import ch.epfl.bluebrain.nexus.tests.{ExpectedResponse, Identity, BaseSpec, Realm}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, ExpectedResponse, Identity, Realm}
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 
-class OrgsSpec extends BaseSpec with EitherValues{
+class OrgsSpec extends BaseSpec with EitherValues {
 
-  private val testRealm   = Realm("orgs" + genString())
+  private val testRealm  = Realm("orgs" + genString())
   private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
-  private val Fry = UserCredentials(genString(), genString(), testRealm)
-  private val Leela = UserCredentials(genString(), genString(), testRealm)
+  private val Fry        = UserCredentials(genString(), genString(), testRealm)
+  private val Leela      = UserCredentials(genString(), genString(), testRealm)
 
   private[tests] val errorCtx = Map(quote("{error-context}") -> prefixesConfig.errorContext.toString)
 
@@ -63,19 +63,19 @@ class OrgsSpec extends BaseSpec with EitherValues{
     }
 
     val id = genId()
-    "succeed if payload is correct"  taggedAs OrgsTag in {
-       adminDsl.createOrganization(
-         id,
-         "Description",
-         Fry
-       )
+    "succeed if payload is correct" taggedAs OrgsTag in {
+      adminDsl.createOrganization(
+        id,
+        "Description",
+        Fry
+      )
     }
 
     "check if permissions have been created for user" taggedAs OrgsTag in {
       aclDsl.checkAdminAcls(s"/$id", Fry)
     }
 
-    "fail if organization already exists"  taggedAs OrgsTag in {
+    "fail if organization already exists" taggedAs OrgsTag in {
       val duplicate = genId()
 
       for {
@@ -104,7 +104,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
 
   "fetching an organization" should {
     val id = genId()
-    "fail if the permissions are missing"  taggedAs OrgsTag in {
+    "fail if the permissions are missing" taggedAs OrgsTag in {
       for {
         _ <- adminDsl.createOrganization(
           id,
@@ -118,7 +118,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
       } yield succeed
     }
 
-    "add orgs/read permissions for user"  taggedAs OrgsTag in {
+    "add orgs/read permissions for user" taggedAs OrgsTag in {
       aclDsl.addPermission(
         "/",
         Leela,
@@ -126,14 +126,14 @@ class OrgsSpec extends BaseSpec with EitherValues{
       )
     }
 
-    "succeed if organization exists"  taggedAs OrgsTag in {
+    "succeed if organization exists" taggedAs OrgsTag in {
       cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>
         response.status shouldEqual StatusCodes.OK
         admin.validate(json, "Organization", "orgs", id, s"Description $id", 1L, id)
       }
     }
 
-    "fetch organization by UUID"  taggedAs OrgsTag in {
+    "fetch organization by UUID" taggedAs OrgsTag in {
       cl.get[Json](s"/orgs/$id", Leela) { (jsonById, _) =>
         runTask {
           val orgUuid = _uuid.getOption(jsonById).value
@@ -146,14 +146,14 @@ class OrgsSpec extends BaseSpec with EitherValues{
       }
     }
 
-    "return not found when fetching a non existing revision of an organizations"  taggedAs OrgsTag in {
+    "return not found when fetching a non existing revision of an organizations" taggedAs OrgsTag in {
       cl.get[Json](s"/orgs/$id?rev=3", Leela) { (_, response) =>
         response.status shouldEqual StatusCodes.NotFound
       }
     }
 
     val nonExistent = genId()
-    "add orgs/read permissions for non-existing organization"  taggedAs OrgsTag in {
+    "add orgs/read permissions for non-existing organization" taggedAs OrgsTag in {
       aclDsl.addPermission(
         s"/$nonExistent",
         Leela,
@@ -161,7 +161,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
       )
     }
 
-    "return not found when fetching a non existing organization"  taggedAs OrgsTag in {
+    "return not found when fetching a non existing organization" taggedAs OrgsTag in {
       cl.get[Json](s"/orgs/$nonExistent", Leela) { (_, response) =>
         response.status shouldEqual StatusCodes.NotFound
       }
@@ -169,10 +169,10 @@ class OrgsSpec extends BaseSpec with EitherValues{
   }
 
   "updating an organization" should {
-    val id = genString()
+    val id          = genString()
     val description = s"$id organization"
 
-    "fail if the permissions are missing"  taggedAs OrgsTag in {
+    "fail if the permissions are missing" taggedAs OrgsTag in {
       adminDsl.createOrganization(
         id,
         description,
@@ -181,7 +181,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
       )
     }
 
-    "add orgs/create permissions for user"  taggedAs OrgsTag in {
+    "add orgs/create permissions for user" taggedAs OrgsTag in {
       aclDsl.addPermission(
         s"/$id",
         Leela,
@@ -197,7 +197,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
       )
     }
 
-    "fail when wrong revision is provided"  taggedAs OrgsTag in {
+    "fail when wrong revision is provided" taggedAs OrgsTag in {
       adminDsl.updateOrganization(
         id,
         description,
@@ -216,7 +216,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
       )
     }
 
-    "fail when organization does not exist"  taggedAs OrgsTag in {
+    "fail when organization does not exist" taggedAs OrgsTag in {
       val notFound = ExpectedResponse(
         StatusCodes.NotFound,
         jsonContentOf("/admin/errors/not-exists.json", Map(quote("{orgId}") -> nonExistent))
@@ -230,8 +230,8 @@ class OrgsSpec extends BaseSpec with EitherValues{
       )
     }
 
-    "succeed and fetch revisions"  taggedAs OrgsTag in {
-      val updatedName = s"$id organization update 1"
+    "succeed and fetch revisions" taggedAs OrgsTag in {
+      val updatedName  = s"$id organization update 1"
       val updatedName2 = s"$id organization update 2"
 
       for {
@@ -270,7 +270,7 @@ class OrgsSpec extends BaseSpec with EitherValues{
   }
 
   "deprecating an organization" should {
-    val id = genId()
+    val id   = genId()
     val name = genString()
 
     "add orgs/create permissions for user" taggedAs OrgsTag in {
@@ -296,14 +296,14 @@ class OrgsSpec extends BaseSpec with EitherValues{
       }
     }
 
-    "fail when revision is not provided"  taggedAs OrgsTag in {
+    "fail when revision is not provided" taggedAs OrgsTag in {
       cl.delete[Json](s"/orgs/$id", Leela) { (json, response) =>
         response.status shouldEqual StatusCodes.BadRequest
         json shouldEqual jsonContentOf("/admin/errors/rev-not-provided.json")
       }
     }
 
-    "succeed if organization exists"  taggedAs OrgsTag in {
+    "succeed if organization exists" taggedAs OrgsTag in {
       for {
         _ <- adminDsl.deprecateOrganization(id, Leela)
         _ <- cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>

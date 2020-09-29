@@ -34,15 +34,16 @@ import org.scalatest.{Assertion, BeforeAndAfterAll, OptionValues}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-trait BaseSpec extends AsyncWordSpecLike
-  with BeforeAndAfterAll
-  with Resources
-  with Randomness
-  with ScalatestRouteTest
-  with Eventually
-  with OptionValues
-  with ScalaFutures
-  with Matchers {
+trait BaseSpec
+    extends AsyncWordSpecLike
+    with BeforeAndAfterAll
+    with Resources
+    with Randomness
+    with ScalatestRouteTest
+    with Eventually
+    with OptionValues
+    with ScalaFutures
+    with Matchers {
 
   private val logger = Logger[this.type]
 
@@ -52,10 +53,10 @@ trait BaseSpec extends AsyncWordSpecLike
 
   private[tests] implicit val cl: UntypedHttpClient[Task] = HttpClient.untyped[Task]
 
-  val aclDsl = new AclDsl()
+  val aclDsl        = new AclDsl()
   val permissionDsl = new PermissionDsl()
-  val adminDsl = new AdminDsl(prefixesConfig, config)
-  val kgDsl = new KgDsl(config)
+  val adminDsl      = new AdminDsl(prefixesConfig, config)
+  val kgDsl         = new KgDsl(config)
 
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(config.patience, 300.millis)
 
@@ -74,7 +75,9 @@ trait BaseSpec extends AsyncWordSpecLike
     }
 
   def runTask[A](t: Task[A]): Assertion =
-    t.map { _ => succeed }
+    t.map { _ =>
+        succeed
+      }
       .runSyncUnsafe()
 
   override def beforeAll(): Unit = {
@@ -111,66 +114,67 @@ trait BaseSpec extends AsyncWordSpecLike
 
   private[tests] def authenticateClient(client: ClientCredentials): Task[Unit] = {
     Keycloak.serviceAccountToken(client).map { token =>
-        tokensMap.put(client, toAuthorizationHeader(token))
+      tokensMap.put(client, toAuthorizationHeader(token))
       ()
     }
   }
 
   /**
-   * Init a new realm both in Keycloak and in Delta and
-   * Retrieve tokens for the new clients and users
-   *
-   * @param realm the name of the realm to create
-   * @param identity the identity responsible of creating the realm in delta
-   * @param client the service account to create for the realm
-   * @param users the users to create in the realm
-   * @return
-   */
-  def initRealm(realm: Realm,
-                identity: Identity,
-                client: ClientCredentials,
-                users: List[UserCredentials]): Task[Unit] = {
-    def createRealmInDelta: Task[Assertion] = cl.get[Json](s"/realms/${realm.name}", identity) {
-      (json, response) =>
-        runTask {
-          response.status match {
-            case StatusCodes.NotFound =>
-              logger.info(s"Realm ${realm.name} is absent, we create it")
-              val body =
-                jsonContentOf(
-                  "/iam/realms/create.json",
-                  Map(
-                    quote("{realm}") -> s"${config.realmSuffix(realm)}"
-                  )
+    * Init a new realm both in Keycloak and in Delta and
+    * Retrieve tokens for the new clients and users
+    *
+    * @param realm the name of the realm to create
+    * @param identity the identity responsible of creating the realm in delta
+    * @param client the service account to create for the realm
+    * @param users the users to create in the realm
+    * @return
+    */
+  def initRealm(
+      realm: Realm,
+      identity: Identity,
+      client: ClientCredentials,
+      users: List[UserCredentials]
+  ): Task[Unit] = {
+    def createRealmInDelta: Task[Assertion] = cl.get[Json](s"/realms/${realm.name}", identity) { (json, response) =>
+      runTask {
+        response.status match {
+          case StatusCodes.NotFound =>
+            logger.info(s"Realm ${realm.name} is absent, we create it")
+            val body =
+              jsonContentOf(
+                "/iam/realms/create.json",
+                Map(
+                  quote("{realm}") -> s"${config.realmSuffix(realm)}"
                 )
-              for {
-                _ <- cl.put[Json](s"/realms/${realm.name}", body, identity) {
-                  (_, response) => response.status shouldEqual StatusCodes.Created
-                }
-                _ <- cl.get[Json](s"/realms/${realm.name}", Identity.ServiceAccount) {
-                  (_, response) =>
-                    response.status shouldEqual StatusCodes.OK
-                }
-              } yield ()
-            case StatusCodes.Forbidden | StatusCodes.OK =>
-              logger.info(s"Realm ${realm.name} has already been created, we got status ${response.status}")
-              cl.get[Json](s"/realms/${realm.name}", Identity.ServiceAccount) {
-                (_, response) =>
-                  response.status shouldEqual StatusCodes.OK
-              }
-            case s =>
-              Task (
-                fail(s"$s wasn't expected here and we got this response: $json")
               )
-          }
+            for {
+              _ <- cl.put[Json](s"/realms/${realm.name}", body, identity) { (_, response) =>
+                response.status shouldEqual StatusCodes.Created
+              }
+              _ <- cl.get[Json](s"/realms/${realm.name}", Identity.ServiceAccount) { (_, response) =>
+                response.status shouldEqual StatusCodes.OK
+              }
+            } yield ()
+          case StatusCodes.Forbidden | StatusCodes.OK =>
+            logger.info(s"Realm ${realm.name} has already been created, we got status ${response.status}")
+            cl.get[Json](s"/realms/${realm.name}", Identity.ServiceAccount) { (_, response) =>
+              response.status shouldEqual StatusCodes.OK
+            }
+          case s =>
+            Task(
+              fail(s"$s wasn't expected here and we got this response: $json")
+            )
         }
+      }
     }
 
     for {
       // Create the realm in Keycloak
       _ <- Keycloak.importRealm(realm, client, users)
       // Get the tokens and cache them in the map
-      _ <- users.traverse { user => authenticateUser(user, client) }
+      _ <- users.traverse { user =>
+        authenticateUser(user, client)
+      }
       _ <- authenticateClient(client)
       // Creating the realm in delta
       _ <- Task { logger.info(s"Creating realm ${realm.name} in the delta instance") }
@@ -200,13 +204,12 @@ trait BaseSpec extends AsyncWordSpecLike
 
   private[tests] def replacements(authenticated: Authenticated, otherReplacements: (String, String)*) =
     Map(
-      quote("{deltaUri}")      -> config.deltaUri.toString(),
-      quote("{realm}")          -> authenticated.realm.name,
-      quote("{user}")           -> authenticated.name
+      quote("{deltaUri}") -> config.deltaUri.toString(),
+      quote("{realm}")    -> authenticated.realm.name,
+      quote("{user}")     -> authenticated.name
     ) ++ otherReplacements.toMap
 
   private[tests] def genId(length: Int = 15): String =
     genString(length = length, Vector.range('a', 'z') ++ Vector.range('0', '9'))
 
 }
-

@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.Multipart.FormData.BodyPart
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Accept, Authorization, HttpEncodings, `Accept-Encoding`}
+import akka.http.scaladsl.model.headers.{`Accept-Encoding`, Accept, Authorization, HttpEncodings}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.Materializer
 import akka.stream.alpakka.sse.scaladsl.EventSource
@@ -47,34 +47,30 @@ object HttpClientDsl extends HttpClientDsl {
 
   val gzipHeaders: Seq[HttpHeader] = Seq(Accept(MediaRanges.`*/*`), `Accept-Encoding`(HttpEncodings.gzip))
 
-  private[tests] implicit class HttpClientOps(val httpClient: UntypedHttpClient[Task])
-                                             (implicit materializer: Materializer) {
+  private[tests] implicit class HttpClientOps(val httpClient: UntypedHttpClient[Task])(
+      implicit materializer: Materializer
+  ) {
 
-    def post[A](url: String,
-                body: Json,
-                identity: Identity,
-                extraHeaders: Seq[HttpHeader] = jsonHeaders)
-               (assertResponse: (A, HttpResponse) => Assertion)
-               (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+    def post[A](url: String, body: Json, identity: Identity, extraHeaders: Seq[HttpHeader] = jsonHeaders)(
+        assertResponse: (A, HttpResponse) => Assertion
+    )(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(POST, url, Some(body), identity, extraHeaders)(assertResponse)
 
-    def put[A](url: String,
-               body: Json,
-               identity: Identity,
-               extraHeaders: Seq[HttpHeader] = jsonHeaders)
-              (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+    def put[A](url: String, body: Json, identity: Identity, extraHeaders: Seq[HttpHeader] = jsonHeaders)(
+        assertResponse: (A, HttpResponse) => Assertion
+    )(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(PUT, url, Some(body), identity, extraHeaders)(assertResponse)
 
-    def putAttachmentFromPath[A](url: String,
-                                 path: Path,
-                                 contentType: ContentType,
-                                 fileName: String,
-                                 identity: Identity,
-                                 extraHeaders: Seq[HttpHeader] = jsonHeaders)
-                                (assertResponse: (A, HttpResponse) => Assertion)
-                                (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
-      def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for $url with identity $identity", e)
+    def putAttachmentFromPath[A](
+        url: String,
+        path: Path,
+        contentType: ContentType,
+        fileName: String,
+        identity: Identity,
+        extraHeaders: Seq[HttpHeader] = jsonHeaders
+    )(assertResponse: (A, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
+      def onFail(e: Throwable) =
+        fail(s"Something went wrong while processing the response for $url with identity $identity", e)
       request(
         PUT,
         url,
@@ -90,15 +86,16 @@ object HttpClientDsl extends HttpClientDsl {
       )
     }
 
-    def putAttachment[A](url: String,
-                         attachment: String,
-                         contentType: ContentType,
-                         fileName: String,
-                         identity: Identity,
-                         extraHeaders: Seq[HttpHeader] = jsonHeaders)
-                        (assertResponse: (A, HttpResponse) => Assertion)
-                        (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
-      def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for $url with identity $identity", e)
+    def putAttachment[A](
+        url: String,
+        attachment: String,
+        contentType: ContentType,
+        fileName: String,
+        identity: Identity,
+        extraHeaders: Seq[HttpHeader] = jsonHeaders
+    )(assertResponse: (A, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
+      def onFail(e: Throwable) =
+        fail(s"Something went wrong while processing the response for $url with identity $identity", e)
       request(
         PUT,
         url,
@@ -114,50 +111,42 @@ object HttpClientDsl extends HttpClientDsl {
       )
     }
 
-    def patch[A](url: String,
-                 body: Json,
-                 identity: Identity,
-                 extraHeaders: Seq[HttpHeader] = jsonHeaders)
-                (assertResponse: (A, HttpResponse) => Assertion)
-                (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+    def patch[A](url: String, body: Json, identity: Identity, extraHeaders: Seq[HttpHeader] = jsonHeaders)(
+        assertResponse: (A, HttpResponse) => Assertion
+    )(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(PATCH, url, Some(body), identity, extraHeaders)(assertResponse)
 
-    def get[A](url: String,
-               identity: Identity,
-               extraHeaders: Seq[HttpHeader] = jsonHeaders)
-              (assertResponse: (A, HttpResponse) => Assertion)
-              (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+    def get[A](url: String, identity: Identity, extraHeaders: Seq[HttpHeader] = jsonHeaders)(
+        assertResponse: (A, HttpResponse) => Assertion
+    )(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(GET, url, None, identity, extraHeaders)(assertResponse)
 
-    def getJson[A](url: String,
-               identity: Identity)
-              (implicit um: FromEntityUnmarshaller[A]): Task[A] = {
-      def onFail(e: Throwable) = throw new IllegalStateException(s"Something went wrong while processing the response for url: $url with identity $identity", e)
-      requestJson(
-        GET,
-        url,
-        None,
-        identity,
-        (a: A, _: HttpResponse) => a,
-        onFail,
-        jsonHeaders)
+    def getJson[A](url: String, identity: Identity)(implicit um: FromEntityUnmarshaller[A]): Task[A] = {
+      def onFail(e: Throwable) =
+        throw new IllegalStateException(
+          s"Something went wrong while processing the response for url: $url with identity $identity",
+          e
+        )
+      requestJson(GET, url, None, identity, (a: A, _: HttpResponse) => a, onFail, jsonHeaders)
     }
 
-    def delete[A](url: String,
-                  identity: Identity,
-                  extraHeaders: Seq[HttpHeader] = jsonHeaders)
-                 (assertResponse: (A, HttpResponse) => Assertion)
-                 (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
+    def delete[A](url: String, identity: Identity, extraHeaders: Seq[HttpHeader] = jsonHeaders)(
+        assertResponse: (A, HttpResponse) => Assertion
+    )(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] =
       requestAssert(DELETE, url, None, identity, extraHeaders)(assertResponse)
 
-    def requestAssert[A](method: HttpMethod,
-                         url: String,
-                         body: Option[Json],
-                         identity: Identity,
-                         extraHeaders: Seq[HttpHeader] = jsonHeaders)
-                        (assertResponse: (A, HttpResponse) => Assertion)
-                        (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
-      def onFail(e: Throwable) = fail(s"Something went wrong while processing the response for url: ${method.value} $url with identity $identity", e)
+    def requestAssert[A](
+        method: HttpMethod,
+        url: String,
+        body: Option[Json],
+        identity: Identity,
+        extraHeaders: Seq[HttpHeader] = jsonHeaders
+    )(assertResponse: (A, HttpResponse) => Assertion)(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
+      def onFail(e: Throwable) =
+        fail(
+          s"Something went wrong while processing the response for url: ${method.value} $url with identity $identity",
+          e
+        )
       requestJson(
         method,
         url,
@@ -169,13 +158,11 @@ object HttpClientDsl extends HttpClientDsl {
       )
     }
 
-    def sparqlQuery[A](url: String,
-                       query: String,
-                       identity: Identity,
-                       extraHeaders: Seq[HttpHeader] = Nil)
-                      (assertResponse: (A, HttpResponse) => Assertion)
-                      (implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
-      def onFail(e: Throwable): Assertion = fail(s"Something went wrong while processing the response for url: $url with identity $identity", e)
+    def sparqlQuery[A](url: String, query: String, identity: Identity, extraHeaders: Seq[HttpHeader] = Nil)(
+        assertResponse: (A, HttpResponse) => Assertion
+    )(implicit um: FromEntityUnmarshaller[A]): Task[Assertion] = {
+      def onFail(e: Throwable): Assertion =
+        fail(s"Something went wrong while processing the response for url: $url with identity $identity", e)
       request(
         POST,
         url,
@@ -188,14 +175,15 @@ object HttpClientDsl extends HttpClientDsl {
       )
     }
 
-    def requestJson[A, R](method: HttpMethod,
-                          url: String,
-                          body: Option[Json],
-                          identity: Identity,
-                          f: (A, HttpResponse) => R,
-                          handleError: Throwable => R,
-                          extraHeaders: Seq[HttpHeader])
-                         (implicit um: FromEntityUnmarshaller[A]): Task[R] =
+    def requestJson[A, R](
+        method: HttpMethod,
+        url: String,
+        body: Option[Json],
+        identity: Identity,
+        f: (A, HttpResponse) => R,
+        handleError: Throwable => R,
+        extraHeaders: Seq[HttpHeader]
+    )(implicit um: FromEntityUnmarshaller[A]): Task[R] =
       request(
         method,
         url,
@@ -204,50 +192,60 @@ object HttpClientDsl extends HttpClientDsl {
         (j: Json) => HttpEntity(ContentTypes.`application/json`, j.noSpaces),
         f,
         handleError,
-        extraHeaders)
+        extraHeaders
+      )
 
-    def request[A, B, R](method: HttpMethod,
-                         url: String,
-                         body: Option[B],
-                         identity: Identity,
-                         toEntity: B => HttpEntity.Strict,
-                         f: (A, HttpResponse) => R,
-                         handleError: Throwable => R,
-                         extraHeaders: Seq[HttpHeader])
-                        (implicit um: FromEntityUnmarshaller[A]): Task[R] =
+    def request[A, B, R](
+        method: HttpMethod,
+        url: String,
+        body: Option[B],
+        identity: Identity,
+        toEntity: B => HttpEntity.Strict,
+        f: (A, HttpResponse) => R,
+        handleError: Throwable => R,
+        extraHeaders: Seq[HttpHeader]
+    )(implicit um: FromEntityUnmarshaller[A]): Task[R] =
       httpClient(
         HttpRequest(
           method = method,
           uri = s"$deltaUrl$url",
           headers = identity match {
             case Anonymous => extraHeaders
-            case _ => tokensMap.get(identity) +: extraHeaders
+            case _         => tokensMap.get(identity) +: extraHeaders
           },
           entity = body.fold(HttpEntity.Empty)(toEntity)
         )
       ).flatMap { res =>
-        Task.deferFuture {
-          um(res.entity)(global, materializer)
-        }.map {
-          f(_, res)
-        }.onErrorHandleWith { e =>
-          for {
-            _   <- Task {
-              logger.error(s"Status ${res.status}", e)
-            }
-          } yield {
-            handleError(e)
+        Task
+          .deferFuture {
+            um(res.entity)(global, materializer)
           }
-        }
+          .map {
+            f(_, res)
+          }
+          .onErrorHandleWith { e =>
+            for {
+              _ <- Task {
+                logger.error(s"Status ${res.status}", e)
+              }
+            } yield {
+              handleError(e)
+            }
+          }
       }
 
-    def stream[A, B](url: String,
-                     nextUrl: A => Option[String],
-                     lens: A => B,
-                     identity: Identity,
-                     extraHeaders: Seq[HttpHeader] = jsonHeaders)
-                    (implicit um: FromEntityUnmarshaller[A]): Stream[Task, B] = {
-      def onFail(e: Throwable) = throw new IllegalStateException(s"Something went wrong while processing the response for url: $url with identity $identity", e)
+    def stream[A, B](
+        url: String,
+        nextUrl: A => Option[String],
+        lens: A => B,
+        identity: Identity,
+        extraHeaders: Seq[HttpHeader] = jsonHeaders
+    )(implicit um: FromEntityUnmarshaller[A]): Stream[Task, B] = {
+      def onFail(e: Throwable) =
+        throw new IllegalStateException(
+          s"Something went wrong while processing the response for url: $url with identity $identity",
+          e
+        )
       Stream.unfoldLoopEval[Task, String, B](url) { currentUrl =>
         requestJson[A, A](
           GET,
@@ -263,28 +261,30 @@ object HttpClientDsl extends HttpClientDsl {
       }
     }
 
-    def sseEvents(url: String,
-                  identity: Identity,
-                  initialLastEventId: UUID,
-                  take: Long = 100L,
-                  takeWithin: FiniteDuration = 30.seconds)
-                  (assertResponse: Seq[(Option[String], Option[Json])] => Assertion)
-    : Task[Assertion] = {
+    def sseEvents(
+        url: String,
+        identity: Identity,
+        initialLastEventId: UUID,
+        take: Long = 100L,
+        takeWithin: FiniteDuration = 30.seconds
+    )(assertResponse: Seq[(Option[String], Option[Json])] => Assertion): Task[Assertion] = {
       def send(request: HttpRequest): Future[HttpResponse] =
         httpClient(request.addHeader(tokensMap.get(identity))).runToFuture
-      Task.deferFuture {
-        EventSource(s"$deltaUrl$url", send, initialLastEventId = Some(initialLastEventId.toString))
+      Task
+        .deferFuture {
+          EventSource(s"$deltaUrl$url", send, initialLastEventId = Some(initialLastEventId.toString))
           //drop resolver, views and storage events
-          .take(take)
-          .takeWithin(takeWithin)
-          .runWith(Sink.seq)
-      }.map { seq =>
-        assertResponse(
-          seq.map  { s =>
-            (s.eventType, parse(s.data).toOption)
-          }
-        )
-      }
+            .take(take)
+            .takeWithin(takeWithin)
+            .runWith(Sink.seq)
+        }
+        .map { seq =>
+          assertResponse(
+            seq.map { s =>
+              (s.eventType, parse(s.data).toOption)
+            }
+          )
+        }
     }
 
   }
