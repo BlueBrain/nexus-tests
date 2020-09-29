@@ -1,9 +1,9 @@
 {
   "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
-  "@id": "{kgBase}/resources/{projId}/_/logo.png",
+  "@id": "{deltaUri}/resources/{projId}/_/logo.png",
   "@type": "File",
   "_storage": {
-    "@id": "nxv:mys3storage",
+    "@id": "nxv:mys3storage2",
     "_rev": 1
   },
   "_bytes": 29625,
@@ -14,13 +14,13 @@
   "_filename": "logo.png",
   "_location": "{endpointBucket}/{key}",
   "_mediaType": "image/png",
-  "_incoming": "{kgBase}/files/{projId}/attachment:logo.png/incoming",
-  "_outgoing": "{kgBase}/files/{projId}/attachment:logo.png/outgoing",
-  "_self": "{kgBase}/files/{projId}/attachment:logo.png",
+  "_incoming": "{deltaUri}/files/{projId}/attachment:logo.png/incoming",
+  "_outgoing": "{deltaUri}/files/{projId}/attachment:logo.png/outgoing",
+  "_self": "{deltaUri}/files/{projId}/attachment:logo.png",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/file.json",
-  "_project": "{adminBase}/projects/{projId}",
+  "_project": "{deltaUri}/projects/{projId}",
   "_rev": 1,
   "_deprecated": false,
-  "_createdBy": "{iamBase}/realms/internal/users/service-account-test",
-  "_updatedBy": "{iamBase}/realms/internal/users/service-account-test"
+  "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+  "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}"
 }

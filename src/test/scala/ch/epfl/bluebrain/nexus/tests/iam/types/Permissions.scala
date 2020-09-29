@@ -5,7 +5,7 @@ import io.circe.Decoder
 import io.circe.generic.extras.Configuration
 import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
 
-final case class Permissions(permissions: Set[String], _rev: Long)
+final case class Permissions(permissions: Set[Permission], _rev: Long)
 
 object Permissions {
   @silent

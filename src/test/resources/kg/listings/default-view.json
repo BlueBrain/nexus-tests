@@ -11,15 +11,15 @@
         "https://bluebrain.github.io/nexus/vocabulary/ElasticSearchView",
         "https://bluebrain.github.io/nexus/vocabulary/View"
       ],
-      "_incoming": "{kgBase}/views/{project-label}/documents/incoming",
-      "_outgoing": "{kgBase}/views/{project-label}/documents/outgoing",
-      "_self": "{kgBase}/views/{project-label}/documents",
+      "_incoming": "{deltaUri}/views/{project-label}/documents/incoming",
+      "_outgoing": "{deltaUri}/views/{project-label}/documents/outgoing",
+      "_self": "{deltaUri}/views/{project-label}/documents",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}"
     },
     {
       "@id": "https://bluebrain.github.io/nexus/vocabulary/defaultSparqlIndex",
@@ -27,15 +27,15 @@
         "https://bluebrain.github.io/nexus/vocabulary/View",
         "https://bluebrain.github.io/nexus/vocabulary/SparqlView"
       ],
-      "_incoming": "{kgBase}/views/{project-label}/graph/incoming",
-      "_outgoing": "{kgBase}/views/{project-label}/graph/outgoing",
-      "_self": "{kgBase}/views/{project-label}/graph",
+      "_incoming": "{deltaUri}/views/{project-label}/graph/incoming",
+      "_outgoing": "{deltaUri}/views/{project-label}/graph/outgoing",
+      "_self": "{deltaUri}/views/{project-label}/graph",
       "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/view.json",
       "_project": "{project}",
       "_rev": 1,
       "_deprecated": false,
-      "_createdBy": "{iamBase}/realms/internal/users/{user}",
-      "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+      "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+      "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}"
     }
   ]
 }

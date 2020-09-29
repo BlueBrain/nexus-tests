@@ -10,8 +10,8 @@
       "@type": "CrossProjectEventStream",
       "project": "{org}/albums",
       "identities": {
-        "realm": "internal",
-        "subject": "{sub}"
+        "realm": "{realm}",
+        "subject": "{user}"
       }
     },
     {
@@ -19,7 +19,7 @@
       "@type": "RemoteProjectEventStream",
       "project": "{org2}/songs",
       "endpoint": "{remoteEndpoint}",
-      "token": "{remoteSourceToken}"
+      "token": "{token}"
     }
   ],
   "projections": [
@@ -132,6 +132,6 @@
   ],
   "rebuildStrategy": {
     "@type": "Interval",
-    "value": "5 minutes"
+    "value": "30 seconds"
   }
 }

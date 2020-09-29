@@ -2,106 +2,107 @@ package ch.epfl.bluebrain.nexus.tests.kg
 
 import java.util.regex.Pattern.quote
 
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers.Authorization
-import akka.http.scaladsl.model.sse.ServerSentEvent
-import akka.http.scaladsl.model.{HttpRequest => Req, _}
-import akka.stream.alpakka.sse.scaladsl.EventSource
-import akka.stream.scaladsl.Sink
-import ch.epfl.bluebrain.nexus.rdf.syntax._
+import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.EitherValues
-import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
+import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
+import ch.epfl.bluebrain.nexus.tests.Optics._
+import ch.epfl.bluebrain.nexus.tests.Tags.EventsTag
+import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.{Events, Organizations, Resources}
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, Identity, Realm}
 import com.fasterxml.uuid.Generators
+import com.typesafe.scalalogging.Logger
 import io.circe.Json
-import io.circe.parser._
-import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, Inspectors, OptionValues}
+import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inspectors
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class EventsSpec
-    extends BaseSpec
-    with Eventually
-    with Inspectors
-    with CancelAfterFailure
-    with OptionValues
-    with EitherValues {
+class EventsSpec extends BaseSpec with Inspectors {
 
-  private val http = Http()
+  private val logger = Logger[this.type]
 
-  val orgId     = genId()
-  val orgId2    = genId()
-  val projId    = genId()
-  val id        = s"$orgId/$projId"
-  val id2       = s"$orgId2/$projId"
-  val timestamp = Generators.timeBasedGenerator().generate()
+  private val orgId              = genId()
+  private val orgId2             = genId()
+  private val projId             = genId()
+  private val id                 = s"$orgId/$projId"
+  private val id2                = s"$orgId2/$projId"
+  private lazy val timestampUuid = Generators.timeBasedGenerator().generate()
+
+  private[tests] val testRealm  = Realm("events" + genString())
+  private[tests] val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private[tests] val BugsBunny  = UserCredentials(genString(), genString(), testRealm)
+  private[tests] val DaffyDuck  = UserCredentials(genString(), genString(), testRealm)
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    logger.info(s"TimestampUuid: $timestampUuid")
+    initRealm(
+      testRealm,
+      Identity.ServiceAccount,
+      testClient,
+      BugsBunny :: DaffyDuck :: Nil
+    ).runSyncUnsafe()
+    ()
+  }
 
   "creating projects" should {
 
-    "add necessary permissions for user" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create\",\"events/read\",\"resources/read")
-      ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val rev = acls._results.head._rev
-
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
-      }
+    "add necessary permissions for user" taggedAs EventsTag in {
+      aclDsl.addPermissions(
+        "/",
+        BugsBunny,
+        Set(Organizations.Create, Events.Read, Resources.Read)
+      )
     }
 
-    "succeed creating project 1 if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$id", headersJsonUser, kgProjectReqEntity(name = id)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+    "succeed creating project 1 if payload is correct" taggedAs EventsTag in {
+      for {
+        _ <- adminDsl.createOrganization(orgId, orgId, BugsBunny)
+        _ <- adminDsl.createProject(orgId, projId, kgDsl.projectJson(name = id), BugsBunny)
+      } yield succeed
     }
 
-    "succeed creating project 2 if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId2", headersJsonUser, orgReqEntity(orgId)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$id2", headersJsonUser, kgProjectReqEntity(name = id)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+    "succeed creating project 2 if payload is correct" taggedAs EventsTag in {
+      for {
+        _ <- adminDsl.createOrganization(orgId2, orgId2, BugsBunny)
+        _ <- adminDsl.createProject(orgId2, projId, kgDsl.projectJson(name = id2), BugsBunny)
+      } yield succeed
     }
 
-    "wait for default project events" in {
-      eventually {
-        val endpoints = List(
-          s"$kgBase/views/$id/nxv:defaultElasticSearchIndex",
-          s"$kgBase/views/$id/nxv:defaultSparqlIndex",
-          s"$kgBase/resolvers/$id/nxv:defaultInProject",
-          s"$kgBase/storages/$id/nxv:diskStorageDefault",
-          s"$kgBase/views/$id2/nxv:defaultElasticSearchIndex",
-          s"$kgBase/views/$id2/nxv:defaultSparqlIndex",
-          s"$kgBase/resolvers/$id2/nxv:defaultInProject",
-          s"$kgBase/storages/$id2/nxv:diskStorageDefault"
-        )
-        forAll(endpoints) { endopoint =>
-          cl(Req(GET, endopoint, headersJsonUser))
-            .mapResp(_.status shouldEqual StatusCodes.OK)
-        }
-      }
-    }
-
-    "wait for storages to be indexed" in {
+    "wait for default project events" taggedAs EventsTag in {
       val endpoints = List(
-        s"$kgBase/storages/$id",
-        s"$kgBase/storages/$id2"
+        s"/views/$id/nxv:defaultElasticSearchIndex",
+        s"/views/$id/nxv:defaultSparqlIndex",
+        s"/resolvers/$id/nxv:defaultInProject",
+        s"/storages/$id/nxv:diskStorageDefault",
+        s"/views/$id2/nxv:defaultElasticSearchIndex",
+        s"/views/$id2/nxv:defaultSparqlIndex",
+        s"/resolvers/$id2/nxv:defaultInProject",
+        s"/storages/$id2/nxv:diskStorageDefault"
       )
 
       forAll(endpoints) { endpoint =>
         eventually {
-          cl(Req(GET, endpoint, headersJsonUser))
-            .mapJson { (json, result) =>
-              result.status shouldEqual StatusCodes.OK
-              json.hcursor.downField("_total").as[Int].rightValue shouldEqual 1
-            }
+          cl.get[Json](endpoint, BugsBunny) { (_, response) =>
+            response.status shouldEqual StatusCodes.OK
+          }
+        }
+      }
+    }
+
+    "wait for storages to be indexed" taggedAs EventsTag in {
+      val endpoints = List(
+        s"/storages/$id",
+        s"/storages/$id2"
+      )
+
+      forAll(endpoints) { endpoint =>
+        eventually {
+          cl.get[Json](endpoint, BugsBunny) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            _total.getOption(json).value shouldEqual 1
+          }
         }
       }
     }
@@ -109,287 +110,178 @@ class EventsSpec
 
   "fetching events" should {
 
-    "add events to project" in {
-
+    "add events to project" taggedAs EventsTag in {
       //Created event
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
         Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
       )
 
-      cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+      for {
+        //Created event
+        _ <- cl.put[Json](s"/resources/$id/_/test-resource:1", payload, BugsBunny) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+        _ <- cl.put[Json](s"/resources/$id2/_/test-resource:1", payload, BugsBunny) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+        //Updated event
+        _ <- cl.put[Json](
+          s"/resources/$id/_/test-resource:1?rev=1",
+          jsonContentOf(
+            "/kg/resources/simple-resource.json",
+            Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
+          ),
+          BugsBunny
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.OK
+        }
+        //TagAdded event
+        _ <- cl.post[Json](
+          s"/resources/$id/_/test-resource:1/tags?rev=2",
+          jsonContentOf(
+            "/kg/resources/tag.json",
+            Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1")
+          ),
+          BugsBunny
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+        // Deprecated event
+        _ <- cl.delete[Json](s"/resources/$id/_/test-resource:1?rev=3", BugsBunny) { (_, response) =>
+          response.status shouldEqual StatusCodes.OK
+        }
+        //FileCreated event
+        _ <- cl.putAttachment[Json](
+          s"/files/$id/attachment.json",
+          contentOf("/kg/files/attachment.json"),
+          ContentTypes.`application/json`,
+          "attachment.json",
+          BugsBunny
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+        //FileUpdated event
+        _ <- cl.putAttachment[Json](
+          s"/files/$id/attachment.json?rev=1",
+          contentOf("/kg/files/attachment2.json"),
+          ContentTypes.`application/json`,
+          "attachment.json",
+          BugsBunny
+        ) { (_, response) =>
+          response.status shouldEqual StatusCodes.OK
+        }
+      } yield succeed
+    }
 
-      cl(Req(PUT, s"$kgBase/resources/$id2/_/test-resource:1", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
-      //Updated event
-      val updatePayload = jsonContentOf(
-        "/kg/resources/simple-resource.json",
-        Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
-      )
-      cl(Req(PUT, s"$kgBase/resources/$id/_/test-resource:1?rev=1", headersJsonUser, updatePayload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-
-      //TagAdded event
-      val tag1 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1"))
-
-      cl(Req(POST, s"$kgBase/resources/$id/_/test-resource:1/tags?rev=2", headersJsonUser, tag1.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
-      //Deprecated event
-      cl(Req(DELETE, s"$kgBase/resources/$id/_/test-resource:1?rev=3", headersJsonUser, updatePayload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-
-      //FileCreated event
-      val multipartForm =
-        Multipart
-          .FormData(
-            Multipart.FormData.BodyPart
-              .Strict(
-                "file",
-                HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment.json")),
-                Map("filename" -> "attachment.json")
-              )
+    "fetch resource events filtered by project" taggedAs EventsTag in {
+      for {
+        uuids <- adminDsl.getUuids(orgId, projId, BugsBunny)
+        _ <- cl.sseEvents(s"/resources/$id/events", BugsBunny, timestampUuid, take = 10L) { seq =>
+          val projectEvents = seq.drop(4)
+          projectEvents.size shouldEqual 6
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(
+            "Created",
+            "Updated",
+            "TagAdded",
+            "Deprecated",
+            "FileCreated",
+            "FileUpdated"
           )
-          .toEntity()
-
-      cl(Req(PUT, s"$kgBase/files/$id/attachment.json", headersJsonUser, multipartForm))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
-      //FileUpdated event
-      val multipartFormUpdate =
-        Multipart
-          .FormData(
-            Multipart.FormData.BodyPart
-              .Strict(
-                "file",
-                HttpEntity(ContentTypes.`application/json`, contentOf("/kg/files/attachment2.json")),
-                Map("filename" -> "attachment.json")
-              )
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}") -> uuids._1,
+              quote("{projectUuid}")      -> uuids._2
+            )
           )
-          .toEntity()
-
-      cl(Req(PUT, s"$kgBase/files/$id/attachment.json?rev=1", headersJsonUser, multipartFormUpdate))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-
+        }
+      } yield succeed
     }
 
-    "fetch resource events filtered by project" in {
-
-      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val projectEvents: Seq[ServerSentEvent] =
-        EventSource(s"$kgBase/resources/$id/events", send, initialLastEventId = Some(timestamp.toString))
-        //drop resolver, views and storage events
-          .drop(4)
-          .take(6)
-          .runWith(Sink.seq)
-          .futureValue
-
-      projectEvents.size shouldEqual 6
-      projectEvents
-        .map(_.getEventType().get())
-        .toList shouldEqual List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
-      val result = Json.arr(projectEvents.map(e => parse(e.getData()).rightValue): _*)
-
-      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
-        "/kg/events/events.json",
-        Map(
-          quote("{resources}")        -> s"$kgBase/resources/$id",
-          quote("{iamBase}")          -> config.iam.uri.toString(),
-          quote("{realm}")            -> config.iam.testRealm,
-          quote("{user}")             -> config.iam.testUserSub,
-          quote("{projectUuid}")      -> projectUuid,
-          quote("{organizationUuid}") -> organizationUuid
-        )
-      )
+    "fetch resource events filtered by organization 1" taggedAs EventsTag in {
+      for {
+        uuids <- adminDsl.getUuids(orgId, projId, BugsBunny)
+        _ <- cl.sseEvents(s"/resources/$orgId/events", BugsBunny, timestampUuid, take = 10L) { seq =>
+          val projectEvents = seq.drop(4)
+          projectEvents.size shouldEqual 6
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(
+            "Created",
+            "Updated",
+            "TagAdded",
+            "Deprecated",
+            "FileCreated",
+            "FileUpdated"
+          )
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}") -> uuids._1,
+              quote("{projectUuid}")      -> uuids._2
+            )
+          )
+        }
+      } yield succeed
     }
 
-    "fetch resource events filtered by organization 1" in {
-
-      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val projectEvents: Seq[ServerSentEvent] =
-        EventSource(s"$kgBase/resources/$orgId/events", send, initialLastEventId = Some(timestamp.toString))
-        //drop resolver, views and storage events
-          .drop(4)
-          .take(6)
-          .runWith(Sink.seq)
-          .futureValue
-
-      projectEvents.size shouldEqual 6
-      projectEvents
-        .map(_.getEventType().get())
-        .toList shouldEqual List("Created", "Updated", "TagAdded", "Deprecated", "FileCreated", "FileUpdated")
-      val result = Json.arr(projectEvents.map(e => parse(e.getData()).rightValue): _*)
-
-      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
-        "/kg/events/events.json",
-        Map(
-          quote("{resources}")        -> s"$kgBase/resources/$id",
-          quote("{iamBase}")          -> config.iam.uri.toString(),
-          quote("{realm}")            -> config.iam.testRealm,
-          quote("{user}")             -> config.iam.testUserSub,
-          quote("{projectUuid}")      -> projectUuid,
-          quote("{organizationUuid}") -> organizationUuid
-        )
-      )
+    "fetch resource events filtered by organization 2" taggedAs EventsTag in {
+      for {
+        uuids <- adminDsl.getUuids(orgId2, projId, BugsBunny)
+        _ <- cl.sseEvents(s"/resources/$orgId2/events", BugsBunny, timestampUuid, takeWithin = 2.seconds) { seq =>
+          val projectEvents = seq.drop(4)
+          projectEvents.size shouldEqual 1
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List("Created")
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events2.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")        -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}") -> uuids._1,
+              quote("{projectUuid}")      -> uuids._2
+            )
+          )
+        }
+      } yield succeed
     }
 
-    "fetch resource events filtered by organization 2" in {
-
-      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id2", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId2", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val projectEvents: Seq[ServerSentEvent] =
-        EventSource(s"$kgBase/resources/$orgId2/events", send, initialLastEventId = Some(timestamp.toString))
-        //drop resolver, views and storage events
-          .drop(4)
-          .takeWithin(3.seconds)
-          .runWith(Sink.seq)
-          .futureValue
-
-      projectEvents.size shouldEqual 1
-      projectEvents.map(_.getEventType().get()).toList shouldEqual List("Created")
-      val result = Json.arr(projectEvents.map(e => parse(e.getData()).rightValue): _*)
-
-      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
-        "/kg/events/events2.json",
-        Map(
-          quote("{resources}")        -> s"$kgBase/resources/$id",
-          quote("{iamBase}")          -> config.iam.uri.toString(),
-          quote("{realm}")            -> config.iam.testRealm,
-          quote("{user}")             -> config.iam.testUserSub,
-          quote("{projectUuid}")      -> projectUuid,
-          quote("{organizationUuid}") -> organizationUuid
-        )
-      )
-    }
-
-    "fetch global events" in {
-
-      val organizationUuid = cl(Req(GET, s"$adminBase/orgs/$orgId", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val organization2Uuid = cl(Req(GET, s"$adminBase/orgs/$orgId2", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val projectUuid = cl(Req(GET, s"$adminBase/projects/$id", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val project2Uuid = cl(Req(GET, s"$adminBase/projects/$id2", headersJsonUser)).jsonValue.asObject
-        .value("_uuid")
-        .value
-        .asString
-        .value
-
-      val events: Seq[ServerSentEvent] =
-        EventSource(s"$kgBase/resources/events", send, initialLastEventId = Some(timestamp.toString))
-          .drop(8)
-          .take(7)
-          .runWith(Sink.seq)
-          .futureValue
-
-      events.size shouldEqual 7
-      events.map(_.getEventType().get()).toList shouldEqual List(
-        "Created",
-        "Created",
-        "Updated",
-        "TagAdded",
-        "Deprecated",
-        "FileCreated",
-        "FileUpdated"
-      )
-      val result = Json.arr(events.map(e => parse(e.getData()).rightValue): _*)
-      removeLocation(removeInstants(result)) shouldEqual jsonContentOf(
-        "/kg/events/events-multi-project.json",
-        Map(
-          quote("{resources}")         -> s"$kgBase/resources/$id",
-          quote("{iamBase}")           -> config.iam.uri.toString(),
-          quote("{realm}")             -> config.iam.testRealm,
-          quote("{user}")              -> config.iam.testUserSub,
-          quote("{projectUuid}")       -> projectUuid,
-          quote("{project2Uuid}")      -> project2Uuid,
-          quote("{organizationUuid}")  -> organizationUuid,
-          quote("{organization2Uuid}") -> organization2Uuid
-        )
-      )
-
+    "fetch global events" taggedAs EventsTag in {
+      for {
+        uuids  <- adminDsl.getUuids(orgId, projId, BugsBunny)
+        uuids2 <- adminDsl.getUuids(orgId2, projId, BugsBunny)
+        _ <- cl.sseEvents(s"/resources/events", BugsBunny, timestampUuid, take = 15) { seq =>
+          println(seq)
+          val projectEvents = seq.drop(8)
+          projectEvents.size shouldEqual 7
+          projectEvents.flatMap(_._1) should contain theSameElementsInOrderAs List(
+            "Created",
+            "Created",
+            "Updated",
+            "TagAdded",
+            "Deprecated",
+            "FileCreated",
+            "FileUpdated"
+          )
+          val json = Json.arr(projectEvents.flatMap(_._2.map(events.filterFields)): _*)
+          json shouldEqual jsonContentOf(
+            "/kg/events/events-multi-project.json",
+            replacements(
+              BugsBunny,
+              quote("{resources}")         -> s"${config.deltaUri}/resources/$id",
+              quote("{organizationUuid}")  -> uuids._1,
+              quote("{projectUuid}")       -> uuids._2,
+              quote("{organization2Uuid}") -> uuids2._1,
+              quote("{project2Uuid}")      -> uuids2._2
+            )
+          )
+        }
+      } yield succeed
     }
   }
-
-  private def removeInstants(json: Json): Json =
-    json.hcursor
-      .withFocus(
-        _.mapArray(
-          _.map(
-            _.removeKeys("_instant", "_updatedAt")
-          )
-        )
-      )
-      .top
-      .value
-
-  private def removeLocation(json: Json): Json =
-    json.hcursor
-      .withFocus(
-        _.mapArray(
-          _.map { json =>
-            json.hcursor.downField("_attributes").focus match {
-              case Some(attr) =>
-                json.removeKeys("_attributes") deepMerge
-                  Json.obj("_attributes" -> attr.removeKeys("_location", "_uuid", "_path"))
-              case None => json
-            }
-          }
-        )
-      )
-      .top
-      .value
-
-  private def send(request: Req): Future[HttpResponse] =
-    http.singleRequest(request.addHeader(Authorization(credUser))).map { resp =>
-      if (!resp.status.isSuccess())
-        println(s"HTTP response when performing SSE request: status = '${resp.status}' ; req = ${request.uri}")
-      resp
-    }
 }

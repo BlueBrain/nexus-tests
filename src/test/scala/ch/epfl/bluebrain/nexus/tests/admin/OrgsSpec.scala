@@ -2,338 +2,319 @@ package ch.epfl.bluebrain.nexus.tests.admin
 
 import java.util.regex.Pattern.quote
 
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
+import akka.http.scaladsl.model.StatusCodes
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
 import ch.epfl.bluebrain.nexus.commons.test.EitherValues
-import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
+import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
+import ch.epfl.bluebrain.nexus.tests.Optics._
+import ch.epfl.bluebrain.nexus.tests.Tags.OrgsTag
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, ExpectedResponse, Identity, Realm}
 import io.circe.Json
-import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, OptionValues}
+import monix.execution.Scheduler.Implicits.global
 
-class OrgsSpec extends BaseSpec with OptionValues with CancelAfterFailure with Eventually with EitherValues {
+class OrgsSpec extends BaseSpec with EitherValues {
+
+  private val testRealm  = Realm("orgs" + genString())
+  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Fry        = UserCredentials(genString(), genString(), testRealm)
+  private val Leela      = UserCredentials(genString(), genString(), testRealm)
+
+  private[tests] val errorCtx = Map(quote("{error-context}") -> prefixesConfig.errorContext.toString)
+
+  import ch.epfl.bluebrain.nexus.tests.iam.types.Permission._
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    initRealm(
+      testRealm,
+      Identity.ServiceAccount,
+      testClient,
+      Fry :: Leela :: Nil
+    ).runSyncUnsafe()
+  }
+
+  private val UnauthorizedAccess = ExpectedResponse(
+    StatusCodes.Forbidden,
+    jsonContentOf("/iam/errors/unauthorized-access.json")
+  )
+
+  private val OrganizationConflict = ExpectedResponse(
+    StatusCodes.Conflict,
+    jsonContentOf("/admin/errors/org-incorrect-revision.json")
+  )
 
   "creating an organization" should {
-
-    "fail if the permissions are missing" in {
-      cl(Req(PUT, s"$adminBase/orgs/${genId()}", headersJsonUser, Json.obj().toEntity)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Forbidden
-        json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json")
-      }
+    "fail if the permissions are missing" taggedAs OrgsTag in {
+      adminDsl.createOrganization(
+        genId(),
+        "Description",
+        Fry,
+        Some(UnauthorizedAccess)
+      )
     }
 
-    "add necessary permissions for user" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create")
-      ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val rev = acls._results.head._rev
-
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
-      }
+    "add necessary permissions for user" taggedAs OrgsTag in {
+      aclDsl.addPermission(
+        "/",
+        Fry,
+        Organizations.Create
+      )
     }
 
     val id = genId()
-
-    "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Created
-        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
-      }
+    "succeed if payload is correct" taggedAs OrgsTag in {
+      adminDsl.createOrganization(
+        id,
+        "Description",
+        Fry
+      )
     }
 
-    "check if permissions have been created for user" in {
-      cl(Req(GET, s"$iamBase/acls/$id", headersJsonUser)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        acls._results.head.acl.head.permissions shouldEqual Set(
-          "acls/read",
-          "acls/write",
-          "files/write",
-          "organizations/create",
-          "organizations/read",
-          "organizations/write",
-          "projects/create",
-          "projects/read",
-          "projects/write",
-          "resolvers/write",
-          "resources/read",
-          "resources/write",
-          "schemas/write",
-          "views/write",
-          "views/query",
-          "storages/write",
-          "archives/write"
+    "check if permissions have been created for user" taggedAs OrgsTag in {
+      aclDsl.checkAdminAcls(s"/$id", Fry)
+    }
+
+    "fail if organization already exists" taggedAs OrgsTag in {
+      val duplicate = genId()
+
+      for {
+        _ <- adminDsl.createOrganization(
+          duplicate,
+          "Description",
+          Fry
         )
-
-      }
+        _ <- adminDsl.createOrganization(
+          duplicate,
+          "Description",
+          Fry,
+          Some(
+            ExpectedResponse(
+              StatusCodes.Conflict,
+              jsonContentOf(
+                "/admin/errors/org-already-exists.json",
+                Map(quote("{orgId}") -> duplicate)
+              )
+            )
+          )
+        )
+      } yield succeed
     }
-
-    "fail if organization already exists" in {
-      val id = genId()
-      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Created
-        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
-      }
-
-      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, orgReqEntity(id))).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/org-already-exists.json", Map(quote("{orgId}") -> id))
-      }
-
-    }
-
   }
 
   "fetching an organization" should {
-    val id     = genId()
-    val create = orgReqEntity(s"$id organization")
-    "fail if the permissions are missing" in {
-
-      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Created
-        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
-      }
-
-      cleanAcls
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Forbidden
-        json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
-      }
+    val id = genId()
+    "fail if the permissions are missing" taggedAs OrgsTag in {
+      for {
+        _ <- adminDsl.createOrganization(
+          id,
+          s"Description $id",
+          Fry
+        )
+        _ <- cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>
+          response.status shouldEqual StatusCodes.Forbidden
+          json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
+        }
+      } yield succeed
     }
 
-    "add orgs/read permissions for user" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/read")
-      ).toEntity
-
-      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersServiceAccount, json))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
+    "add orgs/read permissions for user" taggedAs OrgsTag in {
+      aclDsl.addPermission(
+        "/",
+        Leela,
+        Organizations.Read
+      )
     }
 
-    "succeed if organization exists" in {
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, s"$id organization", 1L, id)
+    "succeed if organization exists" taggedAs OrgsTag in {
+      cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        admin.validate(json, "Organization", "orgs", id, s"Description $id", 1L, id)
       }
     }
 
-    "fetch organization by UUID" in {
-      cl(Req(GET, s"$adminBase/orgs/$id", headersUser)).mapJson { (orgJson, _) =>
-        val orgUuid = orgJson.hcursor.get[String]("_uuid").rightValue
-        cl(Req(GET, s"$adminBase/orgs/$orgUuid/", headersUser)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json shouldEqual orgJson
+    "fetch organization by UUID" taggedAs OrgsTag in {
+      cl.get[Json](s"/orgs/$id", Leela) { (jsonById, _) =>
+        runTask {
+          val orgUuid = _uuid.getOption(jsonById).value
+
+          cl.get[Json](s"/orgs/$orgUuid", Leela) { (jsonByUuid, response) =>
+            response.status shouldEqual StatusCodes.OK
+            jsonByUuid shouldEqual jsonById
+          }
         }
       }
     }
 
-    "return not found when fetching a non existing revision of an organizations" in {
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headersJsonUser)).mapResp { result =>
-        result.status shouldEqual StatusCodes.NotFound
+    "return not found when fetching a non existing revision of an organizations" taggedAs OrgsTag in {
+      cl.get[Json](s"/orgs/$id?rev=3", Leela) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
       }
     }
 
     val nonExistent = genId()
-    "add orgs/read permissions for non-existing organization" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/read")
-      ).toEntity
-      cl(Req(GET, s"$iamBase/acls/$nonExistent", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val rev = acls._results.headOption.map(_._rev).getOrElse(0)
-
-        cl(Req(PATCH, s"$iamBase/acls/$nonExistent?rev=$rev", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
-      }
-
+    "add orgs/read permissions for non-existing organization" taggedAs OrgsTag in {
+      aclDsl.addPermission(
+        s"/$nonExistent",
+        Leela,
+        Organizations.Create
+      )
     }
 
-    "return not found when fetching a non existing organization" in {
-      cl(Req(uri = s"$adminBase/orgs/$nonExistent", headers = headersJsonUser)).mapResp { result =>
-        result.status shouldEqual StatusCodes.NotFound
+    "return not found when fetching a non existing organization" taggedAs OrgsTag in {
+      cl.get[Json](s"/orgs/$nonExistent", Leela) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
       }
     }
   }
 
   "updating an organization" should {
+    val id          = genString()
+    val description = s"$id organization"
 
-    val id     = genId()
-    val create = orgReqEntity(s"$id organization")
-
-    "add orgs/create permissions for user" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create")
-      ).toEntity
-
-      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersServiceAccount, json))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
+    "fail if the permissions are missing" taggedAs OrgsTag in {
+      adminDsl.createOrganization(
+        id,
+        description,
+        Leela,
+        Some(UnauthorizedAccess)
+      )
     }
 
-    "create organization" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Created
-        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
-      }
+    "add orgs/create permissions for user" taggedAs OrgsTag in {
+      aclDsl.addPermission(
+        s"/$id",
+        Leela,
+        Organizations.Create
+      )
     }
 
-    "fail if the permissions are missing" in {
-      cleanAcls
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headersJsonUser, create)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Forbidden
-        json shouldEqual jsonContentOf("/iam/errors/unauthorized-access.json", errorCtx)
-      }
-
+    "create organization" taggedAs OrgsTag in {
+      adminDsl.createOrganization(
+        id,
+        description,
+        Leela
+      )
     }
 
-    "add orgs/write permissions for user" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/write\",\"organizations/read")
-      ).toEntity
-      cl(Req(PUT, s"$iamBase/acls/$id", headersServiceAccount, json)).mapResp { result =>
-        result.status shouldEqual StatusCodes.Created
-      }
-    }
-
-    "fail when wrong revision is provided" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=4", headersJsonUser, create)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Conflict
-        json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json", errorCtx)
-      }
+    "fail when wrong revision is provided" taggedAs OrgsTag in {
+      adminDsl.updateOrganization(
+        id,
+        description,
+        Leela,
+        4L,
+        Some(OrganizationConflict)
+      )
     }
 
     val nonExistent = genId()
-    "add orgs/read permissions for non-existing organization" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/write")
-      ).toEntity
-      cl(Req(GET, s"$iamBase/acls/$nonExistent", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val rev = acls._results.headOption.map(_._rev).getOrElse(0)
-
-        cl(Req(PATCH, s"$iamBase/acls/$nonExistent?rev=$rev", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
-      }
-
+    "add orgs/write permissions for non-existing organization" taggedAs OrgsTag in {
+      aclDsl.addPermission(
+        s"/$nonExistent",
+        Leela,
+        Organizations.Write
+      )
     }
 
-    "fail when organization does not exist" in {
-      cl(Req(PUT, s"$adminBase/orgs/$nonExistent?rev=1", headersJsonUser, create)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.NotFound
-        json shouldEqual jsonContentOf("/admin/errors/not-exists.json", Map(quote("{orgId}") -> nonExistent))
-      }
+    "fail when organization does not exist" taggedAs OrgsTag in {
+      val notFound = ExpectedResponse(
+        StatusCodes.NotFound,
+        jsonContentOf("/admin/errors/not-exists.json", Map(quote("{orgId}") -> nonExistent))
+      )
+      adminDsl.updateOrganization(
+        nonExistent,
+        description,
+        Leela,
+        1L,
+        Some(notFound)
+      )
     }
 
-    "succeed and fetch revisions" in {
-
-      val updatedName = s"$id organization update 1"
-      val update      = orgReqEntity(updatedName)
-
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=1", headersJsonUser, update)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeMetadata() shouldEqual createRespJson(id, 2L, "orgs", "Organization")
-      }
-
+    "succeed and fetch revisions" taggedAs OrgsTag in {
+      val updatedName  = s"$id organization update 1"
       val updatedName2 = s"$id organization update 2"
-      val update2      = orgReqEntity(updatedName2)
 
-      cl(Req(PUT, s"$adminBase/orgs/$id?rev=2", headersJsonUser, update2)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeMetadata() shouldEqual createRespJson(id, 3L, "orgs", "Organization")
-
-      }
-
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3, id)
-
-      }
-
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=3", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, updatedName2, 3L, id)
-
-      }
-
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=2", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, updatedName, 2L, id)
-
-      }
-
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, s"$id organization", 1L, id)
-      }
+      for {
+        _ <- adminDsl.updateOrganization(
+          id,
+          updatedName,
+          Leela,
+          1L
+        )
+        _ <- adminDsl.updateOrganization(
+          id,
+          updatedName2,
+          Leela,
+          2L
+        )
+        _ <- cl.get[Json](s"/orgs/$id", Leela) { (lastVersion, response) =>
+          runTask {
+            response.status shouldEqual StatusCodes.OK
+            admin.validate(lastVersion, "Organization", "orgs", id, updatedName2, 3L, id)
+            cl.get[Json](s"/orgs/$id?rev=3", Leela) { (thirdVersion, response) =>
+              response.status shouldEqual StatusCodes.OK
+              thirdVersion shouldEqual lastVersion
+            }
+          }
+        }
+        _ <- cl.get[Json](s"/orgs/$id?rev=2", Leela) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validate(json, "Organization", "orgs", id, updatedName, 2L, id)
+        }
+        _ <- cl.get[Json](s"/orgs/$id?rev=1", Leela) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validate(json, "Organization", "orgs", id, s"$id organization", 1L, id)
+        }
+      } yield succeed
     }
-
   }
 
   "deprecating an organization" should {
-    val id     = genId()
-    val name   = genString()
-    val create = orgReqEntity(name)
+    val id   = genId()
+    val name = genString()
 
-    "add orgs/create permissions for user" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create")
-      ).toEntity
-
-      cl(Req(PATCH, s"$iamBase/acls/$id?rev=0", headersServiceAccount, json))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
+    "add orgs/create permissions for user" taggedAs OrgsTag in {
+      aclDsl.addPermission(
+        s"/$id",
+        Leela,
+        Organizations.Create
+      )
     }
 
-    "create the organization" in {
-      cl(Req(PUT, s"$adminBase/orgs/$id", headersJsonUser, create)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Created
-        json.removeMetadata() shouldEqual createRespJson(id, 1L, "orgs", "Organization")
-      }
+    "create the organization" taggedAs OrgsTag in {
+      adminDsl.createOrganization(
+        id,
+        name,
+        Leela
+      )
     }
 
-    "fail when wrong revision is provided" in {
-
-      cl(Req(DELETE, s"$adminBase/orgs/$id?rev=4", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.Conflict
+    "fail when wrong revision is provided" taggedAs OrgsTag in {
+      cl.delete[Json](s"/orgs/$id?rev=4", Leela) { (json, response) =>
+        response.status shouldEqual StatusCodes.Conflict
         json shouldEqual jsonContentOf("/admin/errors/org-incorrect-revision.json")
       }
     }
 
-    "fail when revision is not provided" in {
-      cl(Req(DELETE, s"$adminBase/orgs/$id", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.BadRequest
+    "fail when revision is not provided" taggedAs OrgsTag in {
+      cl.delete[Json](s"/orgs/$id", Leela) { (json, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
         json shouldEqual jsonContentOf("/admin/errors/rev-not-provided.json")
       }
     }
 
-    "succeed if organization exists" in {
-      cl(Req(DELETE, s"$adminBase/orgs/$id?rev=1", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeMetadata() shouldEqual createRespJson(id, 2L, "orgs", "Organization", true)
-      }
-
-      cl(Req(uri = s"$adminBase/orgs/$id", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, name, 2L, id, true)
-
-      }
-
-      cl(Req(uri = s"$adminBase/orgs/$id?rev=1", headers = headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        validateAdminResource(json, "Organization", "orgs", id, name, 1L, id)
-
-      }
+    "succeed if organization exists" taggedAs OrgsTag in {
+      for {
+        _ <- adminDsl.deprecateOrganization(id, Leela)
+        _ <- cl.get[Json](s"/orgs/$id", Leela) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validate(json, "Organization", "orgs", id, name, 2L, id, deprecated = true)
+        }
+        _ <- cl.get[Json](s"/orgs/$id?rev=1", Leela) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          admin.validate(json, "Organization", "orgs", id, name, 1L, id)
+        }
+      } yield succeed
     }
   }
 }

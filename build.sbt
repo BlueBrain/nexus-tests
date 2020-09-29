@@ -27,33 +27,41 @@ scalafmt: {
 import org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings
 
 // Dependency versions
-val ammoniteVersion   = "1.8.2"
-val akkaVersion       = "2.6.0"
-val akkaHttpVersion   = "10.1.10"
-val alpakkaVersion    = "1.1.2"
-val catsVersion       = "2.0.0"
-val circeVersion      = "0.12.1"
-val mockitoVersion    = "2.22.0"
-val pureconfigVersion = "0.12.1"
-val scalaTestVersion  = "3.1.0"
-val uuidGenVersion    = "3.2.0"
-val awsSdkVersion     = "2.10.23"
+val ammoniteVersion     = "1.8.2"
+val akkaVersion         = "2.6.0"
+val akkaHttpVersion     = "10.1.10"
+val alpakkaVersion      = "1.1.2"
+val catsVersion         = "2.0.0"
+val circeVersion        = "0.13.0"
+val fs2Version          = "2.4.4"
+val logbackVersion      = "1.2.3"
+val monixBioVersion     = "1.0.0"
+val pureconfigVersion   = "0.12.1"
+val scalaLoggingVersion = "3.9.2"
+val scalaTestVersion    = "3.1.0"
+val uuidGenVersion      = "3.2.0"
+val awsSdkVersion       = "2.10.23"
 
 // Nexus dependency versions
 val rdfVersion     = "0.5.2"
 val commonsVersion = "0.20.0"
 
 // Dependency modules
-lazy val akkaHttpCore    = "com.typesafe.akka"      %% "akka-http-core"          % akkaHttpVersion
-lazy val akkaHttpTestKit = "com.typesafe.akka"      %% "akka-http-testkit"       % akkaHttpVersion
-lazy val akkaStream      = "com.typesafe.akka"      %% "akka-stream"             % akkaVersion
-lazy val akkaTestKit     = "com.typesafe.akka"      %% "akka-testkit"            % akkaVersion
-lazy val pureconfig      = "com.github.pureconfig"  %% "pureconfig"              % pureconfigVersion
-lazy val scalaTest       = "org.scalatest"          %% "scalatest"               % scalaTestVersion
-lazy val slf4j           = "com.typesafe.akka"      %% "akka-slf4j"              % akkaVersion
-lazy val alpakkaSSE      = "com.lightbend.akka"     %% "akka-stream-alpakka-sse" % alpakkaVersion
-lazy val uuidGen         = "com.fasterxml.uuid"     % "java-uuid-generator"      % uuidGenVersion
-lazy val awsSdk          = "software.amazon.awssdk" % "s3"                       % awsSdkVersion
+lazy val akkaHttpCore    = "com.typesafe.akka"          %% "akka-http-core"          % akkaHttpVersion
+lazy val akkaHttpTestKit = "com.typesafe.akka"          %% "akka-http-testkit"       % akkaHttpVersion
+lazy val akkaStream      = "com.typesafe.akka"          %% "akka-stream"             % akkaVersion
+lazy val akkaTestKit     = "com.typesafe.akka"          %% "akka-testkit"            % akkaVersion
+lazy val circeOptics     = "io.circe"                   %% "circe-optics"            % circeVersion
+lazy val fs2             = "co.fs2"                     %% "fs2-core"                % fs2Version
+lazy val logback         = "ch.qos.logback"             % "logback-classic"          % logbackVersion
+lazy val monixBio        = "io.monix"                   %% "monix-bio"               % monixBioVersion
+lazy val pureconfig      = "com.github.pureconfig"      %% "pureconfig"              % pureconfigVersion
+lazy val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"           % scalaLoggingVersion
+lazy val scalaTest       = "org.scalatest"              %% "scalatest"               % scalaTestVersion
+lazy val slf4j           = "com.typesafe.akka"          %% "akka-slf4j"              % akkaVersion
+lazy val alpakkaSSE      = "com.lightbend.akka"         %% "akka-stream-alpakka-sse" % alpakkaVersion
+lazy val uuidGen         = "com.fasterxml.uuid"         % "java-uuid-generator"      % uuidGenVersion
+lazy val awsSdk          = "software.amazon.awssdk"     % "s3"                       % awsSdkVersion
 
 // Nexus dependency modules
 lazy val commonsCore = "ch.epfl.bluebrain.nexus" %% "commons-core" % commonsVersion
@@ -62,7 +70,8 @@ lazy val rdf         = "ch.epfl.bluebrain.nexus" %% "rdf"          % rdfVersion
 
 lazy val root = project
   .in(file("."))
-  .settings(noPublish)
+  .enablePlugins(DockerComposePlugin)
+  .settings(noPublish ++ dockerCompose)
   .settings(
     name                  := "tests",
     moduleName            := "tests",
@@ -70,7 +79,12 @@ lazy val root = project
     libraryDependencies ++= Seq(
       akkaHttpCore,
       akkaStream,
+      circeOptics,
+      fs2,
+      logback,
+      monixBio,
       pureconfig,
+      scalaLogging,
       commonsCore,
       rdf,
       //ammoniteOps,
@@ -89,6 +103,9 @@ lazy val root = project
 /* ********************************************************
  ******************** Grouped Settings ********************
  **********************************************************/
+lazy val dockerCompose = Seq(
+  composeFile := "docker/docker-compose-cassandra.yml"
+)
 
 lazy val noPublish = Seq(
   publishLocal    := {},

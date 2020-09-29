@@ -1,6 +1,6 @@
 {
   "@context": "https://bluebrain.github.io/nexus/contexts/resource.json",
-  "@id": "{kgBase}/resources/{projId}/_/attachment2",
+  "@id": "{deltaUri}/resources/{projId}/_/attachment2",
   "@type": "File",
   "_storage": {
     "@id": "{storageId}",
@@ -13,13 +13,13 @@
   },
   "_filename": "attachment2",
   "_mediaType": "text/plain; charset=UTF-8",
-  "_incoming": "{kgBase}/files/{projId}/attachment:attachment2/incoming",
-  "_outgoing": "{kgBase}/files/{projId}/attachment:attachment2/outgoing",
-  "_self": "{kgBase}/files/{projId}/attachment:attachment2",
+  "_incoming": "{deltaUri}/files/{projId}/attachment:attachment2/incoming",
+  "_outgoing": "{deltaUri}/files/{projId}/attachment:attachment2/outgoing",
+  "_self": "{deltaUri}/files/{projId}/attachment:attachment2",
   "_constrainedBy": "https://bluebrain.github.io/nexus/schemas/file.json",
   "_project": "{project}",
   "_rev": 1,
   "_deprecated": false,
-  "_createdBy": "{iamBase}/realms/internal/users/{user}",
-  "_updatedBy": "{iamBase}/realms/internal/users/{user}"
+  "_createdBy": "{deltaUri}/realms/{realm}/users/{user}",
+  "_updatedBy": "{deltaUri}/realms/{realm}/users/{user}"
 }

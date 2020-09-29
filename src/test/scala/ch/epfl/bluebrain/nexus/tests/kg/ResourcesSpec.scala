@@ -3,20 +3,26 @@ package ch.epfl.bluebrain.nexus.tests.kg
 import java.net.URLEncoder
 import java.util.regex.Pattern.quote
 
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.{StatusCodes, HttpRequest => Req}
-import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
-import akka.stream.scaladsl.{Sink, Source}
-import ch.epfl.bluebrain.nexus.rdf.syntax._
+import akka.http.scaladsl.model.StatusCodes
+import cats.implicits._
 import ch.epfl.bluebrain.nexus.commons.http.JsonLdCirceSupport._
-import ch.epfl.bluebrain.nexus.commons.test.EitherValues
-import ch.epfl.bluebrain.nexus.tests.BaseSpec
-import ch.epfl.bluebrain.nexus.tests.iam.types.AclListing
+import ch.epfl.bluebrain.nexus.commons.test.{CirceEq, EitherValues}
+import ch.epfl.bluebrain.nexus.tests.HttpClientDsl._
+import ch.epfl.bluebrain.nexus.tests.Identity.UserCredentials
+import ch.epfl.bluebrain.nexus.tests.Optics._
+import ch.epfl.bluebrain.nexus.tests.Tags.ResourcesTag
+import ch.epfl.bluebrain.nexus.tests.iam.types.Permission.Organizations
+import ch.epfl.bluebrain.nexus.tests.{BaseSpec, Identity, Realm}
 import io.circe.Json
-import org.scalatest.concurrent.Eventually
-import org.scalatest.{CancelAfterFailure, Inspectors}
+import monix.bio.Task
+import monix.execution.Scheduler.Implicits.global
 
-class ResourcesSpec extends BaseSpec with Eventually with Inspectors with CancelAfterFailure with EitherValues {
+class ResourcesSpec extends BaseSpec with EitherValues with CirceEq {
+
+  private val testRealm  = Realm("resources" + genString())
+  private val testClient = Identity.ClientCredentials(genString(), genString(), testRealm)
+  private val Rick       = UserCredentials(genString(), genString(), testRealm)
+  private val Morty      = UserCredentials(genString(), genString(), testRealm)
 
   private val orgId   = genId()
   private val projId1 = genId()
@@ -24,134 +30,119 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
   private val id1     = s"$orgId/$projId1"
   private val id2     = s"$orgId/$projId2"
 
-  "fetching information" should {
-    "return the software version" in {
-      cl(Req(GET, config.kg.version)).mapJson { (json, result) =>
-        json.asObject.value.keys.toSet shouldEqual
-          Set("delta", "storage", "elasticsearch", "blazegraph")
-        result.status shouldEqual StatusCodes.OK
-      }
-    }
-
-    "return the cassandra and cluster status" in {
-      cl(Req(GET, config.kg.status)).mapJson { (json, result) =>
-        json shouldEqual
-          Json.obj(
-            "cluster"       -> Json.fromString("up"),
-            "cassandra"     -> Json.fromString("up"),
-            "storage"       -> Json.fromString("up"),
-            "elasticsearch" -> Json.fromString("up"),
-            "blazegraph"    -> Json.fromString("up")
-          )
-        result.status shouldEqual StatusCodes.OK
-      }
-    }
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    initRealm(
+      testRealm,
+      Identity.ServiceAccount,
+      testClient,
+      Rick :: Morty :: Nil
+    ).runSyncUnsafe()
   }
 
   "creating projects" should {
 
-    "add necessary permissions for user" in {
-      val json = jsonContentOf(
-        "/iam/add.json",
-        replSub + (quote("{perms}") -> "organizations/create")
-      ).toEntity
-      cl(Req(GET, s"$iamBase/acls/", headersServiceAccount)).mapDecoded[AclListing] { (acls, result) =>
-        result.status shouldEqual StatusCodes.OK
-        val rev = acls._results.head._rev
-
-        cl(Req(PATCH, s"$iamBase/acls/?rev=$rev", headersServiceAccount, json))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
-      }
+    "add necessary permissions for user" taggedAs ResourcesTag in {
+      aclDsl.addPermission(
+        "/",
+        Rick,
+        Organizations.Create
+      )
     }
 
-    "succeed if payload is correct" in {
-      cl(Req(PUT, s"$adminBase/orgs/$orgId", headersJsonUser, orgReqEntity(orgId)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$id1", headersJsonUser, kgProjectReqEntity(name = id1)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(PUT, s"$adminBase/projects/$id2", headersJsonUser, kgProjectReqEntity(name = id2)))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+    "succeed if payload is correct" taggedAs ResourcesTag in {
+      for {
+        _ <- adminDsl.createOrganization(orgId, orgId, Rick)
+        _ <- adminDsl.createProject(orgId, projId1, kgDsl.projectJson(name = id1), Rick)
+        _ <- adminDsl.createProject(orgId, projId2, kgDsl.projectJson(name = id2), Rick)
+      } yield succeed
     }
   }
 
   "adding schema" should {
-    "create a schema" in {
+    "create a schema" taggedAs ResourcesTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema.json")
 
-      eventually {
-        cl(Req(PUT, s"$kgBase/schemas/$id1/test-schema", headersJsonUser, schemaPayload.toEntity))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
+      cl.put[Json](s"/schemas/$id1/test-schema", schemaPayload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
       }
     }
-    "creating a schema with property shape" in {
+
+    "creating a schema with property shape" taggedAs ResourcesTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-prop-shape.json")
 
-      cl(Req(POST, s"$kgBase/schemas/$id1", headersJsonUser, schemaPayload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+      cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
+      }
     }
 
-    "creating a schema that imports the property shape schema" in {
+    "creating a schema that imports the property shape schema" taggedAs ResourcesTag in {
       val schemaPayload = jsonContentOf("/kg/schemas/simple-schema-imports.json")
 
       eventually {
-        cl(Req(POST, s"$kgBase/schemas/$id1", headersJsonUser, schemaPayload.toEntity))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
+        cl.post[Json](s"/schemas/$id1", schemaPayload, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
       }
     }
   }
 
   "creating a resource" should {
-    "succeed if the payload is correct" in {
+    "succeed if the payload is correct" taggedAs ResourcesTag in {
       val payload =
         jsonContentOf(
           "/kg/resources/simple-resource.json",
-          Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
-        )
-
-      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-
-      val id2 = URLEncoder.encode("https://dev.nexus.test.com/test-schema-imports", "UTF-8")
-
-      val payload2 =
-        jsonContentOf(
-          "/kg/resources/simple-resource.json",
-          Map(quote("{priority}") -> "5", quote("{resourceId}") -> "10")
-        )
-
-      cl(Req(PUT, s"$kgBase/resources/$id1/$id2/test-resource:10", headersJsonUser, payload2.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "fetch the payload wih metadata" in {
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1", headersJsonUser)).mapJson { (json, result) =>
-        val expected = jsonContentOf(
-          "/kg/resources/simple-resource-response.json",
           Map(
-            quote("{priority}")  -> "5",
-            quote("{rev}")       -> "1",
-            quote("{resources}") -> s"$kgBase/resources/$id1",
-            quote("{project}")   -> s"$adminBase/projects/$id1",
-            quote("{iamBase}")   -> config.iam.uri.toString(),
-            quote("{realm}")     -> config.iam.testRealm,
-            quote("{user}")      -> config.iam.testUserSub
+            quote("{priority}")   -> "5",
+            quote("{resourceId}") -> "1"
           )
         )
-        result.status shouldEqual StatusCodes.OK
-        json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+
+      val id2 = URLEncoder.encode("https://dev.nexus.test.com/test-schema-imports", "UTF-8")
+      val payload2 = jsonContentOf(
+        "/kg/resources/simple-resource.json",
+        Map(
+          quote("{priority}")   -> "5",
+          quote("{resourceId}") -> "10"
+        )
+      )
+
+      for {
+        _ <- cl.put[Json](s"/resources/$id1/test-schema/test-resource:1", payload, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+        _ <- cl.put[Json](s"/resources/$id1/$id2/test-resource:10", payload2, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+      } yield succeed
+    }
+
+    "fetch the payload wih metadata" taggedAs ResourcesTag in {
+      cl.get[Json](s"/resources/$id1/test-schema/test-resource:1", Rick) { (json, response) =>
+        val expected = jsonContentOf(
+          "/kg/resources/simple-resource-response.json",
+          replacements(
+            Rick,
+            quote("{priority}")  -> "5",
+            quote("{rev}")       -> "1",
+            quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+            quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
+          )
+        )
+        response.status shouldEqual StatusCodes.OK
+        filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
       }
     }
 
-    "fetch the original payload" in {
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1/source", headersJsonUser)).mapJson {
-        (json, result) =>
-          val expected =
-            jsonContentOf(
-              "/kg/resources/simple-resource.json",
-              Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
-            )
-          result.status shouldEqual StatusCodes.OK
-          json should equalIgnoreArrayOrder(expected)
+    "fetch the original payload" taggedAs ResourcesTag in {
+      cl.get[Json](s"/resources/$id1/test-schema/test-resource:1/source", Rick) { (json, response) =>
+        val expected =
+          jsonContentOf(
+            "/kg/resources/simple-resource.json",
+            Map(quote("{priority}") -> "5", quote("{resourceId}") -> "1")
+          )
+        response.status shouldEqual StatusCodes.OK
+        json should equalIgnoreArrayOrder(expected)
       }
     }
   }
@@ -160,376 +151,373 @@ class ResourcesSpec extends BaseSpec with Eventually with Inspectors with Cancel
     val resolverPayload =
       jsonContentOf(
         "/kg/resources/cross-project-resolver.json",
-        Map(quote("{project}") -> id1, quote("{user}") -> config.iam.testUserSub)
+        replacements(
+          Rick,
+          quote("{project}") -> id1
+        )
       )
-    "fail if the schema doesn't exist in the project" in {
+
+    "fail if the schema doesn't exist in the project" taggedAs ResourcesTag in {
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
-        Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
+        Map(
+          quote("{priority}")   -> "3",
+          quote("{resourceId}") -> "1"
+        )
       )
 
-      cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.NotFound)
+      cl.put[Json](s"/resources/$id2/test-schema/test-resource:1", payload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.NotFound
+      }
     }
 
-    "fail to create a cross-project-resolver for proj2 if identities are missing" in {
-
-      cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.removeKeys("identities").toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.BadRequest)
+    "fail to create a cross-project-resolver for proj2 if identities are missing" taggedAs ResourcesTag in {
+      cl.post[Json](s"/resolvers/$id2", filterKey("identities")(resolverPayload), Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
+      }
     }
 
-    "create a cross-project-resolver for proj2" in {
-
-      cl(Req(POST, s"$kgBase/resolvers/$id2", headersJsonUser, resolverPayload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+    "create a cross-project-resolver for proj2" taggedAs ResourcesTag in {
+      cl.post[Json](s"/resolvers/$id2", resolverPayload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
+      }
     }
 
-    "update a cross-project-resolver for proj2" in {
+    "update a cross-project-resolver for proj2" taggedAs ResourcesTag in {
       val updated = resolverPayload deepMerge Json.obj("priority" -> Json.fromInt(20))
       eventually {
-        cl(Req(PUT, s"$kgBase/resolvers/$id2/example-id?rev=1", headersJsonUser, updated.toEntity))
-          .mapResp(_.status shouldEqual StatusCodes.OK)
+        cl.put[Json](s"/resolvers/$id2/example-id?rev=1", updated, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.OK
+        }
       }
     }
 
-    "fetch the update" in {
-      val expected =
-        jsonContentOf(
-          "/kg/resources/cross-project-resolver-updated-resp.json",
-          Map(
-            quote("{project}")        -> id1,
-            quote("{resources}")      -> s"$kgBase/resolvers/$id2",
-            quote("{project-parent}") -> s"$adminBase/projects/$id2",
-            quote("{iamBase}")        -> config.iam.uri.toString(),
-            quote("{realm}")          -> config.iam.testRealm,
-            quote("{user}")           -> config.iam.testUserSub
-          )
-        )
-      cl(Req(GET, s"$kgBase/resolvers/$id2/example-id", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
-      }
-    }
-
-    "wait for the cross-project resolver to be indexed" in {
+    "fetch the update" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
-        "/kg/resources/cross-project-resolver-list.json",
-        Map(
-          quote("{kgBase}")  -> s"$kgBase",
-          quote("{projId}")  -> s"$id2",
-          quote("{project}") -> s"$adminBase/projects/$id2",
-          quote("{iamBase}") -> config.iam.uri.toString(),
-          quote("{realm}")   -> config.iam.testRealm,
-          quote("{user}")    -> config.iam.testUserSub
+        "/kg/resources/cross-project-resolver-updated-resp.json",
+        replacements(
+          Rick,
+          quote("{project}")        -> id1,
+          quote("{resources}")      -> s"${config.deltaUri}/resolvers/$id2",
+          quote("{project-parent}") -> s"${config.deltaUri}/projects/$id2"
         )
       )
+
+      cl.get[Json](s"/resolvers/$id2/example-id", Rick) { (json, response) =>
+        response.status shouldEqual StatusCodes.OK
+        filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
+      }
+    }
+
+    "wait for the cross-project resolver to be indexed" taggedAs ResourcesTag in {
+      val expected = jsonContentOf(
+        "/kg/resources/cross-project-resolver-list.json",
+        replacements(
+          Rick,
+          quote("{projId}")  -> s"$id2",
+          quote("{project}") -> s"${config.deltaUri}/projects/$id2"
+        )
+      )
+
       eventually {
-        cl(Req(GET, s"$kgBase/resolvers/$id2", headersJsonUser)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          removeSearchMetadata(json) shouldEqual expected
+        cl.get[Json](s"/resolvers/$id2", Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterSearchMetadata(json) shouldEqual expected
         }
       }
     }
 
-    s"fetches a resource in project '$id1' through project '$id2' resolvers" in {
-
-      cl(Req(GET, s"$kgBase/schemas/$id1/test-schema", headersJsonUser)).mapJson { (json, result1) =>
-        result1.status shouldEqual StatusCodes.OK
-        cl(Req(GET, s"$kgBase/resolvers/$id2/_/test-schema", headersJsonUser)).mapJson { (jsonResolved, result2) =>
-          result2.status shouldEqual StatusCodes.OK
-          jsonResolved should equalIgnoreArrayOrder(json)
+    s"fetches a resource in project '$id1' through project '$id2' resolvers" taggedAs ResourcesTag in {
+      for {
+        _ <- cl.get[Json](s"/schemas/$id1/test-schema", Rick) { (json, response1) =>
+          response1.status shouldEqual StatusCodes.OK
+          runTask {
+            for {
+              _ <- cl.get[Json](s"/resolvers/$id2/_/test-schema", Rick) { (jsonResolved, response2) =>
+                response2.status shouldEqual StatusCodes.OK
+                jsonResolved should equalIgnoreArrayOrder(json)
+              }
+              _ <- cl.get[Json](s"/resolvers/$id2/example-id/test-schema", Rick) { (jsonResolved, response2) =>
+                response2.status shouldEqual StatusCodes.OK
+                jsonResolved should equalIgnoreArrayOrder(json)
+              }
+            } yield {
+              succeed
+            }
+          }
         }
-        cl(Req(GET, s"$kgBase/resolvers/$id2/example-id/test-schema", headersJsonUser)).mapJson {
-          (jsonResolved, result2) =>
-            result2.status shouldEqual StatusCodes.OK
-            jsonResolved should equalIgnoreArrayOrder(json)
+        _ <- cl.get[Json](s"/resolvers/$id2/example-id/test-schema-2", Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.NotFound
         }
-        cl(Req(GET, s"$kgBase/resolvers/$id2/example-id/test-schema-2", headersJsonUser))
-          .mapResp(_.status shouldEqual StatusCodes.NotFound)
-        cl(Req(GET, s"$kgBase/resolvers/$id2/_/test-schema-2", headersJsonUser))
-          .mapResp(_.status shouldEqual StatusCodes.NotFound)
-      }
+        _ <- cl.get[Json](s"/resolvers/$id2/_/test-schema-2", Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.NotFound
+        }
+      } yield succeed
     }
 
-    "resolve schema from the other project" in {
+    "resolve schema from the other project" taggedAs ResourcesTag in {
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
         Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
       )
 
       eventually {
-        cl(Req(PUT, s"$kgBase/resources/$id2/test-schema/test-resource:1", headersJsonUser, payload.toEntity))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
+        cl.put[Json](s"/resources/$id2/test-schema/test-resource:1", payload, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
       }
     }
-
   }
 
   "updating a resource" should {
-    "send the update" in {
+    "send the update" taggedAs ResourcesTag in {
       val payload = jsonContentOf(
         "/kg/resources/simple-resource.json",
         Map(quote("{priority}") -> "3", quote("{resourceId}") -> "1")
       )
 
-      cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:1?rev=1", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
+      cl.put[Json](s"/resources/$id1/test-schema/test-resource:1?rev=1", payload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.OK
+      }
     }
-    "fetch the update" in {
+
+    "fetch the update" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "3",
           quote("{rev}")       -> "2",
-          quote("{resources}") -> s"$kgBase/resources/$id1",
-          quote("{project}")   -> s"$adminBase/projects/$id1",
-          quote("{iamBase}")   -> config.iam.uri.toString(),
-          quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.testUserSub
+          quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
-      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
-        cl(Req(GET, s"$base/test-resource:1", headersJsonUser)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_updatedAt") shouldEqual expected
+      List(
+        s"/resources/$id1/test-schema/test-resource:1",
+        s"/resources/$id1/_/test-resource:1"
+      ).traverse { url =>
+        cl.get[Json](url, Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
         }
       }
     }
 
-    "fetch previous revision" in {
+    "fetch previous revision" taggedAs ResourcesTag in {
       val expected = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "5",
           quote("{rev}")       -> "1",
-          quote("{resources}") -> s"$kgBase/resources/$id1",
-          quote("{project}")   -> s"$adminBase/projects/$id1",
-          quote("{iamBase}")   -> config.iam.uri.toString(),
-          quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.testUserSub
+          quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
-      forAll(List(s"$kgBase/resources/$id1/test-schema", s"$kgBase/resources/$id1/_")) { base =>
-        cl(Req(GET, s"$base/test-resource:1?rev=1", headersJsonUser)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expected)
+
+      List(
+        s"/resources/$id1/test-schema/test-resource:1?rev=1",
+        s"/resources/$id1/_/test-resource:1?rev=1"
+      ).traverse { url =>
+        cl.get[Json](url, Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) should equalIgnoreArrayOrder(expected)
         }
       }
     }
   }
 
   "tagging a resource" should {
-
-    "create a tag" in {
+    "create a tag" taggedAs ResourcesTag in {
       val tag1 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.0", quote("{rev}") -> "1"))
       val tag2 = jsonContentOf("/kg/resources/tag.json", Map(quote("{tag}") -> "v1.0.1", quote("{rev}") -> "2"))
 
-      cl(Req(POST, s"$kgBase/resources/$id1/test-schema/test-resource:1/tags?rev=2", headersJsonUser, tag1.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-      cl(Req(POST, s"$kgBase/resources/$id1/_/test-resource:1/tags?rev=3", headersJsonUser, tag2.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
+      for {
+        _ <- cl.post[Json](s"/resources/$id1/test-schema/test-resource:1/tags?rev=2", tag1, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+        _ <- cl.post[Json](s"/resources/$id1/_/test-resource:1/tags?rev=3", tag2, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
+        }
+      } yield succeed
     }
 
-    "fetch a tagged value" in {
-
+    "fetch a tagged value" taggedAs ResourcesTag in {
       val expectedTag1 = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "3",
           quote("{rev}")       -> "2",
-          quote("{resources}") -> s"$kgBase/resources/$id1",
-          quote("{project}")   -> s"$adminBase/projects/$id1",
-          quote("{iamBase}")   -> config.iam.uri.toString(),
-          quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.testUserSub
+          quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", headersJsonUser)).mapJson {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expectedTag1)
-      }
 
       val expectedTag2 = jsonContentOf(
         "/kg/resources/simple-resource-response.json",
-        Map(
+        replacements(
+          Rick,
           quote("{priority}")  -> "5",
           quote("{rev}")       -> "1",
-          quote("{resources}") -> s"$kgBase/resources/$id1",
-          quote("{project}")   -> s"$adminBase/projects/$id1",
-          quote("{iamBase}")   -> config.iam.uri.toString(),
-          quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.testUserSub
+          quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
         )
       )
-      cl(Req(GET, s"$kgBase/resources/$id1/_/test-resource:1?tag=v1.0.0", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.removeKeys("_createdAt", "_updatedAt") should equalIgnoreArrayOrder(expectedTag2)
-      }
+
+      for {
+        _ <- cl.get[Json](s"/resources/$id1/test-schema/test-resource:1?tag=v1.0.1", Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag1)
+        }
+        _ <- cl.get[Json](s"/resources/$id1/_/test-resource:1?tag=v1.0.0", Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterMetadataKeys(json) should equalIgnoreArrayOrder(expectedTag2)
+        }
+      } yield succeed
     }
   }
 
   "listing resources" should {
 
-    "list default resources" in {
-      val mapping = Map(
-        quote("{kgBase}")        -> kgBase.toString(),
+    "list default resources" taggedAs ResourcesTag in {
+      val mapping = replacements(
+        Rick,
         quote("{project-label}") -> id1,
-        quote("{project}")       -> s"$adminBase/projects/$id1",
-        quote("{iamBase}")       -> config.iam.uri.toString(),
-        quote("{realm}")         -> config.iam.testRealm,
-        quote("{user}")          -> config.iam.testUserSub
+        quote("{project}")       -> s"${config.deltaUri}/projects/$id1"
       )
+
       val resources = List(
         "resolvers" -> jsonContentOf("/kg/listings/default-resolver.json", mapping),
         "views"     -> jsonContentOf("/kg/listings/default-view.json", mapping),
         "storages"  -> jsonContentOf("/kg/listings/default-storage.json", mapping)
       )
-      forAll(resources) {
+
+      resources.traverse {
         case (segment, expected) =>
-          eventually {
-            cl(Req(GET, s"$kgBase/$segment/$id1", headersJsonUser)).mapJson { (json, result) =>
-              result.status shouldEqual StatusCodes.OK
-              removeSearchMetadata(json) shouldEqual expected
-            }
+          cl.get[Json](s"/$segment/$id1", Rick) { (json, response) =>
+            response.status shouldEqual StatusCodes.OK
+            filterSearchMetadata(json) shouldEqual expected
           }
       }
     }
 
-    "add more resource to the project" in {
-
-      forAll(2 to 5) { resourceId =>
+    "add more resource to the project" taggedAs ResourcesTag in {
+      (2 to 5).toList.traverse { resourceId =>
         val payload = jsonContentOf(
           "/kg/resources/simple-resource.json",
           Map(quote("{priority}") -> "3", quote("{resourceId}") -> s"$resourceId")
         )
-        cl(Req(PUT, s"$kgBase/resources/$id1/test-schema/test-resource:$resourceId", headersJsonUser, payload.toEntity))
-          .mapResp(_.status shouldEqual StatusCodes.Created)
-      }
-
-    }
-
-    "list the resources" in {
-      val expected = jsonContentOf(
-        "/kg/listings/response.json",
-        Map(
-          quote("{resources}") -> s"$kgBase/resources/$id1",
-          quote("{project}")   -> s"$adminBase/projects/$id1",
-          quote("{iamBase}")   -> config.iam.uri.toString(),
-          quote("{realm}")     -> config.iam.testRealm,
-          quote("{user}")      -> config.iam.testUserSub
-        )
-      )
-      eventually {
-        cl(Req(GET, s"$kgBase/resources/$id1/test-schema", headersJsonUser)).mapJson { (json, result) =>
-          result.status shouldEqual StatusCodes.OK
-          removeSearchMetadata(json) shouldEqual expected
+        cl.put[Json](s"/resources/$id1/test-schema/test-resource:$resourceId", payload, Rick) { (_, response) =>
+          response.status shouldEqual StatusCodes.Created
         }
       }
     }
 
-    "return 400 when using both from and after" in {
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10&after=%5B%22test%22%5D", headersJsonUser)).mapJson {
-        (json, result) =>
-          result.status shouldEqual StatusCodes.BadRequest
-          json shouldEqual jsonContentOf("/kg/listings/from-and-after-error.json")
+    "list the resources" taggedAs ResourcesTag in {
+      val expected = jsonContentOf(
+        "/kg/listings/response.json",
+        replacements(
+          Rick,
+          quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+          quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
+        )
+      )
+
+      eventually {
+        cl.get[Json](s"/resources/$id1/test-schema", Rick) { (json, response) =>
+          response.status shouldEqual StatusCodes.OK
+          filterSearchMetadata(json) shouldEqual expected
+        }
       }
     }
 
-    "return 400 when from is bigger than limit" in {
-      cl(Req(GET, s"$kgBase/resources/$id1/test-schema?from=10001", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.BadRequest
+    "return 400 when using both from and after" taggedAs ResourcesTag in {
+      cl.get[Json](s"/resources/$id1/test-schema?from=10&after=%5B%22test%22%5D", Rick) { (json, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
+        json shouldEqual jsonContentOf("/kg/listings/from-and-after-error.json")
+      }
+    }
+
+    "return 400 when from is bigger than limit" taggedAs ResourcesTag in {
+      cl.get[Json](s"/resources/$id1/test-schema?from=10001", Rick) { (json, response) =>
+        response.status shouldEqual StatusCodes.BadRequest
         json shouldEqual jsonContentOf("/kg/listings/from-over-limit-error.json")
       }
     }
 
-    "list responses using after" in {
+    "list responses using after" taggedAs ResourcesTag in {
+      // Building the next results, replace the public url by the one used by the tests
+      def next(json: Json) = resources._next.getOption(json).map { url =>
+        url.replace(config.deltaUri.toString(), "")
+      }
 
-      val um = implicitly[FromEntityUnmarshaller[Json]]
-      val result = Source
-        .unfoldAsync(s"$kgBase/resources/$id1/test-schema?size=2") { searchUrl =>
-          cl(Req(GET, searchUrl, headersJsonUser))
-            .flatMap(res => um(res.entity))
-            .map(
-              json =>
-                getNext(json).map { next =>
-                  (next, getResults(json))
-                }
+      // Get results though a lens and filtering out some fields
+      def lens(json: Json) =
+        resources._results
+          .getOption(json)
+          .fold(Vector.empty[Json]) { _.map(filterMetadataKeys) }
+
+      val result = cl
+        .stream(
+          s"/resources/$id1/test-schema?size=2",
+          next,
+          lens,
+          Rick
+        )
+        .compile
+        .toList
+
+      val expected = resources._results
+        .getOption(
+          jsonContentOf(
+            "/kg/listings/response.json",
+            replacements(
+              Rick,
+              quote("{resources}") -> s"${config.deltaUri}/resources/$id1",
+              quote("{project}")   -> s"${config.deltaUri}/projects/$id1"
             )
-        }
-        .mapConcat[Json](_.to(Seq))
-        .runWith(Sink.seq)
-        .futureValue
-
-      val expected = getResults(
-        jsonContentOf(
-          "/kg/listings/response.json",
-          Map(
-            quote("{resources}") -> s"$kgBase/resources/$id1",
-            quote("{project}")   -> s"$adminBase/projects/$id1",
-            quote("{iamBase}")   -> config.iam.uri.toString(),
-            quote("{realm}")     -> config.iam.testRealm,
-            quote("{user}")      -> config.iam.testUserSub
           )
         )
-      )
+        .value
 
-      result shouldEqual expected
-    }
-
-    "create context" in {
-      val payload = jsonContentOf("/kg/resources/simple-context.json")
-
-      cl(Req(PUT, s"$kgBase/resources/$id1/_/test-resource:mycontext", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "create resource using the created context" in {
-      val payload = jsonContentOf("/kg/resources/simple-resource-context.json")
-
-      cl(Req(POST, s"$kgBase/resources/$id1/", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.Created)
-    }
-
-    "update context" in {
-      val payload = Json.obj("@context" -> Json.obj("alias" -> Json.fromString("http://example.com/alias")))
-
-      cl(Req(PUT, s"$kgBase/resources/$id1/_/test-resource:mycontext?rev=1", headersJsonUser, payload.toEntity))
-        .mapResp(_.status shouldEqual StatusCodes.OK)
-    }
-
-    "fetched previously created resource" in {
-      val resourceId = URLEncoder.encode("http://example.com/base/myid", "UTF-8")
-      cl(Req(GET, s"$kgBase/resources/$id1/_/$resourceId", headersJsonUser)).mapJson { (json, result) =>
-        result.status shouldEqual StatusCodes.OK
-        json.hcursor.get[String]("@id").rightValue shouldEqual "http://example.com/base/myid"
-        json.hcursor.get[String]("@type").rightValue shouldEqual "http://example.com/type"
+      result.flatMap { l =>
+        Task.pure(l.flatten shouldEqual expected)
       }
     }
 
+    "create context" taggedAs ResourcesTag in {
+      val payload = jsonContentOf("/kg/resources/simple-context.json")
+
+      cl.put[Json](s"/resources/$id1/_/test-resource:mycontext", payload, Rick) { (_, response) =>
+        response.status shouldEqual StatusCodes.Created
+      }
+    }
   }
 
-  def getNext(json: Json): Option[String] =
-    json.asObject.flatMap(_("_next")).flatMap(_.asString)
+  "create resource using the created context" taggedAs ResourcesTag in {
+    val payload = jsonContentOf("/kg/resources/simple-resource-context.json")
 
-  def getResults(json: Json): Seq[Json] =
-    removeSearchMetadata(json).asObject
-      .flatMap(_("_results"))
-      .flatMap(_.asArray)
-      .getOrElse(Seq.empty)
+    cl.post[Json](s"/resources/$id1/", payload, Rick) { (_, response) =>
+      response.status shouldEqual StatusCodes.Created
+    }
+  }
 
-  def removeSearchMetadata(json: Json): Json =
-    json
-      .removeKeys("_next")
-      .hcursor
-      .downField("_results")
-      .withFocus(
-        _.mapArray(
-          _.map(
-            _.removeKeys("_createdAt", "_updatedAt")
-          )
-        )
-      )
-      .top
-      .value
+  "update context" taggedAs ResourcesTag in {
+    val payload = Json.obj("@context" -> Json.obj("alias" -> Json.fromString("http://example.com/alias")))
+
+    cl.put[Json](s"/resources/$id1/_/test-resource:mycontext?rev=1", payload, Rick) { (_, response) =>
+      response.status shouldEqual StatusCodes.OK
+    }
+  }
+
+  "fetched previously created resource" taggedAs ResourcesTag in {
+    val resourceId = URLEncoder.encode("http://example.com/base/myid", "UTF-8")
+    cl.get[Json](s"/resources/$id1/_/$resourceId", Rick) { (json, response) =>
+      response.status shouldEqual StatusCodes.OK
+      json.hcursor.get[String]("@id").rightValue shouldEqual "http://example.com/base/myid"
+      json.hcursor.get[String]("@type").rightValue shouldEqual "http://example.com/type"
+    }
+  }
+
 }
