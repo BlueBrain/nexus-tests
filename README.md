@@ -5,6 +5,10 @@ Starts the delta ecosystem with docker-compose and run tests on it
 Relies on sbt-docker-compose: 
 https://github.com/Tapad/sbt-docker-compose
 
+## Archived
+
+The tests have been ported to the [BlueBrain/nexus](https://github.com/BlueBrain/nexus) repository.
+
 To run the all the tests:
 ```sbtshell
 dockerComposeTest skipBuild
